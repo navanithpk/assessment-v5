@@ -1,0 +1,348 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Monitor Test - {{ test.title }}{% endblock %}
+
+{% block content %}
+<style>
+.monitor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.monitor-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 8px 0;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.students-table {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+td {
+  padding: 16px 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-not-started {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-started {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-submitted {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.refresh-btn {
+  padding: 10px 20px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.refresh-btn:hover {
+  background: #1d4ed8;
+}
+
+.grade-btn {
+  padding: 8px 16px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.grade-btn:hover {
+  background: #059669;
+}
+
+.last-activity {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.auto-refresh-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.auto-refresh-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+</style>
+
+<div class="monitor-header">
+  <div>
+    <h1>{{ test.title }}</h1>
+    <p style="color: #6b7280; margin-top: 4px;">Real-time Test Monitoring</p>
+  </div>
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <label class="auto-refresh-toggle">
+      <input type="checkbox" id="auto-refresh" checked>
+      Auto-refresh (10s)
+    </label>
+    <button class="refresh-btn" onclick="refreshData()">
+      🔄 Refresh Now
+    </button>
+    <a href="{% url 'grade_test_answers' test.id %}" class="grade-btn">
+      ✅ Grade Answers
+    </a>
+  </div>
+</div>
+
+<div class="monitor-stats">
+  <div class="stat-card">
+    <div class="stat-label">Total Students</div>
+    <div class="stat-value" id="total-students">{{ total_students }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Not Started</div>
+    <div class="stat-value" id="not-started">{{ total_students|add:"-"|add:started_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">In Progress</div>
+    <div class="stat-value" id="in-progress">{{ started_count|add:"-"|add:submitted_count }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Submitted</div>
+    <div class="stat-value" id="submitted">{{ submitted_count }}</div>
+  </div>
+</div>
+
+<div class="students-table">
+  <table>
+    <thead>
+      <tr>
+        <th>Student Name</th>
+        <th>Roll Number</th>
+        <th>Status</th>
+        <th>Current Question</th>
+        <th>Progress</th>
+        <th>Answered</th>
+        <th>Last Activity</th>
+      </tr>
+    </thead>
+    <tbody id="students-tbody">
+      {% for sp in student_progress %}
+      <tr>
+        <td><strong>{{ sp.student.full_name }}</strong></td>
+        <td>{{ sp.student.roll_number|default:"—" }}</td>
+        <td>
+          <span class="status-badge status-{{ sp.status|lower|cut:' ' }}">
+            {{ sp.status }}
+          </span>
+        </td>
+        <td>
+          {% if sp.current_question %}
+            <span style="font-weight: 600; color: #2563eb;">Q{{ sp.current_question }}</span>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="progress-bar-container" style="flex: 1;">
+              <div class="progress-bar" style="width: {{ sp.progress }}%;"></div>
+            </div>
+            <span style="font-size: 13px; font-weight: 600; color: #1f2937;">
+              {{ sp.progress }}%
+            </span>
+          </div>
+        </td>
+        <td>{{ sp.answered }} / {{ sp.total }}</td>
+        <td class="last-activity">
+          {% if sp.last_activity %}
+            {{ sp.last_activity|timesince }} ago
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;">
+          <em>No students assigned to this test</em>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+let autoRefreshInterval = null;
+
+function refreshData() {
+  fetch('{% url "monitor_test_api" test.id %}')
+    .then(response => response.json())
+    .then(data => {
+      updateStudentTable(data.students);
+      updateStats(data.students);
+    })
+    .catch(error => console.error('Error refreshing data:', error));
+}
+
+function updateStudentTable(students) {
+  const tbody = document.getElementById('students-tbody');
+
+  if (students.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #6b7280;"><em>No students assigned to this test</em></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = students.map(student => {
+    const status = student.answered === student.total ? 'Submitted' :
+                   student.answered > 0 ? 'Started' : 'Not Started';
+    const statusClass = status.toLowerCase().replace(' ', '');
+    const lastActivity = student.last_activity ?
+      new Date(student.last_activity).toLocaleString() : '—';
+    const currentQuestion = student.current_question ?
+      `<span style="font-weight: 600; color: #2563eb;">Q${student.current_question}</span>` : '—';
+
+    return `
+      <tr>
+        <td><strong>${student.name}</strong></td>
+        <td>${student.roll_number || '—'}</td>
+        <td>
+          <span class="status-badge status-${statusClass}">
+            ${status}
+          </span>
+        </td>
+        <td>${currentQuestion}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="progress-bar-container" style="flex: 1;">
+              <div class="progress-bar" style="width: ${student.progress}%;"></div>
+            </div>
+            <span style="font-size: 13px; font-weight: 600; color: #1f2937;">
+              ${student.progress}%
+            </span>
+          </div>
+        </td>
+        <td>${student.answered} / ${student.total}</td>
+        <td class="last-activity">${lastActivity}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function updateStats(students) {
+  const total = students.length;
+  const started = students.filter(s => s.answered > 0).length;
+  const submitted = students.filter(s => s.answered === s.total && s.total > 0).length;
+  const notStarted = total - started;
+  const inProgress = started - submitted;
+
+  document.getElementById('total-students').textContent = total;
+  document.getElementById('not-started').textContent = notStarted;
+  document.getElementById('in-progress').textContent = inProgress;
+  document.getElementById('submitted').textContent = submitted;
+}
+
+// Auto-refresh toggle
+document.getElementById('auto-refresh').addEventListener('change', function(e) {
+  if (e.target.checked) {
+    autoRefreshInterval = setInterval(refreshData, 10000); // 10 seconds
+  } else {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+    }
+  }
+});
+
+// Start auto-refresh by default
+autoRefreshInterval = setInterval(refreshData, 10000);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+  }
+});
+</script>
+
+{% endblock %}

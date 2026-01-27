@@ -1,0 +1,665 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Grade Test - {{ test.title }}{% endblock %}
+
+{% block content %}
+<style>
+.grade-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  height: calc(100vh - 120px);
+}
+
+.students-sidebar {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.student-item {
+  padding: 12px;
+  margin: 6px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.student-item:hover {
+  background: #f3f4f6;
+}
+
+.student-item.active {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.student-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.student-info {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.grading-area {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  overflow-y: auto;
+}
+
+.grading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.score-summary {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.score-item {
+  text-align: center;
+}
+
+.score-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.score-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.publish-btn {
+  padding: 12px 24px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.publish-btn:hover {
+  background: #059669;
+}
+
+.publish-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.question-card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.question-number {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2563eb;
+  background: #dbeafe;
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.question-marks {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.question-text {
+  font-size: 15px;
+  color: #1f2937;
+  margin-bottom: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.question-text img,
+.model-answer img,
+.student-answer img {
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.answer-section {
+  margin-top: 16px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.model-answer {
+  background: #f0fdf4;
+  border-left: 3px solid #10b981;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #065f46;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.student-answer {
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.grading-controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: end;
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.marks-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.marks-input-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.marks-input {
+  padding: 10px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 120px;
+}
+
+.marks-input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+.ai-btn {
+  padding: 10px 20px;
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-btn:hover {
+  background: #7c3aed;
+}
+
+.save-btn {
+  padding: 10px 20px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.save-btn:hover {
+  background: #1d4ed8;
+}
+
+.ai-feedback {
+  grid-column: 1 / -1;
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #92400e;
+  margin-top: 8px;
+  display: none;
+}
+
+.no-answer {
+  color: #9ca3af;
+  font-style: italic;
+  padding: 20px;
+  text-align: center;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.grading-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 12px;
+}
+
+.status-graded {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.long-content-notice {
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #92400e;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expand-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.expand-btn:hover {
+  background: #d97706;
+}
+
+.content-expanded {
+  max-height: none !important;
+}
+</style>
+
+<script>
+function toggleExpand(id) {
+  const element = document.getElementById(id);
+  const btn = event.target;
+
+  if (element.classList.contains('content-expanded')) {
+    element.classList.remove('content-expanded');
+    btn.textContent = 'Expand';
+  } else {
+    element.classList.add('content-expanded');
+    btn.textContent = 'Collapse';
+  }
+}
+</script>
+
+<div class="grade-container">
+  <!-- Students Sidebar -->
+  <div class="students-sidebar">
+    <div class="sidebar-header">
+      <h3>Students ({{ students_with_answers.count }})</h3>
+    </div>
+
+    {% for student in students_with_answers %}
+    <div class="student-item {% if selected_student.id == student.id %}active{% endif %}"
+         onclick="window.location.href='?student={{ student.id }}'">
+      <div class="student-name">{{ student.full_name }}</div>
+      <div class="student-info">
+        {% if student.roll_number %}Roll: {{ student.roll_number }}{% endif %}
+        • {{ student.grade }}-{{ student.section }}
+      </div>
+    </div>
+    {% empty %}
+    <div style="text-align: center; padding: 20px; color: #9ca3af;">
+      <em>No submissions yet</em>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Grading Area -->
+  <div class="grading-area">
+    {% if selected_student %}
+    <div class="grading-header">
+      <div>
+        <h2 style="margin: 0;">{{ selected_student.full_name }}</h2>
+        <p style="color: #6b7280; margin: 4px 0 0 0;">
+          {{ selected_student.grade }}-{{ selected_student.section }}
+          {% if selected_student.roll_number %}
+            • Roll: {{ selected_student.roll_number }}
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="score-summary">
+        <div class="score-item">
+          <div class="score-value">{{ awarded_marks|floatformat:1 }}/{{ total_marks }}</div>
+          <div class="score-label">Total Score</div>
+        </div>
+        <div class="score-item">
+          <div class="score-value">{{ percentage|floatformat:1 }}%</div>
+          <div class="score-label">Percentage</div>
+        </div>
+        <div class="score-item">
+          <div class="score-value" style="{% if pending_count == 0 %}color: #10b981;{% else %}color: #f59e0b;{% endif %}">
+            {{ graded_count }}/{{ grading_data|length }}
+          </div>
+          <div class="score-label">Graded</div>
+        </div>
+      </div>
+    </div>
+
+    {% for gd in grading_data %}
+    <div class="question-card">
+      <div class="question-header">
+        <span class="question-number">Question {{ forloop.counter }}</span>
+        <span class="question-marks">Max Marks: {{ gd.max_marks }}</span>
+      </div>
+
+      <div class="question-text" id="q-text-{{ gd.question.id }}">
+        {{ gd.question.question_text|linebreaksbr|safe }}
+      </div>
+      {% if gd.question.question_text|length > 500 %}
+      <div class="long-content-notice">
+        ⚠️ Long content detected
+        <button class="expand-btn" onclick="toggleExpand('q-text-{{ gd.question.id }}')">Expand</button>
+      </div>
+      {% endif %}
+
+      {% if gd.question.answer_text %}
+      <div class="answer-section">
+        <div class="section-label">Model Answer</div>
+        <div class="model-answer">{{ gd.question.answer_text|linebreaksbr|safe }}</div>
+      </div>
+      {% endif %}
+
+      <div class="answer-section">
+        <div class="section-label">
+          Student Answer
+          {% if gd.awarded_marks is not None %}
+            <span class="grading-status status-graded">✓ Graded</span>
+          {% else %}
+            <span class="grading-status status-pending">⏳ Pending</span>
+          {% endif %}
+        </div>
+        {% if gd.student_answer %}
+        <div class="student-answer" id="s-ans-{{ gd.student_answer.id }}">
+          {{ gd.student_answer.answer_text|linebreaksbr|safe|default:"<em>No answer provided</em>" }}
+        </div>
+        {% if gd.student_answer.answer_text|length > 500 %}
+        <div class="long-content-notice">
+          ⚠️ Long answer detected
+          <button class="expand-btn" onclick="toggleExpand('s-ans-{{ gd.student_answer.id }}')">Expand</button>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="student-answer no-answer">No answer submitted</div>
+        {% endif %}
+      </div>
+
+      {% if gd.student_answer %}
+      <div class="grading-controls">
+        <div class="marks-input-group">
+          <label for="marks-{{ gd.student_answer.id }}">Awarded Marks</label>
+          <input type="number"
+                 id="marks-{{ gd.student_answer.id }}"
+                 class="marks-input"
+                 min="0"
+                 max="{{ gd.max_marks }}"
+                 step="0.5"
+                 value="{{ gd.awarded_marks|default:'' }}"
+                 placeholder="Enter marks">
+        </div>
+
+        <button class="ai-btn" onclick="getAIGrade({{ gd.student_answer.id }}, {{ gd.max_marks }})">
+          🤖 AI Suggest
+        </button>
+
+        <button class="save-btn" onclick="saveGrade({{ gd.student_answer.id }}, {{ gd.max_marks }})">
+          💾 Save
+        </button>
+
+        <div class="ai-feedback" id="feedback-{{ gd.student_answer.id }}"></div>
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="empty-state">
+      <h3>No questions found</h3>
+      <p>This test doesn't have any questions yet.</p>
+    </div>
+    {% endfor %}
+
+    {% if grading_data %}
+    <div style="margin-top: 32px; text-align: center;">
+      <button class="publish-btn"
+              {% if pending_count > 0 %}disabled{% endif %}
+              onclick="publishResults()">
+        {% if pending_count > 0 %}
+          ⚠️ Grade all questions to publish ({{ pending_count }} pending)
+        {% else %}
+          ✅ Publish Results
+        {% endif %}
+      </button>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <h3>No Student Selected</h3>
+      <p>Select a student from the sidebar to start grading.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+function saveGrade(answerId, maxMarks) {
+  const marksInput = document.getElementById(`marks-${answerId}`);
+  const marks = parseFloat(marksInput.value);
+
+  if (isNaN(marks)) {
+    alert('Please enter a valid number for marks');
+    return;
+  }
+
+  if (marks < 0 || marks > maxMarks) {
+    alert(`Marks must be between 0 and ${maxMarks}`);
+    return;
+  }
+
+  fetch('{% url "save_grade" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrftoken
+    },
+    body: JSON.stringify({
+      answer_id: answerId,
+      marks: marks
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Grade saved successfully!');
+      location.reload();
+    } else {
+      alert('Error: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to save grade');
+  });
+}
+
+function getAIGrade(answerId, maxMarks) {
+  const feedbackDiv = document.getElementById(`feedback-${answerId}`);
+  feedbackDiv.style.display = 'block';
+  feedbackDiv.innerHTML = '🤖 AI is analyzing the answer...';
+
+  fetch('{% url "ai_grade_answer" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrftoken
+    },
+    body: JSON.stringify({
+      answer_id: answerId
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      const marksInput = document.getElementById(`marks-${answerId}`);
+      marksInput.value = data.suggested_marks;
+
+      feedbackDiv.innerHTML = `
+        <strong>AI Suggestion:</strong> ${data.suggested_marks} / ${data.max_marks} marks
+        <br><small>${data.feedback}</small>
+        ${!data.ai_used ? '<br><small><em>Note: Using basic algorithm. Integrate AI service for better results.</em></small>' : ''}
+      `;
+    } else {
+      feedbackDiv.innerHTML = '❌ Error: ' + data.error;
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    feedbackDiv.innerHTML = '❌ Failed to get AI suggestion';
+  });
+}
+
+function publishResults() {
+  if (!confirm('Are you sure you want to publish these results? Students will be able to see their scores.')) {
+    return;
+  }
+
+  fetch('{% url "publish_results" test.id %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrftoken
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Results published successfully!');
+      location.reload();
+    } else {
+      alert('Error: ' + data.error);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Failed to publish results');
+  });
+}
+</script>
+
+{% endblock %}

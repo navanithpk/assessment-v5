@@ -1,0 +1,392 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}AI Tagging Logs{% endblock %}
+
+{% block content %}
+
+<style>
+.logs-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  border-radius: 16px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.logs-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+}
+
+.logs-header p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.logs-container {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 24px;
+  min-height: 600px;
+}
+
+.logs-sidebar {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.log-file-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.log-file-item:hover {
+  background: #f3f4f6;
+  border-color: #667eea;
+}
+
+.log-file-item.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.log-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.log-file-date {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.logs-content {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  max-height: calc(100vh - 250px);
+  overflow-y: auto;
+}
+
+.log-viewer {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.log-line {
+  padding: 4px 8px;
+  border-left: 3px solid transparent;
+  margin-bottom: 2px;
+}
+
+.log-line.INFO {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.log-line.DEBUG {
+  border-left-color: #6b7280;
+  background: #f3f4f6;
+  opacity: 0.8;
+}
+
+.log-line.WARNING {
+  border-left-color: #f59e0b;
+  background: #fef3c7;
+}
+
+.log-line.ERROR {
+  border-left-color: #ef4444;
+  background: #fee2e2;
+  font-weight: 600;
+}
+
+.log-timestamp {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.log-level {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  margin: 0 8px;
+}
+
+.log-level.INFO {
+  background: #3b82f6;
+  color: white;
+}
+
+.log-level.DEBUG {
+  background: #6b7280;
+  color: white;
+}
+
+.log-level.WARNING {
+  background: #f59e0b;
+  color: white;
+}
+
+.log-level.ERROR {
+  background: #ef4444;
+  color: white;
+}
+
+.log-message {
+  color: #1f2937;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-box {
+  background: #f9fafb;
+  padding: 16px;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  border-color: #667eea;
+  background: #f5f7ff;
+}
+
+.filter-btn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.search-box {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-box:focus {
+  outline: none;
+  border-color: #667eea;
+}
+</style>
+
+<div class="logs-header">
+  <h1>📊 AI Tagging Logs</h1>
+  <p>View detailed logs of bulk AI tagging operations</p>
+</div>
+
+<div class="logs-container">
+  <!-- Sidebar: Log Files List -->
+  <div class="logs-sidebar">
+    <div class="sidebar-header">Log Files</div>
+    <div id="logFilesList">
+      {% if log_files %}
+        {% for log_file in log_files %}
+        <div class="log-file-item" onclick="loadLogFile('{{ log_file.name }}')">
+          <div class="log-file-name">{{ log_file.display_name }}</div>
+          <div class="log-file-date">{{ log_file.date }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">📝</div>
+          <p>No log files yet</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Main Content: Log Viewer -->
+  <div class="logs-content">
+    <div class="filter-bar">
+      <button class="filter-btn active" data-level="all" onclick="filterLogs('all')">All</button>
+      <button class="filter-btn" data-level="INFO" onclick="filterLogs('INFO')">Info</button>
+      <button class="filter-btn" data-level="WARNING" onclick="filterLogs('WARNING')">Warnings</button>
+      <button class="filter-btn" data-level="ERROR" onclick="filterLogs('ERROR')">Errors</button>
+      <button class="filter-btn" data-level="DEBUG" onclick="filterLogs('DEBUG')">Debug</button>
+      <input type="text" class="search-box" id="searchBox" placeholder="Search logs..." oninput="searchLogs()">
+    </div>
+
+    <div id="logContent">
+      <div class="empty-state">
+        <div class="empty-icon">👈</div>
+        <p>Select a log file from the sidebar to view its contents</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const csrftoken = '{{ csrf_token }}';
+let currentLogLines = [];
+let currentFilter = 'all';
+
+async function loadLogFile(filename) {
+  try {
+    const response = await fetch(`/teacher/ai-logs/view/${filename}/`, {
+      headers: {
+        'X-CSRFToken': csrftoken
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      currentLogLines = data.lines;
+      displayLogs(data.lines);
+
+      // Update active state
+      document.querySelectorAll('.log-file-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      event.target.closest('.log-file-item').classList.add('active');
+    } else {
+      alert('Error loading log file');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error loading log file');
+  }
+}
+
+function displayLogs(lines) {
+  const container = document.getElementById('logContent');
+
+  if (!lines || lines.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>This log file is empty</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '<div class="log-viewer">';
+
+  lines.forEach(line => {
+    if (!line.raw) return;
+
+    const levelClass = line.level || '';
+    const filterMatch = currentFilter === 'all' || line.level === currentFilter;
+
+    if (filterMatch) {
+      html += `
+        <div class="log-line ${levelClass}" data-level="${levelClass}">
+          <span class="log-timestamp">${line.timestamp || ''}</span>
+          ${line.level ? `<span class="log-level ${line.level}">${line.level}</span>` : ''}
+          <span class="log-message">${line.message || line.raw}</span>
+        </div>
+      `;
+    }
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function filterLogs(level) {
+  currentFilter = level;
+
+  // Update button states
+  document.querySelectorAll('.filter-btn[data-level]').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+
+  // Re-display logs with filter
+  displayLogs(currentLogLines);
+}
+
+function searchLogs() {
+  const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+
+  if (!searchTerm) {
+    displayLogs(currentLogLines);
+    return;
+  }
+
+  const filteredLines = currentLogLines.filter(line => {
+    return line.raw && line.raw.toLowerCase().includes(searchTerm);
+  });
+
+  displayLogs(filteredLines);
+}
+</script>
+
+{% endblock %}

@@ -1,0 +1,1468 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Import MCQ from PDF{% endblock %}
+
+{% block content %}
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+}
+
+.container {
+  display: flex;
+  height: calc(100vh - 80px);
+  font-family: system-ui;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 280px;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+#sidebar h3 {
+  padding: 16px;
+  margin: 0;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.upload-section {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.upload-section label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #374151;
+}
+
+.upload-section input[type="file"] {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+.upload-section .file-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+#pageList {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+}
+
+.page-item {
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.page-item:hover {
+  background: #f5f5f5;
+  border-color: #2563eb;
+}
+
+.page-item.active {
+  background: #dbeafe;
+  border-color: #2563eb;
+  font-weight: 600;
+}
+
+/* Center */
+#center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+}
+
+#toolbar {
+  padding: 12px 16px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: white;
+  flex-wrap: wrap;
+}
+
+#toolbar button {
+  padding: 8px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+#toolbar button:hover {
+  background: #1d4ed8;
+}
+
+#toolbar button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+#toolbar button.success {
+  background: #10b981;
+}
+
+#toolbar button.success:hover {
+  background: #059669;
+}
+
+#pageNav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#pageNav button {
+  padding: 6px 12px;
+  background: #6b7280;
+}
+
+#pageNav input {
+  width: 60px;
+  padding: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.help-text {
+  font-size: 11px;
+  color: #6b7280;
+  margin-left: auto;
+}
+
+#viewer {
+  flex: 1;
+  background: #eee;
+  overflow: auto;
+  padding: 20px;
+  position: relative;
+}
+
+#canvasContainer {
+  margin: 0 auto;
+  position: relative;
+  display: inline-block;
+}
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  overflow: auto;
+}
+
+.modal.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  color: #111827;
+}
+
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+.slices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.slice-preview {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.slice-preview img {
+  width: 100%;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  border: 1px solid #d1d5db;
+}
+
+.slice-preview .slice-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.slice-preview select {
+  width: 100%;
+  padding: 6px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.slice-preview label {
+  font-size: 12px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.modal-footer .form-section {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.modal-footer .form-group {
+  flex: 1;
+}
+
+.modal-footer label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.modal-footer select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+#importBtn {
+  padding: 10px 24px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#importBtn:hover {
+  background: #059669;
+}
+
+#importBtn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.auto-assign-section {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.auto-assign-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #1e40af;
+}
+
+.auto-assign-section p {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #1e3a8a;
+}
+
+#msAnswerInput {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.auto-assign-btn {
+  padding: 6px 12px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 8px;
+}
+
+.auto-assign-btn:hover {
+  background: #2563eb;
+}
+</style>
+
+<div class="container">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <h3>📄 PDF Files</h3>
+
+    <div class="upload-section">
+      <label>📂 Select Multiple PDFs</label>
+      <input type="file" id="multiFileInput" accept="application/pdf" multiple>
+      <div class="file-label">Select multiple QP and MS PDFs at once. They will be auto-paired by filename.</div>
+      <button onclick="showPairedFiles()" style="margin-top: 8px; padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; width: 100%;">
+        Show Paired Files (<span id="pairCount">0</span>)
+      </button>
+    </div>
+
+    <div style="padding: 12px; background: #fef3c7; border-radius: 6px; margin: 12px; font-size: 11px; color: #92400e;">
+      <strong>💡 Naming Convention:</strong><br>
+      QP: 9702_s23_qp_41.pdf<br>
+      MS: 9702_s23_ms_41.pdf<br>
+      Auto-pairs by matching pattern!
+    </div>
+
+    <div class="upload-section" style="border-top: 2px solid #e5e7eb; padding-top: 16px;">
+      <label>Or Select Single Files:</label>
+      <div style="margin-top: 8px;">
+        <label style="font-size: 12px;">Question Paper (QP)</label>
+        <input type="file" id="qpInput" accept="application/pdf">
+      </div>
+      <div style="margin-top: 8px;">
+        <label style="font-size: 12px;">Marking Scheme (MS) - Optional</label>
+        <input type="file" id="msInput" accept="application/pdf">
+      </div>
+    </div>
+
+    <div id="pageList"></div>
+  </div>
+
+  <!-- Center -->
+  <div id="center">
+    <div id="toolbar">
+      <div id="pageNav">
+        <button onclick="prevPage()">◀</button>
+        <input id="pageBox" type="number" min="1" value="1">
+        <button onclick="nextPage()">▶</button>
+      </div>
+
+      <label style="font-size: 13px; display: flex; align-items: center; gap: 6px;">
+        <input type="checkbox" id="includeFirst">
+        Include page 1
+      </label>
+
+      <button onclick="sliceDocument()" class="success">📐 Slice & Review</button>
+      <button onclick="clearLines()">🗑️ Clear Lines</button>
+
+      <span class="help-text">
+        <strong>Shortcuts:</strong> Z=start | X=end | C=pair | ↑↓ move | Del remove
+      </span>
+    </div>
+
+    <div id="viewer">
+      <div id="canvasContainer">
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for sliced questions -->
+<div id="slicesModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>✂️ Sliced Questions (<span id="sliceCount">0</span>)</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="auto-assign-section" id="msSection" style="display: none;">
+        <h4>📋 Auto-Assign Answers from MS</h4>
+        <p>Enter the 40 answer keys from marking scheme (e.g., ABCDABCD...)</p>
+        <input type="text" id="msAnswerInput" placeholder="ABCDABCDABCD..." maxlength="40">
+        <button class="auto-assign-btn" onclick="autoAssignAnswers()">Auto-Assign Answers</button>
+      </div>
+
+      <div class="slices-grid" id="slicesGrid"></div>
+    </div>
+
+    <div class="modal-footer">
+      <div class="form-section">
+        <div class="form-group">
+          <label>Grade</label>
+          <select id="gradeSelect" required>
+            <option value="">Select Grade</option>
+            {% for grade in grades %}
+            <option value="{{ grade.id }}">{{ grade.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Subject</label>
+          <select id="subjectSelect" required>
+            <option value="">Select Subject</option>
+            {% for subject in subjects %}
+            <option value="{{ subject.id }}">{{ subject.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Year</label>
+          <input type="number" id="yearInput" placeholder="e.g., 2023" min="2000" max="2099" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: center; margin-top: 12px;">
+        <button id="importBtn" onclick="saveQuestions()" disabled style="flex: 1;">
+          Import Questions
+        </button>
+        <button onclick="saveProgress()" style="background: #f59e0b; flex: 1;">
+          💾 Save Progress
+        </button>
+      </div>
+
+      <div id="multiFileNav" style="display: none; margin-top: 16px; padding: 16px; background: #f3f4f6; border-radius: 8px; text-align: center;">
+        <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
+          File <span id="currentFileNum">1</span> of <span id="totalFiles">1</span>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: center;">
+          <button onclick="loadPreviousPair()" id="prevFileBtn" disabled style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">
+            ⬅️ Previous (Shift+←)
+          </button>
+          <button onclick="loadNextPair()" id="nextFileBtn" disabled style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">
+            Next (Shift+→) ➡️
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let qpDoc = null;
+let msDoc = null;
+let pageNum = 1;
+let canvas = new fabric.Canvas('canvas');
+let scale = 1.4;
+
+let linesByPage = {};
+let activeRect;
+let slicedImages = [];
+let msAnswers = '';
+
+// Multi-file handling
+let pairedFiles = [];  // Array of {qp: File, ms: File | null, name: string}
+let currentPairIndex = 0;
+
+const qpInput = document.getElementById('qpInput');
+const msInput = document.getElementById('msInput');
+const multiFileInput = document.getElementById('multiFileInput');
+const pageList = document.getElementById('pageList');
+const pageBox = document.getElementById('pageBox');
+const slicesModal = document.getElementById('slicesModal');
+const slicesGrid = document.getElementById('slicesGrid');
+const sliceCount = document.getElementById('sliceCount');
+const msSection = document.getElementById('msSection');
+const importBtn = document.getElementById('importBtn');
+const gradeSelect = document.getElementById('gradeSelect');
+const subjectSelect = document.getElementById('subjectSelect');
+
+// Multi-file auto-pairing
+multiFileInput.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  // Pair files by matching pattern
+  pairedFiles = pairFilesByName(files);
+  document.getElementById('pairCount').textContent = pairedFiles.length;
+
+  if (pairedFiles.length > 0) {
+    alert(`✓ Found ${pairedFiles.length} question paper(s). ${pairedFiles.filter(p => p.ms).length} have matching marking schemes.`);
+  }
+});
+
+// Parse metadata from filename based on Cambridge pattern
+function parseFilenameMetadata(filename) {
+  // Pattern: 9700_m21_qp_11 means:
+  // - 9700: syllabus code
+  // - m21: session (m/s/w) and year (21 = 2021)
+  // - qp: question paper
+  // - 11: paper variant (11, 12, 21, 22, etc.)
+
+  const match = filename.match(/(\d{4})_([msw])(\d{2})_(?:qp|ms)_(\d{2})/i);
+
+  if (!match) return null;
+
+  const syllabusCode = match[1];
+  const session = match[2].toLowerCase();
+  const yearShort = match[3];
+  const paperVariant = match[4];
+
+  // Convert year: 21 -> 2021, 22 -> 2022, 23 -> 2023, 24 -> 2024, etc.
+  const year = 2000 + parseInt(yearShort);
+
+  // Lookup table for syllabus codes
+  const syllabusLookup = {
+    '9700': { subjects: ['Biology'], grades: ['AS-Level', 'A-Level'] },
+    '9701': { subjects: ['Chemistry'], grades: ['AS-Level', 'A-Level'] },
+    '9702': { subjects: ['Physics'], grades: ['AS-Level', 'A-Level'] }
+  };
+
+  // Determine grade based on paper variant
+  const paperNum = parseInt(paperVariant[0]);
+  let grade = null;
+
+  if (paperNum === 1) {
+    // Papers 11, 12, 13 are Multiple Choice (both AS and A-Level)
+    grade = 'AS-Level'; // Default to AS-Level for MCQ
+  } else if (paperNum === 2) {
+    // Papers 21, 22, 23 are AS Level Structured
+    grade = 'AS-Level';
+  } else if (paperNum === 3) {
+    // Papers 31-38 are Advanced Practical Skills
+    grade = 'A-Level';
+  } else if (paperNum === 4) {
+    // Papers 42, 43 are A Level Structured
+    grade = 'A-Level';
+  } else if (paperNum === 5) {
+    // Papers 51, 52, 53 are Planning, Analysis and Evaluation
+    grade = 'A-Level';
+  }
+
+  const syllabusInfo = syllabusLookup[syllabusCode];
+
+  if (!syllabusInfo) return null;
+
+  return {
+    syllabusCode: syllabusCode,
+    subject: syllabusInfo.subjects[0],
+    grade: grade,
+    year: year,
+    session: session,
+    paperVariant: paperVariant
+  };
+}
+
+function pairFilesByName(files) {
+  const pairs = [];
+  const qpFiles = files.filter(f => f.name.includes('_qp_') || f.name.includes('_QP_'));
+  const msFiles = files.filter(f => f.name.includes('_ms_') || f.name.includes('_MS_'));
+
+  qpFiles.forEach(qpFile => {
+    // Extract paper code (e.g., "9702_s23_41" from "9702_s23_qp_41.pdf")
+    const qpMatch = qpFile.name.match(/(\d+_[a-z]\d+)_qp_(\d+)/i);
+    if (qpMatch) {
+      const paperCode = qpMatch[1];
+      const variant = qpMatch[2];
+
+      // Find matching MS
+      const msFile = msFiles.find(ms => {
+        const msPattern = new RegExp(`${paperCode}_ms_${variant}`, 'i');
+        return msPattern.test(ms.name);
+      });
+
+      // Parse metadata from filename
+      const metadata = parseFilenameMetadata(qpFile.name);
+
+      pairs.push({
+        qp: qpFile,
+        ms: msFile || null,
+        name: `${paperCode} Variant ${variant}`,
+        metadata: metadata  // Add parsed metadata
+      });
+    }
+  });
+
+  // Also add QP files that don't match the pattern
+  const unmatchedQP = qpFiles.filter(qp => !qp.name.match(/(\d+_[a-z]\d+)_qp_(\d+)/i));
+  unmatchedQP.forEach(qp => {
+    pairs.push({
+      qp: qp,
+      ms: null,
+      name: qp.name.replace('.pdf', ''),
+      metadata: null
+    });
+  });
+
+  return pairs;
+}
+
+function showPairedFiles() {
+  if (pairedFiles.length === 0) {
+    alert('No files paired yet. Please select PDF files first.');
+    return;
+  }
+
+  let message = 'Paired Files:\n\n';
+  pairedFiles.forEach((pair, i) => {
+    message += `${i + 1}. ${pair.name}\n`;
+    message += `   QP: ${pair.qp.name}\n`;
+    message += `   MS: ${pair.ms ? pair.ms.name : 'Not found - will enter manually'}\n\n`;
+  });
+
+  alert(message);
+
+  // Load first pair
+  if (confirm('Load the first paper to start importing?')) {
+    loadPair(0);
+  }
+}
+
+async function loadPair(index) {
+  if (index < 0 || index >= pairedFiles.length) {
+    if (index >= pairedFiles.length) {
+      alert('All papers processed!');
+    }
+    return;
+  }
+
+  currentPairIndex = index;
+  const pair = pairedFiles[index];
+
+  // Load QP
+  const qpBuf = await pair.qp.arrayBuffer();
+  qpDoc = await pdfjsLib.getDocument(qpBuf).promise;
+
+  // Load MS if available
+  if (pair.ms) {
+    const msBuf = await pair.ms.arrayBuffer();
+    msDoc = await pdfjsLib.getDocument(msBuf).promise;
+    await extractAnswersFromMS();
+  } else {
+    msDoc = null;
+    msAnswers = '';
+  }
+
+  pageNum = 1;
+  linesByPage = {};
+  slicedImages = [];
+
+  renderPageList();
+  renderPage();
+
+  // Update multi-file navigation UI
+  updateMultiFileNav();
+
+  // Auto-detect and pre-fill grade, subject, year
+  if (pair.metadata) {
+    prefillFormFromMetadata(pair.metadata);
+  } else {
+    autoFillMetadata(pair.name);
+  }
+
+  alert(`Loaded: ${pair.name}\n${pair.ms ? 'Marking scheme found!' : 'No MS - you will enter answers manually.'}`);
+}
+
+// Pre-fill form fields from parsed metadata
+function prefillFormFromMetadata(metadata) {
+  if (!metadata) return;
+
+  const gradeSelect = document.getElementById('gradeSelect');
+  const subjectSelect = document.getElementById('subjectSelect');
+  const yearInput = document.getElementById('yearInput');
+
+  // Set year
+  if (metadata.year) {
+    yearInput.value = metadata.year;
+  }
+
+  // Find and select subject
+  if (metadata.subject) {
+    for (let option of subjectSelect.options) {
+      if (option.text.toLowerCase().includes(metadata.subject.toLowerCase())) {
+        subjectSelect.value = option.value;
+        // Trigger change event to load topics
+        subjectSelect.dispatchEvent(new Event('change'));
+        break;
+      }
+    }
+  }
+
+  // Find and select grade (e.g., "AS-Level" or "A-Level")
+  if (metadata.grade) {
+    for (let option of gradeSelect.options) {
+      if (option.text.includes(metadata.grade)) {
+        gradeSelect.value = option.value;
+        break;
+      }
+    }
+  }
+}
+
+// Auto-detect paper code, subject, and year from filename
+function autoFillMetadata(filename) {
+  // Paper code to question type mapping
+  const paperCodeMap = {
+    '11': { type: 'Multiple Choice', level: 'AS Level' },
+    '12': { type: 'Multiple Choice', level: 'AS Level' },
+    '13': { type: 'Multiple Choice', level: 'AS Level' },
+    '21': { type: 'AS Level Structured Questions', level: 'AS Level' },
+    '22': { type: 'AS Level Structured Questions', level: 'AS Level' },
+    '23': { type: 'AS Level Structured Questions', level: 'AS Level' },
+    '31': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '32': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '33': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '34': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '35': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '36': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '37': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '38': { type: 'Advanced Practical Skills', level: 'A Level' },
+    '42': { type: 'A Level Structured Questions', level: 'A Level' },
+    '43': { type: 'A Level Structured Questions', level: 'A Level' },
+    '51': { type: 'Planning, Analysis and Evaluation', level: 'A Level' },
+    '52': { type: 'Planning, Analysis and Evaluation', level: 'A Level' },
+    '53': { type: 'Planning, Analysis and Evaluation', level: 'A Level' }
+  };
+
+  // Subject code mapping
+  const subjectCodeMap = {
+    '9700': { subject: 'Biology', level: ['AS Level', 'A Level'] },
+    '9701': { subject: 'Chemistry', level: ['AS Level', 'A Level'] },
+    '9702': { subject: 'Physics', level: ['AS Level', 'A Level'] }
+  };
+
+  // Extract subject code (9700, 9701, 9702)
+  const subjectMatch = filename.match(/\b(9700|9701|9702)\b/);
+  let detectedSubject = null;
+  if (subjectMatch) {
+    detectedSubject = subjectCodeMap[subjectMatch[1]];
+  }
+
+  // Extract paper code (11-13, 21-23, 31-38, 42-43, 51-53)
+  const paperMatch = filename.match(/_(qp|ms)_(\d{2})/i);
+  let detectedPaper = null;
+  let detectedLevel = null;
+  if (paperMatch) {
+    const paperCode = paperMatch[2];
+    detectedPaper = paperCodeMap[paperCode];
+    if (detectedPaper) {
+      detectedLevel = detectedPaper.level;
+    }
+  }
+
+  // Extract year from filename (_m21_, _s22_, _w23_, etc.)
+  const yearMatch = filename.match(/[_\s]([msw])(\d{2})[_\s]/i);
+  let detectedYear = null;
+  if (yearMatch) {
+    const yearSuffix = yearMatch[2];
+    const yearNum = parseInt(yearSuffix);
+    // Assume 20xx for years >= 00, could be 2000-2099
+    detectedYear = 2000 + yearNum;
+  }
+
+  // Pre-fill the form fields
+  const gradeSelect = document.getElementById('gradeSelect');
+  const subjectSelect = document.getElementById('subjectSelect');
+  const yearInput = document.getElementById('yearInput');
+
+  // Find and select the appropriate grade
+  if (detectedLevel && detectedSubject) {
+    const gradeName = `${detectedLevel} ${detectedSubject.subject}`;
+    // Try to find matching grade option
+    for (let option of gradeSelect.options) {
+      if (option.text.includes(detectedLevel) && option.text.includes(detectedSubject.subject)) {
+        gradeSelect.value = option.value;
+        break;
+      }
+    }
+  }
+
+  // Find and select the appropriate subject
+  if (detectedSubject) {
+    for (let option of subjectSelect.options) {
+      if (option.text.includes(detectedSubject.subject)) {
+        subjectSelect.value = option.value;
+        break;
+      }
+    }
+  }
+
+  // Pre-fill year
+  if (detectedYear) {
+    yearInput.value = detectedYear;
+  }
+
+  // Log detection for debugging
+  console.log('Auto-detection:', {
+    filename,
+    subject: detectedSubject,
+    paper: detectedPaper,
+    level: detectedLevel,
+    year: detectedYear
+  });
+}
+
+function loadNextPair() {
+  if (currentPairIndex < pairedFiles.length - 1) {
+    loadPair(currentPairIndex + 1);
+  } else {
+    alert('This is the last file in the queue.');
+  }
+}
+
+function loadPreviousPair() {
+  if (currentPairIndex > 0) {
+    loadPair(currentPairIndex - 1);
+  } else {
+    alert('This is the first file in the queue.');
+  }
+}
+
+function updateMultiFileNav() {
+  const navSection = document.getElementById('multiFileNav');
+  const prevBtn = document.getElementById('prevFileBtn');
+  const nextBtn = document.getElementById('nextFileBtn');
+  const currentNum = document.getElementById('currentFileNum');
+  const totalNum = document.getElementById('totalFiles');
+
+  if (pairedFiles.length > 1) {
+    navSection.style.display = 'block';
+    currentNum.textContent = currentPairIndex + 1;
+    totalNum.textContent = pairedFiles.length;
+
+    prevBtn.disabled = currentPairIndex === 0;
+    nextBtn.disabled = currentPairIndex === pairedFiles.length - 1;
+
+    prevBtn.style.opacity = prevBtn.disabled ? '0.5' : '1';
+    nextBtn.style.opacity = nextBtn.disabled ? '0.5' : '1';
+    prevBtn.style.cursor = prevBtn.disabled ? 'not-allowed' : 'pointer';
+    nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : 'pointer';
+  } else {
+    navSection.style.display = 'none';
+  }
+}
+
+// Load QP PDF
+qpInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const buf = await file.arrayBuffer();
+  qpDoc = await pdfjsLib.getDocument(buf).promise;
+
+  pageNum = 1;
+  linesByPage = {};
+  slicedImages = [];
+
+  renderPageList();
+  renderPage();
+});
+
+// Load MS PDF
+msInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const buf = await file.arrayBuffer();
+  msDoc = await pdfjsLib.getDocument(buf).promise;
+
+  // Auto-extract answers from MS
+  await extractAnswersFromMS();
+});
+
+function renderPageList() {
+  pageList.innerHTML = '';
+  for (let i = 1; i <= qpDoc.numPages; i++) {
+    const div = document.createElement('div');
+    div.className = 'page-item';
+    div.textContent = `Page ${i}`;
+    div.onclick = () => goToPage(i);
+    pageList.appendChild(div);
+  }
+  updatePageListHighlight();
+}
+
+function updatePageListHighlight() {
+  const items = pageList.querySelectorAll('.page-item');
+  items.forEach((item, i) => {
+    item.classList.remove('active');
+    if (i + 1 === pageNum) {
+      item.classList.add('active');
+    }
+  });
+}
+
+function goToPage(p) {
+  pageNum = p;
+  renderPage();
+}
+
+// Render PDF page
+async function renderPage() {
+  if (!qpDoc) return;
+
+  const page = await qpDoc.getPage(pageNum);
+  const vp = page.getViewport({ scale });
+
+  const tmp = document.createElement('canvas');
+  tmp.width = vp.width;
+  tmp.height = vp.height;
+
+  await page.render({
+    canvasContext: tmp.getContext('2d'),
+    viewport: vp
+  }).promise;
+
+  canvas.clear();
+  canvas.setWidth(vp.width);
+  canvas.setHeight(vp.height);
+
+  canvas.setBackgroundImage(
+    new fabric.Image(tmp, { selectable: false }),
+    canvas.renderAll.bind(canvas)
+  );
+
+  canvas.calcOffset();
+
+  if (!activeRect) {
+    activeRect = new fabric.Rect({
+      left: 40,
+      top: 40,
+      width: canvas.width - 80,
+      height: canvas.height - 80,
+      fill: 'rgba(0,0,255,0.05)',
+      stroke: 'blue',
+      strokeWidth: 2
+    });
+  }
+
+  canvas.add(activeRect);
+
+  if (linesByPage[pageNum]) {
+    linesByPage[pageNum].forEach(l => canvas.add(l));
+  }
+
+  pageBox.value = pageNum;
+  pageBox.max = qpDoc.numPages;
+  updatePageListHighlight();
+}
+
+// Line creation
+function makeLine(y, color) {
+  return new fabric.Line([0, y, canvas.width, y], {
+    stroke: color,
+    strokeWidth: 3,
+    selectable: true,
+    lockScalingY: true,
+    hasControls: false
+  });
+}
+
+function addLine(y, color) {
+  let l = makeLine(y, color);
+  canvas.add(l);
+
+  if (!linesByPage[pageNum]) linesByPage[pageNum] = [];
+  linesByPage[pageNum].push(l);
+}
+
+function addPair(y) {
+  addLine(y, 'red');
+  addLine(y + 10, 'green');
+}
+
+function clearLines() {
+  if (linesByPage[pageNum]) {
+    linesByPage[pageNum].forEach(l => canvas.remove(l));
+    linesByPage[pageNum] = [];
+  }
+}
+
+// Keyboard shortcuts
+let mouseY = 0;
+canvas.on('mouse:move', e => mouseY = e.pointer.y);
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+  // Multi-file navigation with Shift+Arrow
+  if (e.key === 'ArrowRight' && e.shiftKey && pairedFiles.length > 0) {
+    e.preventDefault();
+    return loadNextPair();
+  }
+  if (e.key === 'ArrowLeft' && e.shiftKey && pairedFiles.length > 0) {
+    e.preventDefault();
+    return loadPreviousPair();
+  }
+
+  // Page navigation without Shift
+  if (e.key === 'ArrowRight' && !e.shiftKey) return nextPage();
+  if (e.key === 'ArrowLeft' && !e.shiftKey) return prevPage();
+
+  if (e.key === 'z' || e.key === 'Z') addLine(mouseY, 'green');
+  if (e.key === 'x' || e.key === 'X') addLine(mouseY, 'red');
+  if (e.key === 'c' || e.key === 'C') addPair(mouseY);
+
+  let obj = canvas.getActiveObject();
+  if (!obj) return;
+
+  if (e.key === 'ArrowUp') { obj.top -= 2; canvas.renderAll(); }
+  if (e.key === 'ArrowDown') { obj.top += 2; canvas.renderAll(); }
+  if (e.key === 'Delete') {
+    canvas.remove(obj);
+    if (linesByPage[pageNum]) {
+      linesByPage[pageNum] = linesByPage[pageNum].filter(l => l !== obj);
+    }
+  }
+});
+
+// Navigation
+function nextPage() {
+  if (pageNum < qpDoc.numPages) {
+    pageNum++;
+    renderPage();
+  }
+}
+
+function prevPage() {
+  if (pageNum > 1) {
+    pageNum--;
+    renderPage();
+  }
+}
+
+pageBox.addEventListener('change', () => {
+  pageNum = parseInt(pageBox.value);
+  renderPage();
+});
+
+// Slice document and show modal
+async function sliceDocument() {
+  if (!qpDoc) {
+    alert('Please upload a question paper first');
+    return;
+  }
+
+  slicedImages = [];
+  const startPage = document.getElementById('includeFirst').checked ? 1 : 2;
+
+  let openSegment = null;
+
+  for (let p = startPage; p <= qpDoc.numPages; p++) {
+    const page = await qpDoc.getPage(p);
+    const vp = page.getViewport({ scale });
+
+    const tmp = document.createElement('canvas');
+    tmp.width = vp.width;
+    tmp.height = vp.height;
+
+    await page.render({ canvasContext: tmp.getContext('2d'), viewport: vp }).promise;
+
+    let lines = (linesByPage[p] || []).sort((a, b) => a.top - b.top);
+
+    const left = activeRect.left;
+    const width = activeRect.getScaledWidth();
+
+    for (let l of lines) {
+      if (l.stroke === 'green') {
+        openSegment = { canvas: null, start: l.top };
+      }
+
+      if (l.stroke === 'red' && openSegment) {
+        let part = crop(tmp, left, openSegment.start, width, l.top - openSegment.start);
+        openSegment.canvas = stitch(openSegment.canvas, part);
+
+        slicedImages.push(openSegment.canvas.toDataURL());
+        openSegment = null;
+      }
+    }
+  }
+
+  if (slicedImages.length === 0) {
+    alert('No questions sliced. Please draw green (start) and red (end) lines on pages.');
+    return;
+  }
+
+  renderSlices();
+  showModal();
+}
+
+function crop(src, x, y, w, h) {
+  let c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  c.getContext('2d').drawImage(src, x, y, w, h, 0, 0, w, h);
+  return c;
+}
+
+function stitch(a, b) {
+  if (!a) return b;
+  let c = document.createElement('canvas');
+  c.width = a.width;
+  c.height = a.height + b.height;
+  let ctx = c.getContext('2d');
+  ctx.drawImage(a, 0, 0);
+  ctx.drawImage(b, 0, a.height);
+  return c;
+}
+
+function renderSlices() {
+  slicesGrid.innerHTML = '';
+  sliceCount.textContent = slicedImages.length;
+
+  // Show MS section if we have an MS file
+  if (msInput.files.length > 0) {
+    msSection.style.display = 'block';
+  }
+
+  slicedImages.forEach((img, i) => {
+    const div = document.createElement('div');
+    div.className = 'slice-preview';
+
+    // Pre-select answer if we have MS answers
+    const preselectedAnswer = msAnswers && msAnswers[i] ? msAnswers[i] : '';
+
+    div.innerHTML = `
+      <div class="slice-number">Question ${i + 1}</div>
+      <img src="${img}" alt="Question ${i + 1}">
+      <label>Correct Answer:</label>
+      <select id="answer_${i}" required>
+        <option value="">Select</option>
+        <option value="A" ${preselectedAnswer === 'A' ? 'selected' : ''}>A</option>
+        <option value="B" ${preselectedAnswer === 'B' ? 'selected' : ''}>B</option>
+        <option value="C" ${preselectedAnswer === 'C' ? 'selected' : ''}>C</option>
+        <option value="D" ${preselectedAnswer === 'D' ? 'selected' : ''}>D</option>
+      </select>
+    `;
+    slicesGrid.appendChild(div);
+  });
+
+  updateImportButton();
+}
+
+// Extract answer key from MS PDF
+async function extractAnswersFromMS() {
+  if (!msDoc) return;
+
+  let extractedText = '';
+
+  // Extract text from all pages of MS
+  for (let pageNum = 1; pageNum <= msDoc.numPages; pageNum++) {
+    const page = await msDoc.getPage(pageNum);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    extractedText += pageText + ' ';
+  }
+
+  // Find answer key pattern - look for 40 consecutive A/B/C/D characters
+  // Common patterns: "1A 2B 3C..." or "1. A 2. B..." or just "ABCDABCD..."
+  const cleanText = extractedText.toUpperCase().replace(/\s+/g, '');
+
+  // Try to find answer key patterns
+  let answerKey = '';
+
+  // Pattern 1: Remove numbers and dots, extract just letters
+  const lettersOnly = cleanText.replace(/[^ABCD]/g, '');
+
+  // Look for a sequence of 40 valid answers
+  if (lettersOnly.length >= 40) {
+    answerKey = lettersOnly.substring(0, 40);
+  }
+
+  if (answerKey.length === 40 && /^[ABCD]{40}$/.test(answerKey)) {
+    msAnswers = answerKey;
+    document.getElementById('msAnswerInput').value = answerKey;
+
+    // Show notification
+    alert('✅ Answer key extracted from MS PDF!\n\n' + answerKey.match(/.{1,10}/g).join('\n'));
+
+    // Auto-assign if we already have sliced questions
+    if (slicedImages.length > 0) {
+      autoAssignAnswers();
+    }
+  } else {
+    alert('⚠️ Could not automatically extract answer key from MS PDF.\nPlease enter it manually in the text box.');
+  }
+}
+
+function autoAssignAnswers() {
+  const msAnswer = document.getElementById('msAnswerInput').value.toUpperCase();
+
+  if (msAnswer.length !== 40) {
+    alert('Please enter exactly 40 answers (one for each question)');
+    return;
+  }
+
+  // Validate that all characters are A, B, C, or D
+  if (!/^[ABCD]{40}$/.test(msAnswer)) {
+    alert('Invalid input. Please use only A, B, C, or D');
+    return;
+  }
+
+  // Store for later use
+  msAnswers = msAnswer;
+
+  // Assign answers to dropdowns
+  for (let i = 0; i < Math.min(slicedImages.length, 40); i++) {
+    const select = document.getElementById(`answer_${i}`);
+    if (select) {
+      select.value = msAnswer[i];
+    }
+  }
+
+  alert(`Auto-assigned answers to ${Math.min(slicedImages.length, 40)} questions`);
+  updateImportButton();
+}
+
+function showModal() {
+  slicesModal.classList.add('active');
+}
+
+function closeModal() {
+  slicesModal.classList.remove('active');
+}
+
+function updateImportButton() {
+  importBtn.disabled = slicedImages.length === 0;
+}
+
+// Save questions
+async function saveQuestions() {
+  const gradeId = gradeSelect.value;
+  const subjectId = subjectSelect.value;
+  const year = document.getElementById('yearInput').value;  // Capture year
+
+  if (!gradeId || !subjectId) {
+    alert('Please select Grade and Subject');
+    return;
+  }
+
+  if (!year) {
+    alert('Please enter the exam year');
+    return;
+  }
+
+  // Validate all answers
+  for (let i = 0; i < slicedImages.length; i++) {
+    const answer = document.getElementById(`answer_${i}`).value;
+    if (!answer) {
+      alert(`Please select correct answer for question ${i + 1}`);
+      return;
+    }
+  }
+
+  importBtn.disabled = true;
+  importBtn.textContent = 'Importing...';
+
+  const formData = new FormData();
+  formData.append('grade_id', gradeId);
+  formData.append('subject_id', subjectId);
+  formData.append('year', year);  // Add year to form data
+  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  for (let i = 0; i < slicedImages.length; i++) {
+    formData.append(`image_${i}`, slicedImages[i]);
+    formData.append(`answer_${i}`, document.getElementById(`answer_${i}`).value);
+  }
+  formData.append('total_images', slicedImages.length);
+
+  try {
+    const response = await fetch('/questions/import-mcq-pdf/', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert(`✅ Successfully imported ${data.count} questions!`);
+
+      // Mark current pair as processed
+      if (pairedFiles.length > 0 && currentPairIndex < pairedFiles.length) {
+        pairedFiles[currentPairIndex].processed = true;
+      }
+
+      // Move to next PDF if available
+      if (currentPairIndex < pairedFiles.length - 1) {
+        loadNextPair();
+        closeModal();
+        alert(`Moving to next PDF (${currentPairIndex + 1}/${pairedFiles.length})`);
+      } else {
+        // All PDFs processed
+        alert('🎉 All PDFs processed! You can close this page or upload more PDFs.');
+        closeModal();
+        // Reset for new upload
+        pairedFiles = [];
+        currentPairIndex = 0;
+        document.getElementById('pairCount').textContent = '0';
+      }
+
+      importBtn.disabled = false;
+      importBtn.textContent = 'Import Questions';
+    } else {
+      alert('Error: ' + (data.error || 'Failed to import'));
+      importBtn.disabled = false;
+      importBtn.textContent = 'Import Questions';
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+    importBtn.disabled = false;
+    importBtn.textContent = 'Import Questions';
+  }
+}
+
+// Save progress for resuming later
+async function saveProgress() {
+  const gradeId = document.getElementById('gradeSelect').value;
+  const subjectId = document.getElementById('subjectSelect').value;
+  const year = document.getElementById('yearInput').value;
+
+  if (!gradeId || !subjectId || !year) {
+    alert('Please select Grade, Subject, and Year before saving progress');
+    return;
+  }
+
+  const sessionName = prompt('Enter a name for this import session:',
+    `Import ${new Date().toLocaleDateString()}`);
+
+  if (!sessionName) {
+    return;
+  }
+
+  // Prepare files data (can't save actual File objects, so save metadata)
+  const filesData = pairedFiles.map((pair, index) => ({
+    qp_name: pair.qp.name,
+    ms_name: pair.ms ? pair.ms.name : null,
+    processed: index < currentPairIndex,
+    index: index
+  }));
+
+  // Save slicing configuration
+  const slicingData = {
+    [currentPairIndex]: {
+      linesByPage: linesByPage,
+      pageNum: pageNum,
+      slicedImages: slicedImages.length
+    }
+  };
+
+  try {
+    const response = await fetch('/teacher/import-sessions/save/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        session_name: sessionName,
+        grade_id: gradeId,
+        subject_id: subjectId,
+        year: year,
+        files_data: filesData,
+        slicing_data: slicingData,
+        current_index: currentPairIndex
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      if (confirm(`Session "${sessionName}" saved successfully! Would you like to view pending imports?`)) {
+        window.location.href = '/teacher/import-sessions/';
+      }
+    } else {
+      alert('Error saving session: ' + (data.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error saving session: ' + error.message);
+  }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && slicesModal.classList.contains('active')) {
+    closeModal();
+  }
+});
+</script>
+
+{% endblock %}

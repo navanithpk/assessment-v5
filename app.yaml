@@ -1,0 +1,37 @@
+# Google App Engine configuration
+# Use this ONLY if deploying to Google App Engine
+# NOT for Firebase or Colab
+
+runtime: python311
+
+# This is the command to start your Django app
+entrypoint: gunicorn -b :$PORT assessment_v3.wsgi:application
+
+# Environment variables
+env_variables:
+  # IMPORTANT: Set these in Google Cloud Console, not here
+  SECRET_KEY: "change-this-to-a-random-secret-key"
+  DEBUG: "False"
+  ALLOWED_HOSTS: ".appspot.com"
+
+# Instance configuration
+instance_class: F1
+
+# Automatic scaling
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 1
+  max_instances: 10
+  min_pending_latency: 30ms
+  max_pending_latency: automatic
+  max_concurrent_requests: 50
+
+# Handlers for static files
+handlers:
+- url: /static
+  static_dir: staticfiles/
+  secure: always
+
+- url: /.*
+  script: auto
+  secure: always

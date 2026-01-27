@@ -1,0 +1,810 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Structured Question - {{ school.name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header .breadcrumb {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .header .breadcrumb a {
+            color: white;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .header .breadcrumb a:hover {
+            border-bottom-color: white;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px 40px;
+        }
+
+        .toolbar {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .tool-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .editor-area {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        .canvas-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 20px;
+            overflow: auto;
+            max-height: calc(100vh - 300px);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+            min-width: 100%;
+        }
+
+        #questionImage {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .answer-space {
+            position: absolute;
+            border: 2px solid #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            cursor: move;
+            transition: all 0.2s;
+        }
+
+        .answer-space:hover {
+            border-color: #4c51bf;
+            background: rgba(102, 126, 234, 0.15);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .answer-space.selected {
+            border-color: #48bb78;
+            background: rgba(72, 187, 120, 0.15);
+            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.2);
+        }
+
+        .space-label {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+
+        .delete-btn {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 24px;
+            height: 24px;
+            background: #f56565;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .delete-btn:hover {
+            background: #e53e3e;
+            transform: scale(1.1);
+        }
+
+        .properties-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 20px;
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+
+        .properties-panel h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2d3748;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .space-list {
+            margin-top: 30px;
+        }
+
+        .space-item {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .space-item:hover {
+            background: #edf2f7;
+            border-color: #cbd5e0;
+        }
+
+        .space-item.active {
+            background: #e6fffa;
+            border-color: #48bb78;
+        }
+
+        .space-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .space-item-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #2d3748;
+        }
+
+        .space-item-marks {
+            font-size: 12px;
+            color: #718096;
+            background: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .space-item-details {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #a0aec0;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .status-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .status-message.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        .info-box {
+            background: #ebf8ff;
+            border: 1px solid #90cdf4;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #2c5282;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 Edit Structured Question</h1>
+        <div class="breadcrumb">
+            <a href="{% url 'teacher_dashboard' %}">Dashboard</a> →
+            <a href="{% url 'question_library' %}">Question Library</a> →
+            <span>Edit Answer Spaces</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="toolbar">
+            <div class="tool-group">
+                <button class="btn btn-primary" onclick="addAnswerSpace('text_line')">
+                    ➕ Add Text Line
+                </button>
+                <button class="btn btn-primary" onclick="addAnswerSpace('calc_space')">
+                    🔢 Add Calculation Space
+                </button>
+                <button class="btn btn-primary" onclick="addAnswerSpace('table_cell')">
+                    📊 Add Table Cell
+                </button>
+                <button class="btn btn-primary" onclick="addAnswerSpace('canvas')">
+                    🎨 Add Drawing Canvas
+                </button>
+            </div>
+            <div class="tool-group">
+                <button class="btn btn-success" onclick="saveAnswerSpaces()">
+                    💾 Save Answer Spaces
+                </button>
+                <a href="{% url 'question_library' %}" class="btn btn-secondary">
+                    ← Back to Library
+                </a>
+            </div>
+        </div>
+
+        <div class="editor-area">
+            <div class="canvas-container">
+                {% if stitched_image %}
+                    <div class="info-box">
+                        <strong>Multi-page Question</strong>
+                        This question has {{ page_count }} page(s) that have been stitched together.
+                    </div>
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <img id="questionImage" src="{{ stitched_image }}" alt="Question">
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📄</div>
+                        <p>No question image available. This question may not be a structured question type.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="properties-panel">
+                <h3>Properties</h3>
+
+                <div id="noSelectionMessage" class="empty-state" style="padding: 20px;">
+                    <div class="empty-state-icon" style="font-size: 32px;">👆</div>
+                    <p style="font-size: 13px;">Select an answer space to edit its properties</p>
+                </div>
+
+                <div id="propertiesForm" style="display: none;">
+                    <div class="form-group">
+                        <label>Space Type</label>
+                        <select id="spaceType" onchange="updateSelectedSpace()">
+                            <option value="text_line">Text Line (1-2 lines)</option>
+                            <option value="calc_space">Calculation Space</option>
+                            <option value="table_cell">Table Cell</option>
+                            <option value="canvas">Drawing Canvas</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Marks</label>
+                        <input type="number" id="spaceMarks" step="0.5" min="0" value="1" onchange="updateSelectedSpace()">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Order</label>
+                        <input type="number" id="spaceOrder" min="0" value="0" onchange="updateSelectedSpace()">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Position X</label>
+                        <input type="number" id="spaceX" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Position Y</label>
+                        <input type="number" id="spaceY" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Width</label>
+                        <input type="number" id="spaceWidth" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Height</label>
+                        <input type="number" id="spaceHeight" readonly>
+                    </div>
+                </div>
+
+                <div class="space-list">
+                    <h3>Answer Spaces (<span id="spaceCount">0</span>)</h3>
+                    <div id="spacesList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const answerSpaces = {{ answer_spaces_json|safe }};
+        let selectedSpace = null;
+        let draggedSpace = null;
+        let resizingSpace = null;
+        let resizeDirection = null;
+        let startX = 0;
+        let startY = 0;
+        let startWidth = 0;
+        let startHeight = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        let nextId = answerSpaces.length > 0 ? Math.max(...answerSpaces.map(s => s.id)) + 1 : 1;
+
+        const typeLabels = {
+            'text_line': 'Text Line',
+            'calc_space': 'Calc Space',
+            'table_cell': 'Table Cell',
+            'canvas': 'Drawing Canvas'
+        };
+
+        function init() {
+            const wrapper = document.getElementById('canvasWrapper');
+            if (!wrapper) return;
+
+            // Render existing answer spaces
+            answerSpaces.forEach(space => {
+                renderAnswerSpace(space);
+            });
+
+            updateSpacesList();
+        }
+
+        function addAnswerSpace(type) {
+            const wrapper = document.getElementById('canvasWrapper');
+            if (!wrapper) {
+                showMessage('No question image available', 'error');
+                return;
+            }
+
+            const newSpace = {
+                id: nextId++,
+                type: type,
+                x: 50,
+                y: 50,
+                width: type === 'text_line' ? 600 : 300,
+                height: type === 'text_line' ? 60 : type === 'calc_space' ? 150 : 100,
+                order: answerSpaces.length,
+                marks: 1,
+                config: {}
+            };
+
+            answerSpaces.push(newSpace);
+            renderAnswerSpace(newSpace);
+            updateSpacesList();
+            selectSpace(newSpace.id);
+            showMessage(`Added ${typeLabels[type]}`, 'success');
+        }
+
+        function renderAnswerSpace(space) {
+            const wrapper = document.getElementById('canvasWrapper');
+            const existing = document.getElementById(`space-${space.id}`);
+            if (existing) existing.remove();
+
+            const div = document.createElement('div');
+            div.className = 'answer-space';
+            div.id = `space-${space.id}`;
+            div.style.left = space.x + 'px';
+            div.style.top = space.y + 'px';
+            div.style.width = space.width + 'px';
+            div.style.height = space.height + 'px';
+
+            div.innerHTML = `
+                <div class="space-label">#${space.order + 1} - ${typeLabels[space.type]} (${space.marks}m)</div>
+                <div class="resize-handle nw" data-direction="nw"></div>
+                <div class="resize-handle ne" data-direction="ne"></div>
+                <div class="resize-handle sw" data-direction="sw"></div>
+                <div class="resize-handle se" data-direction="se"></div>
+                <div class="delete-btn" onclick="deleteSpace(${space.id}, event)">×</div>
+            `;
+
+            div.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('resize-handle')) {
+                    startResize(space.id, e.target.dataset.direction, e);
+                } else if (!e.target.classList.contains('delete-btn')) {
+                    startDrag(space.id, e);
+                }
+            });
+
+            div.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('delete-btn')) {
+                    selectSpace(space.id);
+                }
+            });
+
+            wrapper.appendChild(div);
+        }
+
+        function selectSpace(id) {
+            selectedSpace = answerSpaces.find(s => s.id === id);
+
+            // Update UI
+            document.querySelectorAll('.answer-space').forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll('.space-item').forEach(el => el.classList.remove('active'));
+
+            const spaceEl = document.getElementById(`space-${id}`);
+            if (spaceEl) spaceEl.classList.add('selected');
+
+            const listItem = document.getElementById(`space-item-${id}`);
+            if (listItem) listItem.classList.add('active');
+
+            // Update properties form
+            document.getElementById('noSelectionMessage').style.display = 'none';
+            document.getElementById('propertiesForm').style.display = 'block';
+            document.getElementById('spaceType').value = selectedSpace.type;
+            document.getElementById('spaceMarks').value = selectedSpace.marks;
+            document.getElementById('spaceOrder').value = selectedSpace.order;
+            document.getElementById('spaceX').value = selectedSpace.x;
+            document.getElementById('spaceY').value = selectedSpace.y;
+            document.getElementById('spaceWidth').value = selectedSpace.width;
+            document.getElementById('spaceHeight').value = selectedSpace.height;
+        }
+
+        function updateSelectedSpace() {
+            if (!selectedSpace) return;
+
+            selectedSpace.type = document.getElementById('spaceType').value;
+            selectedSpace.marks = parseFloat(document.getElementById('spaceMarks').value);
+            selectedSpace.order = parseInt(document.getElementById('spaceOrder').value);
+
+            renderAnswerSpace(selectedSpace);
+            updateSpacesList();
+            selectSpace(selectedSpace.id);
+        }
+
+        function deleteSpace(id, event) {
+            event.stopPropagation();
+
+            if (!confirm('Delete this answer space?')) return;
+
+            const index = answerSpaces.findIndex(s => s.id === id);
+            if (index !== -1) {
+                answerSpaces.splice(index, 1);
+                document.getElementById(`space-${id}`).remove();
+                updateSpacesList();
+
+                if (selectedSpace && selectedSpace.id === id) {
+                    selectedSpace = null;
+                    document.getElementById('noSelectionMessage').style.display = 'block';
+                    document.getElementById('propertiesForm').style.display = 'none';
+                }
+
+                showMessage('Answer space deleted', 'success');
+            }
+        }
+
+        function startDrag(id, e) {
+            draggedSpace = answerSpaces.find(s => s.id === id);
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = draggedSpace.x;
+            startTop = draggedSpace.y;
+
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+            e.preventDefault();
+        }
+
+        function onDrag(e) {
+            if (!draggedSpace) return;
+
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            draggedSpace.x = Math.max(0, startLeft + dx);
+            draggedSpace.y = Math.max(0, startTop + dy);
+
+            const el = document.getElementById(`space-${draggedSpace.id}`);
+            el.style.left = draggedSpace.x + 'px';
+            el.style.top = draggedSpace.y + 'px';
+
+            if (selectedSpace && selectedSpace.id === draggedSpace.id) {
+                document.getElementById('spaceX').value = draggedSpace.x;
+                document.getElementById('spaceY').value = draggedSpace.y;
+            }
+        }
+
+        function stopDrag() {
+            draggedSpace = null;
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        function startResize(id, direction, e) {
+            resizingSpace = answerSpaces.find(s => s.id === id);
+            resizeDirection = direction;
+            startX = e.clientX;
+            startY = e.clientY;
+            startWidth = resizingSpace.width;
+            startHeight = resizingSpace.height;
+            startLeft = resizingSpace.x;
+            startTop = resizingSpace.y;
+
+            document.addEventListener('mousemove', onResize);
+            document.addEventListener('mouseup', stopResize);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function onResize(e) {
+            if (!resizingSpace) return;
+
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            if (resizeDirection.includes('e')) {
+                resizingSpace.width = Math.max(50, startWidth + dx);
+            }
+            if (resizeDirection.includes('w')) {
+                const newWidth = Math.max(50, startWidth - dx);
+                const widthDiff = startWidth - newWidth;
+                resizingSpace.width = newWidth;
+                resizingSpace.x = startLeft + widthDiff;
+            }
+            if (resizeDirection.includes('s')) {
+                resizingSpace.height = Math.max(30, startHeight + dy);
+            }
+            if (resizeDirection.includes('n')) {
+                const newHeight = Math.max(30, startHeight - dy);
+                const heightDiff = startHeight - newHeight;
+                resizingSpace.height = newHeight;
+                resizingSpace.y = startTop + heightDiff;
+            }
+
+            const el = document.getElementById(`space-${resizingSpace.id}`);
+            el.style.left = resizingSpace.x + 'px';
+            el.style.top = resizingSpace.y + 'px';
+            el.style.width = resizingSpace.width + 'px';
+            el.style.height = resizingSpace.height + 'px';
+
+            if (selectedSpace && selectedSpace.id === resizingSpace.id) {
+                document.getElementById('spaceX').value = resizingSpace.x;
+                document.getElementById('spaceY').value = resizingSpace.y;
+                document.getElementById('spaceWidth').value = resizingSpace.width;
+                document.getElementById('spaceHeight').value = resizingSpace.height;
+            }
+        }
+
+        function stopResize() {
+            resizingSpace = null;
+            resizeDirection = null;
+            document.removeEventListener('mousemove', onResize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+
+        function updateSpacesList() {
+            const list = document.getElementById('spacesList');
+            document.getElementById('spaceCount').textContent = answerSpaces.length;
+
+            if (answerSpaces.length === 0) {
+                list.innerHTML = '<div class="empty-state" style="padding: 20px;"><p style="font-size: 13px;">No answer spaces added yet</p></div>';
+                return;
+            }
+
+            list.innerHTML = answerSpaces
+                .sort((a, b) => a.order - b.order)
+                .map(space => `
+                    <div class="space-item ${selectedSpace && selectedSpace.id === space.id ? 'active' : ''}"
+                         id="space-item-${space.id}"
+                         onclick="selectSpace(${space.id})">
+                        <div class="space-item-header">
+                            <span class="space-item-title">#${space.order + 1} - ${typeLabels[space.type]}</span>
+                            <span class="space-item-marks">${space.marks}m</span>
+                        </div>
+                        <div class="space-item-details">
+                            ${space.width}×${space.height}px at (${space.x}, ${space.y})
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function saveAnswerSpaces() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            fetch('', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    action: 'save_answer_spaces',
+                    answer_spaces: answerSpaces
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                } else {
+                    showMessage(data.error || 'Failed to save', 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('Error: ' + error.message, 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = '💾 Save Answer Spaces';
+            });
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('statusMessage');
+            msg.textContent = text;
+            msg.className = `status-message ${type}`;
+            msg.style.display = 'block';
+
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 5000);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

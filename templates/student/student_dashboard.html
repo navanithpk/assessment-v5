@@ -1,0 +1,167 @@
+{% extends "student/student_base.html" %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<style>
+.dashboard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.welcome-section {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+
+.welcome-section h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.welcome-section p {
+  color: #6b7280;
+  font-size: 16px;
+  margin: 0;
+}
+
+.quick-links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.quick-link-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  text-decoration: none;
+  transition: all .3s;
+  border: 2px solid transparent;
+  display: block;
+}
+
+.quick-link-card:not(.disabled):hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  border-color: #2563eb;
+}
+
+.quick-link-card.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quick-link-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.quick-link-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.quick-link-desc {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #2563eb;
+  margin: 0 0 4px 0;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+</style>
+
+<div class="dashboard-container">
+  <div class="welcome-section">
+    <h1>👋 Welcome back, {{ request.user.get_full_name|default:request.user.username }}!</h1>
+    <p>Here's your learning dashboard</p>
+  </div>
+
+  <div class="quick-links">
+    <!-- ✅ WORKING LINK - URL exists -->
+    <a href="{% url 'student_tests_list' %}" class="quick-link-card">
+      <div class="quick-link-icon">📝</div>
+      <h3 class="quick-link-title">My Tests</h3>
+      <p class="quick-link-desc">View and attempt assigned tests</p>
+    </a>
+
+    <!-- ⚠️ PLACEHOLDER - URL doesn't exist yet -->
+    <a href="javascript:void(0)" class="quick-link-card disabled" title="Coming soon">
+      <div class="quick-link-icon">📊</div>
+      <h3 class="quick-link-title">My Results</h3>
+      <p class="quick-link-desc">Check your test scores (Coming soon)</p>
+    </a>
+
+    <!-- ⚠️ PLACEHOLDER - URL doesn't exist yet -->
+    <a href="javascript:void(0)" class="quick-link-card disabled" title="Coming soon">
+      <div class="quick-link-icon">📚</div>
+      <h3 class="quick-link-title">Resources</h3>
+      <p class="quick-link-desc">Study materials and notes (Coming soon)</p>
+    </a>
+
+    <!-- ⚠️ PLACEHOLDER - URL doesn't exist yet -->
+    <a href="javascript:void(0)" class="quick-link-card disabled" title="Coming soon">
+      <div class="quick-link-icon">👤</div>
+      <h3 class="quick-link-title">My Profile</h3>
+      <p class="quick-link-desc">Update your information (Coming soon)</p>
+    </a>
+  </div>
+
+  <h2 style="margin-bottom: 16px; color: #111827;">Quick Stats</h2>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Pending Tests</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Completed Tests</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value">0%</div>
+      <div class="stat-label">Average Score</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Total Points</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

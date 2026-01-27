@@ -1,0 +1,1816 @@
+{% extends "student/student_base.html" %}
+
+{% block title %}Take Test - {{ test.title }}{% endblock %}
+
+{% block content %}
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fullscreen Mode */
+.fullscreen-mode {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #f8f9fa;
+  z-index: 10000;
+  overflow: hidden;
+}
+
+/* Header - Compact & Fixed */
+.test-header {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  z-index: 100;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.test-title {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+  min-width: 200px;
+}
+
+.header-info {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  backdrop-filter: blur(10px);
+}
+
+.timer.warning {
+  background: #ef4444;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.progress-compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.progress-mini-bar {
+  width: 80px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-mini-fill {
+  height: 100%;
+  background: white;
+  transition: width 0.3s;
+}
+
+/* Responsive Grid Layout */
+.test-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  height: calc(100vh - 120px);
+  gap: 0;
+  background: #f8f9fa;
+}
+
+/* Tablet Layout */
+@media (max-width: 1280px) {
+  .test-layout {
+    grid-template-columns: 200px 1fr 280px;
+  }
+}
+
+/* Mobile Layout - Stacked */
+@media (max-width: 968px) {
+  .test-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    height: auto;
+    min-height: calc(100vh - 120px);
+  }
+
+  .left-panel {
+    order: 1;
+    height: auto !important;
+    max-height: 200px;
+  }
+
+  .center-panel {
+    order: 2;
+    height: auto !important;
+  }
+
+  .right-panel {
+    order: 3;
+    height: auto !important;
+    max-height: 500px;
+  }
+
+  .question-nav-grid {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)) !important;
+  }
+}
+
+/* Left Panel - Question Navigation */
+.left-panel {
+  background: white;
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+  padding: 16px;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+}
+
+.nav-header {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.question-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.question-nav-btn {
+  aspect-ratio: 1;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: #6b7280;
+}
+
+.question-nav-btn:hover {
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+}
+
+.question-nav-btn.current {
+  border-color: #667eea;
+  background: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: scale(1.05);
+}
+
+.question-nav-btn.attempted {
+  background: #e0e7ff;
+  border-color: #818cf8;
+  color: #4338ca;
+}
+
+.question-nav-btn.flagged {
+  background: #fef3c7;
+  border-color: #fbbf24;
+  color: #92400e;
+}
+
+.question-nav-btn.flagged::after {
+  content: '🚩';
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 12px;
+}
+
+/* Legend */
+.nav-legend {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  font-size: 11px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-box {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 2px solid;
+  flex-shrink: 0;
+}
+
+.legend-box.unattempted {
+  background: white;
+  border-color: #e5e7eb;
+}
+
+.legend-box.attempted {
+  background: #e0e7ff;
+  border-color: #818cf8;
+}
+
+.legend-box.flagged {
+  background: #fef3c7;
+  border-color: #fbbf24;
+}
+
+/* Center Panel - Question Area */
+.center-panel {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  background: #fafafa;
+  scroll-behavior: smooth;
+}
+
+.question-card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.question-number-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.marks-badge {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.question-content {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #1f2937;
+  margin-bottom: 24px;
+}
+
+.question-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin: 16px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Sub-questions */
+.sub-question {
+  margin-left: 20px;
+  margin-bottom: 24px;
+  padding-left: 20px;
+  border-left: 4px solid #e0e7ff;
+}
+
+.sub-question .question-number-badge {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+.sub-sub-question {
+  margin-left: 40px;
+  margin-bottom: 20px;
+  padding-left: 16px;
+  border-left: 3px solid #f3f4f6;
+}
+
+.sub-sub-question .question-number-badge {
+  background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* Answer Field */
+.answer-field {
+  margin-top: 20px;
+}
+
+.answer-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.answer-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 15px;
+  line-height: 1.7;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.3s;
+  background: #fafafa;
+}
+
+.answer-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+/* MCQ Options */
+.mcq-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.mcq-option {
+  padding: 18px 24px;
+  border: 3px solid #e5e7eb;
+  border-radius: 14px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 600;
+  font-size: 16px;
+  text-align: center;
+  position: relative;
+  user-select: none;
+}
+
+.mcq-option:hover {
+  border-color: #667eea;
+  background: #f5f7ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.mcq-option.selected {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+}
+
+.mcq-option.selected::before {
+  content: '✓';
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.mcq-clear-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  display: none;
+  transition: all 0.2s;
+}
+
+.mcq-clear-btn.visible {
+  display: inline-block;
+}
+
+.mcq-clear-btn:hover {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+/* Flag Button */
+.flag-btn {
+  padding: 10px 20px;
+  background: white;
+  color: #92400e;
+  border: 2px solid #fbbf24;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  margin-top: 16px;
+}
+
+.flag-btn.flagged {
+  background: #fbbf24;
+  color: white;
+}
+
+.flag-btn:hover {
+  background: #fbbf24;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+/* Navigation Buttons */
+.navigation-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.nav-btn {
+  padding: 12px 28px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-btn.secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 2px solid #e5e7eb;
+}
+
+.nav-btn.secondary:hover:not(:disabled) {
+  background: #e5e7eb;
+  transform: translateY(-2px);
+}
+
+.nav-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.nav-btn.primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.nav-btn.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.nav-btn.success:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Right Panel - Calculator */
+.right-panel {
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.04);
+}
+
+.calculator-header {
+  padding: 16px;
+  border-bottom: 2px solid #e5e7eb;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+.calculator-header h3 {
+  margin: 0 0 10px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.calc-mode-toggle {
+  display: flex;
+  gap: 6px;
+  background: #e5e7eb;
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.calc-mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.calc-mode-btn.active {
+  background: white;
+  color: #667eea;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.calculator-body {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* Calculator Display */
+.calc-display {
+  background: #1f2937;
+  color: white;
+  padding: 24px 16px;
+  border-radius: 12px;
+  text-align: right;
+  font-size: 32px;
+  font-weight: 700;
+  min-height: 80px;
+  word-wrap: break-word;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Simple Calculator */
+.simple-calculator {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calc-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.calc-btn {
+  padding: 18px;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.calc-btn:hover {
+  background: #e5e7eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.calc-btn:active {
+  transform: translateY(0);
+}
+
+.calc-btn.operator {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+}
+
+.calc-btn.equals {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  grid-column: span 2;
+}
+
+.calc-btn.clear {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+/* Scientific Calculator */
+.scientific-calculator {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sci-calc-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.sci-calc-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.sci-calc-btn:hover {
+  background: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.sci-calc-btn.function {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  font-size: 11px;
+}
+
+/* Floating Submit Button */
+.floating-submit {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  padding: 16px 36px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s;
+  z-index: 999;
+}
+
+.floating-submit:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.5);
+}
+
+/* Auto-save Indicator */
+.save-indicator {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  background: white;
+  padding: 12px 20px;
+  border-radius: 50px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  font-size: 13px;
+  font-weight: 600;
+  display: none;
+  z-index: 999;
+  gap: 8px;
+  align-items: center;
+}
+
+.save-indicator.visible {
+  display: flex;
+}
+
+.save-indicator.saving {
+  color: #667eea;
+}
+
+.save-indicator.saved {
+  color: #10b981;
+}
+
+.save-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Mobile Responsive */
+@media (max-width: 968px) {
+  .test-header {
+    padding: 10px 16px;
+  }
+
+  .test-title {
+    font-size: 14px;
+  }
+
+  .timer {
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+
+  .question-card {
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .question-number-badge {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+
+  .question-content {
+    font-size: 15px;
+  }
+
+  .mcq-options {
+    grid-template-columns: 1fr;
+  }
+
+  .mcq-option {
+    padding: 16px 20px;
+  }
+
+  .calc-buttons {
+    gap: 8px;
+  }
+
+  .calc-btn {
+    padding: 16px;
+    font-size: 16px;
+  }
+
+  .floating-submit {
+    bottom: 20px;
+    right: 20px;
+    padding: 14px 28px;
+    font-size: 14px;
+  }
+
+  .save-indicator {
+    bottom: 20px;
+    left: 20px;
+    font-size: 12px;
+  }
+
+  .navigation-controls {
+    padding: 16px;
+  }
+
+  .nav-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+}
+
+/* Tablet Optimizations */
+@media (min-width: 969px) and (max-width: 1280px) {
+  .calc-display {
+    font-size: 28px;
+  }
+
+  .question-card {
+    padding: 28px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .left-panel,
+  .right-panel,
+  .test-header,
+  .navigation-controls,
+  .floating-submit,
+  .save-indicator {
+    display: none !important;
+  }
+
+  .test-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .center-panel {
+    overflow: visible;
+    padding: 20px;
+  }
+}
+</style>
+
+<div id="fullscreenContainer" class="fullscreen-mode">
+  <!-- Instructions Overlay -->
+  <div id="instructionsOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10001; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
+    <div style="background: white; border-radius: 24px; max-width: 900px; width: 90%; margin: 20px; padding: 48px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+      <div style="text-align: center; margin-bottom: 36px;">
+        <h1 style="font-size: 32px; color: #1f2937; margin-bottom: 12px;">{{ test.title }}</h1>
+        <p style="font-size: 16px; color: #6b7280;">Read the instructions carefully before starting</p>
+      </div>
+
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 32px; color: white; margin-bottom: 32px;">
+        <h2 style="font-size: 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+          <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Test Instructions
+        </h2>
+        <ul style="list-style: none; padding: 0; margin: 0; font-size: 15px; line-height: 1.8;">
+          <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); display: flex; gap: 12px;">
+            <span style="flex-shrink: 0;">📱</span>
+            <span><strong>Fullscreen Mode:</strong> The test will open in fullscreen. Stay in fullscreen mode throughout the test.</span>
+          </li>
+          {% if test.duration_minutes %}
+          <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); display: flex; gap: 12px;">
+            <span style="flex-shrink: 0;">⏱️</span>
+            <span><strong>Time Limit:</strong> You have {{ test.duration_minutes }} minutes to complete this test. The timer starts when you begin.</span>
+          </li>
+          {% endif %}
+          <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); display: flex; gap: 12px;">
+            <span style="flex-shrink: 0;">💾</span>
+            <span><strong>Auto-Save:</strong> Your answers are automatically saved as you type. You can see the save status in the top-right corner.</span>
+          </li>
+          <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); display: flex; gap: 12px;">
+            <span style="flex-shrink: 0;">🧭</span>
+            <span><strong>Navigation:</strong> Use the question navigator on the left to jump between questions. Use Previous/Next buttons at the bottom.</span>
+          </li>
+          <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); display: flex; gap: 12px;">
+            <span style="flex-shrink: 0;">🚩</span>
+            <span><strong>Flag Questions:</strong> Click the flag button to mark questions for review. Flagged questions appear in yellow in the navigator.</span>
+          </li>
+          <li style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); display: flex; gap: 12px;">
+            <span style="flex-shrink: 0;">🔢</span>
+            <span><strong>Calculator:</strong> A built-in calculator is available on the right panel for your convenience.</span>
+          </li>
+          <li style="padding: 12px 0; display: flex; gap: 12px;">
+            <span style="flex-shrink: 0;">✅</span>
+            <span><strong>Submission:</strong> Click "Submit Test" when you're done. You can review all questions before submitting.</span>
+          </li>
+        </ul>
+      </div>
+
+      <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 12px; margin-bottom: 32px;">
+        <p style="color: #92400e; font-size: 14px; line-height: 1.6; margin: 0;">
+          <strong>⚠️ Important:</strong> Once you click "Start Test", the timer will begin. Make sure you're ready before starting. Do not refresh the page or navigate away during the test.
+        </p>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 16px;">
+        <button onclick="startTest()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 16px 48px; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); transition: all 0.3s;">
+          🚀 Start Test
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="test-header">
+    <div class="test-title">{{ test.title }}</div>
+    <div class="header-info">
+      <div class="progress-compact">
+        <span id="progressText">1 / 1</span>
+        <div class="progress-mini-bar">
+          <div class="progress-mini-fill" id="progressMiniFill" style="width: 0%"></div>
+        </div>
+      </div>
+      {% if test.duration_minutes %}
+      <div class="timer" id="timerDisplay">
+        ⏱️ <span id="timeRemaining">{{ test.duration_minutes }}:00</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Three-Column Layout -->
+  <div class="test-layout">
+    <!-- Left Panel: Question Navigation -->
+    <div class="left-panel">
+      <div class="nav-header">Quick Navigation</div>
+      <div class="question-nav-grid" id="questionNavGrid">
+        <!-- Question nav buttons rendered by JS -->
+      </div>
+      <div class="nav-legend">
+        <div class="legend-item">
+          <div class="legend-box unattempted"></div>
+          <span>Unattempted</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box attempted"></div>
+          <span>Attempted</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box flagged"></div>
+          <span>Flagged</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Panel: Question Area -->
+    <div class="center-panel">
+      <!-- Question Card -->
+      <div class="question-card" id="questionCard">
+        <!-- Content dynamically loaded here -->
+      </div>
+
+      <!-- Navigation Controls -->
+      <div class="navigation-controls">
+        <button class="nav-btn secondary" id="prevBtn" onclick="previousPage()" disabled>
+          ← Previous
+        </button>
+
+        <button class="nav-btn primary" id="nextBtn" onclick="nextPage()">
+          Next →
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Panel: Calculator -->
+    <div class="right-panel">
+      <div class="calculator-header">
+        <h3>🔢 Calculator</h3>
+        <div class="calc-mode-toggle">
+          <button class="calc-mode-btn active" id="simpleBtn" onclick="switchCalcMode('simple')">Simple</button>
+          <button class="calc-mode-btn" id="scientificBtn" onclick="switchCalcMode('scientific')">Scientific</button>
+        </div>
+      </div>
+      <div class="calculator-body">
+        <!-- Simple Calculator -->
+        <div class="simple-calculator" id="simpleCalc">
+          <div class="calc-display" id="calcDisplay">0</div>
+          <div class="calc-buttons">
+            <button class="calc-btn clear" onclick="calcClear()">C</button>
+            <button class="calc-btn" onclick="calcInput('(')">(</button>
+            <button class="calc-btn" onclick="calcInput(')')">)</button>
+            <button class="calc-btn operator" onclick="calcInput('/')">÷</button>
+
+            <button class="calc-btn" onclick="calcInput('7')">7</button>
+            <button class="calc-btn" onclick="calcInput('8')">8</button>
+            <button class="calc-btn" onclick="calcInput('9')">9</button>
+            <button class="calc-btn operator" onclick="calcInput('*')">×</button>
+
+            <button class="calc-btn" onclick="calcInput('4')">4</button>
+            <button class="calc-btn" onclick="calcInput('5')">5</button>
+            <button class="calc-btn" onclick="calcInput('6')">6</button>
+            <button class="calc-btn operator" onclick="calcInput('-')">−</button>
+
+            <button class="calc-btn" onclick="calcInput('1')">1</button>
+            <button class="calc-btn" onclick="calcInput('2')">2</button>
+            <button class="calc-btn" onclick="calcInput('3')">3</button>
+            <button class="calc-btn operator" onclick="calcInput('+')">+</button>
+
+            <button class="calc-btn" onclick="calcInput('0')">0</button>
+            <button class="calc-btn" onclick="calcInput('.')">.</button>
+            <button class="calc-btn equals" onclick="calcEquals()">=</button>
+          </div>
+        </div>
+
+        <!-- Scientific Calculator -->
+        <div class="scientific-calculator" id="scientificCalc" style="display: none;">
+          <div class="calc-display" id="sciCalcDisplay">0</div>
+          <div class="sci-calc-buttons">
+            <button class="sci-calc-btn function" onclick="calcFunction('sin')">sin</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('cos')">cos</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('tan')">tan</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('log')">log</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('ln')">ln</button>
+
+            <button class="sci-calc-btn function" onclick="calcFunction('sqrt')">√</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('pow2')">x²</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('pow')">xʸ</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('1/x')">1/x</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('abs')">|x|</button>
+
+            <button class="sci-calc-btn" onclick="calcInput('7')">7</button>
+            <button class="sci-calc-btn" onclick="calcInput('8')">8</button>
+            <button class="sci-calc-btn" onclick="calcInput('9')">9</button>
+            <button class="sci-calc-btn operator" onclick="calcInput('/')">/</button>
+            <button class="sci-calc-btn clear" onclick="calcClear()">C</button>
+
+            <button class="sci-calc-btn" onclick="calcInput('4')">4</button>
+            <button class="sci-calc-btn" onclick="calcInput('5')">5</button>
+            <button class="sci-calc-btn" onclick="calcInput('6')">6</button>
+            <button class="sci-calc-btn operator" onclick="calcInput('*')">×</button>
+            <button class="sci-calc-btn" onclick="calcInput('(')">(</button>
+
+            <button class="sci-calc-btn" onclick="calcInput('1')">1</button>
+            <button class="sci-calc-btn" onclick="calcInput('2')">2</button>
+            <button class="sci-calc-btn" onclick="calcInput('3')">3</button>
+            <button class="sci-calc-btn operator" onclick="calcInput('-')">−</button>
+            <button class="sci-calc-btn" onclick="calcInput(')')">)</button>
+
+            <button class="sci-calc-btn" onclick="calcInput('0')">0</button>
+            <button class="sci-calc-btn" onclick="calcInput('.')">.</button>
+            <button class="sci-calc-btn function" onclick="calcFunction('pi')">π</button>
+            <button class="sci-calc-btn operator" onclick="calcInput('+')">+</button>
+            <button class="sci-calc-btn equals" onclick="calcEquals()">=</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating Elements -->
+<div class="save-indicator" id="saveIndicator">
+  <div class="save-spinner" id="saveSpinner"></div>
+  <span id="saveText">Saving...</span>
+</div>
+
+<button class="floating-submit" onclick="submitTest()">
+  ✓ Submit Test
+</button>
+
+<script>
+// Force fullscreen on page load
+function enterFullscreen() {
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) {
+    elem.requestFullscreen().catch(err => console.log('Fullscreen request failed:', err));
+  } else if (elem.webkitRequestFullscreen) {
+    elem.webkitRequestFullscreen();
+  } else if (elem.msRequestFullscreen) {
+    elem.msRequestFullscreen();
+  }
+}
+
+// Try to enter fullscreen after user interaction
+document.addEventListener('DOMContentLoaded', () => {
+  // Try immediately (may fail due to browser policy)
+  enterFullscreen();
+
+  // Also try on first click
+  document.addEventListener('click', enterFullscreen, { once: true });
+});
+
+// Warn if user exits fullscreen
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) {
+    if (confirm('Please stay in fullscreen mode during the test. Return to fullscreen?')) {
+      enterFullscreen();
+    }
+  }
+});
+
+// Get CSRF token
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+const testData = {{ test_data|safe }};
+const testId = {{ test.id }};
+
+let currentPageIndex = 0;
+const answers = {};
+const flaggedQuestions = new Set();
+
+// Load saved answers
+async function loadSavedAnswers() {
+  try {
+    const response = await fetch(`/student/tests/${testId}/answers/`, {
+      headers: { 'X-CSRFToken': csrftoken }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      Object.assign(answers, data.answers || {});
+    }
+  } catch (error) {
+    console.error('Error loading answers:', error);
+  }
+}
+
+// Render navigation grid
+function renderQuestionNav() {
+  const navGrid = document.getElementById('questionNavGrid');
+  navGrid.innerHTML = '';
+
+  testData.pages.forEach((page, index) => {
+    const btn = document.createElement('button');
+    btn.className = 'question-nav-btn';
+    btn.textContent = index + 1;
+    btn.onclick = () => navigateToQuestion(index);
+
+    if (index === currentPageIndex) {
+      btn.classList.add('current');
+    } else if (flaggedQuestions.has(index)) {
+      btn.classList.add('flagged');
+    } else if (isQuestionAttempted(index)) {
+      btn.classList.add('attempted');
+    }
+
+    navGrid.appendChild(btn);
+  });
+}
+
+function isQuestionAttempted(pageIndex) {
+  const page = testData.pages[pageIndex];
+  for (const question of page.questions) {
+    if (hasAnswerForQuestion(question)) return true;
+  }
+  return false;
+}
+
+function hasAnswerForQuestion(question) {
+  if (question.answerId && answers[question.answerId]) return true;
+  if (question.subQuestions) {
+    for (const sub of question.subQuestions) {
+      if (hasAnswerForQuestion(sub)) return true;
+    }
+  }
+  return false;
+}
+
+function navigateToQuestion(pageIndex) {
+  saveCurrentPageAnswers();
+  currentPageIndex = pageIndex;
+  renderPage(currentPageIndex);
+  window.scrollTo(0, 0);
+}
+
+function toggleFlag() {
+  flaggedQuestions.has(currentPageIndex) ?
+    flaggedQuestions.delete(currentPageIndex) :
+    flaggedQuestions.add(currentPageIndex);
+  renderQuestionNav();
+  updateFlagButton();
+}
+
+function updateFlagButton() {
+  const flagBtn = document.getElementById('flagBtn');
+  if (flagBtn) {
+    flagBtn.classList.toggle('flagged', flaggedQuestions.has(currentPageIndex));
+    flagBtn.textContent = flaggedQuestions.has(currentPageIndex) ?
+      '🚩 Flagged' : '🚩 Flag for Review';
+  }
+}
+
+function renderPage(pageIndex) {
+  const page = testData.pages[pageIndex];
+  const container = document.getElementById('questionCard');
+
+  let html = '';
+  page.questions.forEach(q => {
+    html += renderQuestion(q);
+  });
+  html += `<button class="flag-btn" id="flagBtn" onclick="toggleFlag()">🚩 Flag for Review</button>`;
+
+  container.innerHTML = html;
+  restoreAnswers();
+
+  // Render answer spaces for structured questions
+  page.questions.forEach(q => {
+    if (q.hasAnswerSpaces && q.answerSpaces) {
+      renderAnswerSpaces(q);
+    }
+  });
+
+  updateProgress();
+  updateNavButtons();
+  updateFlagButton();
+  renderQuestionNav();
+}
+
+function renderQuestion(question, level = 0) {
+  const className = level === 0 ? 'main-question' :
+                   level === 1 ? 'sub-question' : 'sub-sub-question';
+
+  let html = `<div class="${className}">`;
+  html += `
+    <div class="question-number-badge">
+      ${question.number}
+      <span class="marks-badge">${question.marks}m</span>
+    </div>
+    <div class="question-content">${question.content}</div>
+  `;
+
+  // Check if this is a structured question with answer spaces
+  if (question.hasAnswerSpaces && question.answerSpaces) {
+    html += `
+      <div class="structured-question-container" style="position: relative; display: inline-block; margin-top: 20px;">
+        <img src="${question.content}" style="display: block; max-width: 100%; height: auto; border: 2px solid #e2e8f0; border-radius: 8px;" id="question-img-${question.id}">
+      </div>
+      <div id="answer-spaces-container-${question.id}"></div>
+    `;
+  } else if (question.answerId) {
+    const savedAnswer = answers[question.answerId] || '';
+    const isMCQ = question.content && question.content.includes('<img');
+
+    if (isMCQ) {
+      html += `
+        <div class="answer-field">
+          <label class="answer-label">Select your answer:</label>
+          <div class="mcq-options" id="mcq-${question.answerId}">
+            ${['A', 'B', 'C', 'D'].map(option => `
+              <div class="mcq-option ${savedAnswer === option ? 'selected' : ''}"
+                   onclick="selectMCQOption('${question.answerId}', '${option}')">
+                ${option}
+              </div>
+            `).join('')}
+          </div>
+          <button class="mcq-clear-btn ${savedAnswer ? 'visible' : ''}"
+                  id="clear-${question.answerId}"
+                  onclick="clearMCQSelection('${question.answerId}')">
+            Clear Selection
+          </button>
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="answer-field">
+          <label class="answer-label">Your Answer:</label>
+          <textarea
+            class="answer-textarea"
+            id="${question.answerId}"
+            data-question-id="${question.answerId}"
+            placeholder="Type your answer here..."
+            oninput="handleAnswerInput('${question.answerId}')"
+          >${savedAnswer}</textarea>
+        </div>
+      `;
+    }
+  }
+
+  if (question.subQuestions) {
+    question.subQuestions.forEach(sub => {
+      html += renderQuestion(sub, level + 1);
+    });
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function selectMCQOption(questionId, option) {
+  const container = document.getElementById(`mcq-${questionId}`);
+  container.querySelectorAll('.mcq-option').forEach(opt => opt.classList.remove('selected'));
+  event.target.classList.add('selected');
+  answers[questionId] = option;
+  document.getElementById(`clear-${questionId}`).classList.add('visible');
+  renderQuestionNav();
+  autoSave();
+}
+
+function clearMCQSelection(questionId) {
+  const container = document.getElementById(`mcq-${questionId}`);
+  container.querySelectorAll('.mcq-option').forEach(opt => opt.classList.remove('selected'));
+  answers[questionId] = '';
+  document.getElementById(`clear-${questionId}`).classList.remove('visible');
+  renderQuestionNav();
+  autoSave();
+}
+
+function renderAnswerSpaces(question) {
+  const containerEl = document.querySelector('.structured-question-container');
+  if (!containerEl) return;
+
+  const imgEl = document.getElementById(`question-img-${question.id}`);
+  if (!imgEl) return;
+
+  // Wait for image to load to get proper dimensions
+  if (!imgEl.complete) {
+    imgEl.onload = () => renderAnswerSpaces(question);
+    return;
+  }
+
+  const imgRect = imgEl.getBoundingClientRect();
+  const containerRect = containerEl.getBoundingClientRect();
+
+  question.answerSpaces.forEach((space, index) => {
+    const spaceId = `answer-space-${question.id}-${space.id}`;
+
+    // Create iframe for rich text editor
+    const iframe = document.createElement('iframe');
+    iframe.id = spaceId;
+    iframe.src = '/static/editors/richtext_editor.html';
+    iframe.style.position = 'absolute';
+    iframe.style.left = space.x + 'px';
+    iframe.style.top = space.y + 'px';
+    iframe.style.width = space.width + 'px';
+    iframe.style.height = space.height + 'px';
+    iframe.style.border = '2px solid #667eea';
+    iframe.style.borderRadius = '4px';
+    iframe.style.background = 'white';
+    iframe.style.zIndex = '10';
+
+    // Store reference to answer space
+    iframe.dataset.spaceId = space.id;
+    iframe.dataset.questionId = question.id;
+    iframe.dataset.answerKey = `space-${question.id}-${space.id}`;
+
+    // Load saved answer when iframe loads
+    iframe.onload = function() {
+      const answerKey = this.dataset.answerKey;
+      const savedContent = answers[answerKey] || '';
+
+      // Set content in iframe
+      try {
+        const iframeDoc = this.contentDocument || this.contentWindow.document;
+        const editorEl = iframeDoc.querySelector('[contenteditable="true"]');
+        if (editorEl && savedContent) {
+          editorEl.innerHTML = savedContent;
+        }
+
+        // Listen for changes
+        if (editorEl) {
+          editorEl.addEventListener('input', function() {
+            answers[answerKey] = this.innerHTML;
+            renderQuestionNav();
+            autoSave();
+          });
+        }
+      } catch (e) {
+        console.error('Error accessing iframe content:', e);
+      }
+    };
+
+    containerEl.appendChild(iframe);
+  });
+}
+
+function saveCurrentPageAnswers() {
+  // Save iframe content from structured questions
+  const page = testData.pages[currentPageIndex];
+  if (page && page.questions) {
+    page.questions.forEach(q => {
+      if (q.hasAnswerSpaces && q.answerSpaces) {
+        q.answerSpaces.forEach(space => {
+          const spaceId = `answer-space-${q.id}-${space.id}`;
+          const iframe = document.getElementById(spaceId);
+          if (iframe) {
+            try {
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+              const editorEl = iframeDoc.querySelector('[contenteditable="true"]');
+              if (editorEl) {
+                const answerKey = `space-${q.id}-${space.id}`;
+                answers[answerKey] = editorEl.innerHTML;
+              }
+            } catch (e) {
+              console.error('Error saving iframe content:', e);
+            }
+          }
+        });
+      }
+    });
+  }
+}
+
+function restoreAnswers() {
+  Object.keys(answers).forEach(questionId => {
+    const textarea = document.getElementById(questionId);
+    if (textarea) textarea.value = answers[questionId];
+  });
+}
+
+function handleAnswerInput(questionId) {
+  const textarea = document.getElementById(questionId);
+  if (textarea) {
+    answers[questionId] = textarea.value;
+    renderQuestionNav();
+    autoSave();
+  }
+}
+
+function updateProgress() {
+  const progress = ((currentPageIndex + 1) / testData.pages.length) * 100;
+  document.getElementById('progressMiniFill').style.width = progress + '%';
+  document.getElementById('progressText').textContent =
+    `${currentPageIndex + 1} / ${testData.pages.length}`;
+}
+
+function updateNavButtons() {
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  prevBtn.disabled = currentPageIndex === 0;
+
+  if (currentPageIndex === testData.pages.length - 1) {
+    nextBtn.textContent = 'Submit Test ✓';
+    nextBtn.className = 'nav-btn success';
+  } else {
+    nextBtn.textContent = 'Next →';
+    nextBtn.className = 'nav-btn primary';
+  }
+}
+
+function nextPage() {
+  saveCurrentPageAnswers();
+  if (currentPageIndex < testData.pages.length - 1) {
+    currentPageIndex++;
+    renderPage(currentPageIndex);
+    window.scrollTo(0, 0);
+  } else {
+    submitTest();
+  }
+}
+
+function previousPage() {
+  saveCurrentPageAnswers();
+  if (currentPageIndex > 0) {
+    currentPageIndex--;
+    renderPage(currentPageIndex);
+    window.scrollTo(0, 0);
+  }
+}
+
+function saveCurrentPageAnswers() {
+  document.querySelectorAll('textarea[data-question-id]').forEach(textarea => {
+    answers[textarea.getAttribute('data-question-id')] = textarea.value;
+  });
+}
+
+async function submitTest() {
+  if (!confirm('Are you sure you want to submit your test? You cannot make changes after submission.')) {
+    return;
+  }
+
+  saveCurrentPageAnswers();
+
+  // Rasterize all structured question answers
+  alert('Processing your answers. This may take a moment...');
+  for (const page of testData.pages) {
+    for (const question of page.questions) {
+      if (question.hasAnswerSpaces) {
+        await saveRasterizedAnswers();
+        break;
+      }
+    }
+  }
+
+  try {
+    const response = await fetch(`/student/tests/${testId}/submit/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrftoken
+      },
+      body: JSON.stringify({ answers: answers, submitted: true })
+    });
+
+    if (response.ok) {
+      alert('Test submitted successfully!');
+      window.location.href = '{% url "student_tests_list" %}';
+    } else {
+      alert('Error submitting test. Please try again.');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Error submitting test. Please try again.');
+  }
+}
+
+// Auto-save
+let saveTimeout;
+async function autoSave() {
+  clearTimeout(saveTimeout);
+
+  const indicator = document.getElementById('saveIndicator');
+  const saveText = document.getElementById('saveText');
+  const spinner = document.getElementById('saveSpinner');
+
+  indicator.className = 'save-indicator visible saving';
+  saveText.textContent = 'Saving...';
+  spinner.style.display = 'block';
+
+  saveTimeout = setTimeout(async () => {
+    try {
+      const response = await fetch(`/student/tests/${testId}/autosave/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+          answers: answers,
+          currentPage: currentPageIndex
+        })
+      });
+
+      if (response.ok) {
+        indicator.className = 'save-indicator visible saved';
+        saveText.textContent = '✓ Saved';
+        spinner.style.display = 'none';
+        setTimeout(() => {
+          indicator.className = 'save-indicator';
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      indicator.className = 'save-indicator';
+    }
+  }, 1000);
+}
+
+// Timer
+{% if test.duration_minutes %}
+let timeLeft = {{ test.duration_minutes }} * 60;
+
+function updateTimer() {
+  const hours = Math.floor(timeLeft / 3600);
+  const minutes = Math.floor((timeLeft % 3600) / 60);
+  const seconds = timeLeft % 60;
+
+  const display = hours > 0
+    ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    : `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+  document.getElementById('timeRemaining').textContent = display;
+
+  const timerDisplay = document.getElementById('timerDisplay');
+  if (timeLeft <= 300 && timeLeft > 0) {
+    timerDisplay.classList.add('warning');
+  }
+
+  if (timeLeft > 0) {
+    timeLeft--;
+    setTimeout(updateTimer, 1000);
+  } else {
+    alert('Time is up! Your test will be submitted automatically.');
+    submitTest();
+  }
+}
+
+// Timer control - don't start automatically
+let timerStarted = false;
+function startTimer() {
+  if (!timerStarted) {
+    timerStarted = true;
+    updateTimer();
+  }
+}
+{% endif %}
+
+// Initialize - but don't show test yet
+(async function() {
+  await loadSavedAnswers();
+  // Don't render page yet - wait for user to click "Start Test"
+})();
+
+// Start Test function
+async function startTest() {
+  // Enter fullscreen
+  enterFullscreen();
+
+  // Hide instructions overlay
+  document.getElementById('instructionsOverlay').style.display = 'none';
+
+  // Start timer
+  {% if test.duration_minutes %}
+  startTimer();
+  {% endif %}
+
+  // Render first page
+  renderPage(0);
+}
+
+// Prevent leaving page
+window.addEventListener('beforeunload', function (e) {
+  e.preventDefault();
+  e.returnValue = '';
+  return '';
+});
+
+// Calculator
+let calcExpression = '0';
+let calcMode = 'simple';
+
+function switchCalcMode(mode) {
+  calcMode = mode;
+  document.getElementById('simpleBtn').classList.toggle('active', mode === 'simple');
+  document.getElementById('scientificBtn').classList.toggle('active', mode === 'scientific');
+  document.getElementById('simpleCalc').style.display = mode === 'simple' ? 'flex' : 'none';
+  document.getElementById('scientificCalc').style.display = mode === 'scientific' ? 'flex' : 'none';
+  calcClear();
+}
+
+function calcInput(value) {
+  if (calcExpression === '0' && value !== '.') {
+    calcExpression = value;
+  } else {
+    calcExpression += value;
+  }
+  updateCalcDisplay();
+}
+
+function calcClear() {
+  calcExpression = '0';
+  updateCalcDisplay();
+}
+
+function calcEquals() {
+  try {
+    let expr = calcExpression
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/−/g, '-');
+    calcExpression = eval(expr).toString();
+    updateCalcDisplay();
+  } catch (error) {
+    calcExpression = 'Error';
+    updateCalcDisplay();
+    setTimeout(() => {
+      calcExpression = '0';
+      updateCalcDisplay();
+    }, 1500);
+  }
+}
+
+function calcFunction(func) {
+  try {
+    let value = parseFloat(calcExpression);
+    let result;
+
+    switch (func) {
+      case 'sin': result = Math.sin(value * Math.PI / 180); break;
+      case 'cos': result = Math.cos(value * Math.PI / 180); break;
+      case 'tan': result = Math.tan(value * Math.PI / 180); break;
+      case 'log': result = Math.log10(value); break;
+      case 'ln': result = Math.log(value); break;
+      case 'sqrt': result = Math.sqrt(value); break;
+      case 'pow2': result = value * value; break;
+      case 'pow':
+        calcExpression += '**';
+        updateCalcDisplay();
+        return;
+      case '1/x': result = 1 / value; break;
+      case 'abs': result = Math.abs(value); break;
+      case 'pi':
+        calcExpression = Math.PI.toString();
+        updateCalcDisplay();
+        return;
+      default: return;
+    }
+
+    calcExpression = result.toString();
+    updateCalcDisplay();
+  } catch (error) {
+    calcExpression = 'Error';
+    updateCalcDisplay();
+    setTimeout(() => {
+      calcExpression = '0';
+      updateCalcDisplay();
+    }, 1500);
+  }
+}
+
+function updateCalcDisplay() {
+  document.getElementById('calcDisplay').textContent = calcExpression;
+  document.getElementById('sciCalcDisplay').textContent = calcExpression;
+}
+
+// Rasterization functions for structured questions
+async function rasterizeAnswerSpaces(questionId) {
+  const question = testData.pages.find(p => p.questions.some(q => q.id === questionId))?.questions.find(q => q.id === questionId);
+  if (!question || !question.hasAnswerSpaces) return null;
+
+  const rasterizedSpaces = [];
+
+  for (const space of question.answerSpaces) {
+    const spaceId = `answer-space-${questionId}-${space.id}`;
+    const iframe = document.getElementById(spaceId);
+
+    if (iframe) {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        const editorEl = iframeDoc.querySelector('[contenteditable="true"]');
+
+        if (editorEl) {
+          // Create a temporary div to render the content
+          const tempDiv = document.createElement('div');
+          tempDiv.style.width = space.width + 'px';
+          tempDiv.style.height = space.height + 'px';
+          tempDiv.style.padding = '8px';
+          tempDiv.style.background = 'white';
+          tempDiv.style.overflow = 'hidden';
+          tempDiv.innerHTML = editorEl.innerHTML;
+          document.body.appendChild(tempDiv);
+
+          // Convert to canvas using html2canvas (if available)
+          if (window.html2canvas) {
+            const canvas = await html2canvas(tempDiv, {
+              backgroundColor: '#ffffff',
+              scale: 2
+            });
+
+            const imageData = canvas.toDataURL('image/png');
+
+            rasterizedSpaces.push({
+              spaceId: space.id,
+              x: space.x,
+              y: space.y,
+              width: space.width,
+              height: space.height,
+              imageData: imageData
+            });
+          }
+
+          document.body.removeChild(tempDiv);
+        }
+      } catch (e) {
+        console.error('Error rasterizing answer space:', e);
+      }
+    }
+  }
+
+  return rasterizedSpaces;
+}
+
+async function saveRasterizedAnswers() {
+  // Save rasterized answers before submission
+  const page = testData.pages[currentPageIndex];
+  if (!page || !page.questions) return;
+
+  for (const question of page.questions) {
+    if (question.hasAnswerSpaces) {
+      const rasterized = await rasterizeAnswerSpaces(question.id);
+      if (rasterized && rasterized.length > 0) {
+        // Store rasterized data with answers
+        for (const space of rasterized) {
+          const answerKey = `space-${question.id}-${space.spaceId}-raster`;
+          answers[answerKey] = space.imageData;
+        }
+      }
+    }
+  }
+}
+</script>
+
+<!-- html2canvas library for rasterization -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+{% endblock %}

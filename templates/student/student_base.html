@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Student Portal{% endblock %} - Lumen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f3f4f6;
+        }
+
+        .navbar {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,.08);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2563eb;
+        }
+
+        .navbar-menu {
+            display: flex;
+            gap: 8px;
+            list-style: none;
+        }
+
+        .navbar-menu a {
+            text-decoration: none;
+            color: #374151;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all .2s;
+            font-weight: 500;
+        }
+
+        .navbar-menu a:hover {
+            background: #f3f4f6;
+            color: #2563eb;
+        }
+
+        .navbar-menu a.active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .navbar-menu a.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+        }
+
+        .content {
+            padding: 32px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            ✨ Lumen
+        </div>
+
+        <!-- STUDENT-ONLY NAVIGATION -->
+        <ul class="navbar-menu">
+            <li>
+                <a href="{% url 'student_dashboard' %}" 
+                   class="{% if request.resolver_match.url_name == 'student_dashboard' %}active{% endif %}">
+                    🏠 Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'student_tests_list' %}"
+                   class="{% if request.resolver_match.url_name == 'student_tests_list' %}active{% endif %}">
+                    📝 My Tests
+                </a>
+            </li>
+            <li>
+                {% if has_graded_results %}
+                <a href="{% url 'student_results' %}"
+                   class="{% if request.resolver_match.url_name == 'student_results' or request.resolver_match.url_name == 'student_test_review' %}active{% endif %}">
+                    📊 My Results
+                </a>
+                {% else %}
+                <a href="#" class="disabled" title="No graded results available yet">
+                    📊 My Results
+                </a>
+                {% endif %}
+            </li>
+            <li>
+                {% if has_graded_results %}
+                <a href="{% url 'student_analytics' %}"
+                   class="{% if request.resolver_match.url_name == 'student_analytics' %}active{% endif %}">
+                    📈 Analytics
+                </a>
+                {% else %}
+                <a href="#" class="disabled" title="Complete tests to see analytics">
+                    📈 Analytics
+                </a>
+                {% endif %}
+            </li>
+            <li>
+                <!-- FIXED: Using # placeholder since route doesn't exist yet -->
+                <a href="#" class="disabled" title="Coming soon">
+                    👤 Profile
+                </a>
+            </li>
+        </ul>
+
+        <div class="user-menu">
+            <span class="user-name">👨‍🎓 {{ request.user.get_full_name|default:request.user.username }}</span>
+            <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">Logout</button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- 
+    ⚠️ IMPORTANT: Students should NEVER see these links:
+    - Create Test
+    - Question Library
+    - Import Questions
+    - Manage Students
+    - Create Users
+    
+    These are ONLY in teacher_base.html
+    -->
+</body>
+</html>

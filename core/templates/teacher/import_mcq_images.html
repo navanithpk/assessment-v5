@@ -1,0 +1,426 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Import MCQ Images{% endblock %}
+
+{% block content %}
+<style>
+.import-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.upload-section {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.file-upload-area {
+  border: 3px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-upload-area:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.file-upload-area.dragover {
+  border-color: #3b82f6;
+  background: #dbeafe;
+}
+
+#fileInput {
+  display: none;
+}
+
+.preview-section {
+  margin-top: 24px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.preview-item {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  position: relative;
+}
+
+.preview-item img {
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.preview-item .filename {
+  font-size: 12px;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-item .correct-answer {
+  margin-top: 8px;
+}
+
+.preview-item .correct-answer label {
+  font-size: 12px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.preview-item .correct-answer select {
+  width: 100%;
+  padding: 6px;
+  border: 2px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-btn:hover {
+  background: #dc2626;
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 24px;
+}
+
+.submit-btn:hover {
+  background: #2563eb;
+}
+
+.submit-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.info-box {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.info-box h4 {
+  margin: 0 0 8px 0;
+  color: #1e40af;
+}
+
+.info-box p {
+  margin: 0;
+  font-size: 14px;
+  color: #1e3a8a;
+}
+</style>
+
+<div class="import-container">
+  <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 24px;">Import MCQ Images</h1>
+
+  <div class="info-box">
+    <h4>📌 Instructions</h4>
+    <p>
+      1. Upload PNG images of MCQ questions<br>
+      2. Select the correct answer (A, B, C, or D) for each question<br>
+      3. Choose grade, subject, and topic for all questions<br>
+      4. Click "Import Questions" to add them to the question library
+    </p>
+  </div>
+
+  <form id="importForm" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="upload-section">
+      <div class="form-group">
+        <label>Grade</label>
+        <select name="grade" id="grade" required>
+          <option value="">Select Grade</option>
+          {% for grade in grades %}
+          <option value="{{ grade.id }}">{{ grade.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Subject</label>
+        <select name="subject" id="subject" required>
+          <option value="">Select Subject</option>
+          {% for subject in subjects %}
+          <option value="{{ subject.id }}">{{ subject.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Topic</label>
+        <select name="topic" id="topic" required>
+          <option value="">Select Topic</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Year (Optional)</label>
+        <input type="number" name="year" placeholder="e.g., 2024" min="2000" max="2100">
+      </div>
+
+      <div class="form-group">
+        <label>Marks per Question</label>
+        <input type="number" name="marks" value="1" min="1" required>
+      </div>
+
+      <div class="form-group">
+        <label>Upload MCQ Images (PNG files)</label>
+        <div class="file-upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <div style="font-size: 48px; margin-bottom: 12px;">📁</div>
+          <p style="font-weight: 600; margin: 0 0 8px 0;">Click to browse or drag & drop</p>
+          <p style="font-size: 14px; color: #6b7280; margin: 0;">PNG files only</p>
+        </div>
+        <input type="file" id="fileInput" name="images" accept="image/png" multiple>
+      </div>
+
+      <div class="preview-section" id="previewSection" style="display: none;">
+        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">
+          Selected Images (<span id="imageCount">0</span>)
+        </h3>
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn" disabled>
+        Import Questions
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const previewSection = document.getElementById('previewSection');
+const previewGrid = document.getElementById('previewGrid');
+const imageCount = document.getElementById('imageCount');
+const submitBtn = document.getElementById('submitBtn');
+const subjectSelect = document.getElementById('subject');
+const topicSelect = document.getElementById('topic');
+
+let selectedFiles = [];
+
+// Drag and drop
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('dragover');
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'image/png');
+  handleFiles(files);
+});
+
+fileInput.addEventListener('change', (e) => {
+  handleFiles(Array.from(e.target.files));
+});
+
+function handleFiles(files) {
+  files.forEach(file => {
+    if (!selectedFiles.find(f => f.name === file.name)) {
+      selectedFiles.push(file);
+    }
+  });
+
+  updatePreview();
+}
+
+function updatePreview() {
+  if (selectedFiles.length === 0) {
+    previewSection.style.display = 'none';
+    submitBtn.disabled = true;
+    return;
+  }
+
+  previewSection.style.display = 'block';
+  imageCount.textContent = selectedFiles.length;
+  submitBtn.disabled = false;
+
+  previewGrid.innerHTML = '';
+
+  selectedFiles.forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const div = document.createElement('div');
+      div.className = 'preview-item';
+      div.innerHTML = `
+        <button type="button" class="remove-btn" onclick="removeFile(${index})">×</button>
+        <img src="${e.target.result}" alt="${file.name}">
+        <div class="filename" title="${file.name}">${file.name}</div>
+        <div class="correct-answer">
+          <label>Correct Answer:</label>
+          <select name="correct_answer_${index}" required>
+            <option value="">Select</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+          </select>
+        </div>
+      `;
+      previewGrid.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  updatePreview();
+}
+
+// Load topics when subject changes
+subjectSelect.addEventListener('change', function() {
+  const subjectId = this.value;
+  topicSelect.innerHTML = '<option value="">Loading...</option>';
+
+  if (!subjectId) {
+    topicSelect.innerHTML = '<option value="">Select Topic</option>';
+    return;
+  }
+
+  fetch(`/ajax/topics/?subject_id=${subjectId}`)
+    .then(response => response.json())
+    .then(data => {
+      topicSelect.innerHTML = '<option value="">Select Topic</option>';
+      data.topics.forEach(topic => {
+        const option = document.createElement('option');
+        option.value = topic.id;
+        option.textContent = topic.name;
+        topicSelect.appendChild(option);
+      });
+    });
+});
+
+// Form submission
+document.getElementById('importForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Importing...';
+
+  const formData = new FormData(this);
+
+  // Remove the file input data and add files individually with correct answers
+  formData.delete('images');
+
+  for (let i = 0; i < selectedFiles.length; i++) {
+    const correctAnswer = document.querySelector(`select[name="correct_answer_${i}"]`).value;
+    if (!correctAnswer) {
+      alert(`Please select correct answer for ${selectedFiles[i].name}`);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Import Questions';
+      return;
+    }
+
+    formData.append(`image_${i}`, selectedFiles[i]);
+    formData.append(`correct_${i}`, correctAnswer);
+  }
+
+  formData.append('total_images', selectedFiles.length);
+
+  try {
+    const response = await fetch(window.location.href, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      alert('Questions imported successfully!');
+      window.location.href = '/questions/';
+    } else {
+      const data = await response.json();
+      alert('Error: ' + (data.error || 'Failed to import questions'));
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Import Questions';
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Import Questions';
+  }
+});
+</script>
+
+{% endblock %}

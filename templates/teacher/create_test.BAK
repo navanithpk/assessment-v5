@@ -1,0 +1,537 @@
+{% extends "teacher/teacher_base.html" %}
+{% load static %}
+
+{% block title %}
+{% if test %}Edit Test – {{ test.title }}{% else %}Create Test{% endblock %}
+{% endblock %}
+
+{% block content %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prosemirror-view/1.31.3/prosemirror-view.min.css">
+
+<style>
+/* (Keep all existing styles from previous version) */
+/* ... previous CSS ... */
+
+.test-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.test-header {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+/* Assignment section styling */
+.assignment-section {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  margin-top: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.assignment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.selection-box {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  background: #fafafa;
+}
+
+.selection-box label {
+  display: block;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.selection-box select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px;
+  background: white;
+  border-radius: 8px;
+  min-height: 100px;
+  border: 1px solid #e5e7eb;
+  margin-top: 12px;
+}
+
+.tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1);
+  transition: all .2s;
+}
+
+.tag:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,.15);
+}
+
+.tag button {
+  background: rgba(255,255,255,.2);
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 700;
+  border-radius: 4px;
+  transition: all .2s;
+}
+
+.tag button:hover {
+  background: rgba(255,255,255,.4);
+  transform: scale(1.1);
+}
+
+.empty-tags {
+  color: #9ca3af;
+  font-size: 14px;
+  font-style: italic;
+  align-self: center;
+  width: 100%;
+  text-align: center;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .2s;
+}
+
+.btn.primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn.primary:hover {
+  background: #1d4ed8;
+}
+
+.btn.secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn.secondary:hover {
+  background: #e5e7eb;
+}
+
+.btn.success {
+  background: #10b981;
+  color: white;
+}
+
+.btn.success:hover {
+  background: #059669;
+}
+</style>
+
+<div class="test-container">
+  <form method="post" id="testForm">
+    {% csrf_token %}
+    
+    <!-- TEST HEADER -->
+    <div class="test-header">
+      <input
+        type="text"
+        name="title"
+        class="test-title-input"
+        placeholder="Untitled Test"
+        value="{{ test.title|default:'' }}"
+        required
+      >
+      
+      <div class="test-meta">
+        <div class="meta-field">
+          <label>Start Date & Time</label>
+          <input
+            type="datetime-local"
+            name="start_time"
+            value="{{ test.start_time|date:'Y-m-d\TH:i' }}"
+          >
+        </div>
+        
+        <div class="meta-field">
+          <label>Duration (minutes)</label>
+          <input
+            type="number"
+            name="duration_minutes"
+            placeholder="60"
+            value="{{ test.duration_minutes|default:'' }}"
+          >
+        </div>
+        
+        <div class="meta-field">
+          <label>Subject</label>
+          <select name="subject">
+            <option value="">Select Subject</option>
+            {% for subject in subjects %}
+              <option value="{{ subject.id }}" {% if test.subject.id == subject.id %}selected{% endif %}>
+                {{ subject.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="meta-field">
+          <label>Status</label>
+          <div class="checkbox-field">
+            <input
+              type="checkbox"
+              name="is_published"
+              id="publishCheck"
+              {% if test.is_published %}checked{% endif %}
+            >
+            <label for="publishCheck" style="margin: 0;">Publish test</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ASSIGNMENT SECTION -->
+    <div class="assignment-section">
+      <h2 style="margin-top: 0;">📌 Assign Test</h2>
+      <p style="color: #6b7280; margin-bottom: 20px;">
+        Select students or class groups to assign this test to. Assignments persist until you remove them.
+      </p>
+      
+      <div class="assignment-grid">
+        <!-- STUDENTS -->
+        <div class="selection-box">
+          <label>👨‍🎓 Assign to Students</label>
+          <select id="studentSelect" multiple size="6">
+            {% for student in students %}
+              <option 
+                value="{{ student.id }}" 
+                data-name="{{ student.full_name }}" 
+                data-info="{{ student.grade }}-{{ student.section }}"
+                data-roll="{{ student.roll_number }}">
+                {{ student.full_name }} ({{ student.grade }}-{{ student.section }}) - Roll: {{ student.roll_number }}
+              </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn secondary" onclick="addSelectedStudents()" style="width: 100%; margin-top: 8px;">
+            ➕ Add Selected
+          </button>
+          
+          <div class="tags-container" id="selectedStudentsTags">
+            <span class="empty-tags">No students assigned yet</span>
+          </div>
+          
+          <!-- Hidden inputs for form submission -->
+          <div id="studentHiddenInputs"></div>
+        </div>
+        
+        <!-- GROUPS -->
+        <div class="selection-box">
+          <label>👥 Assign to Class Groups</label>
+          <select id="groupSelect" multiple size="6">
+            {% for group in groups %}
+              <option value="{{ group.id }}" data-name="{{ group.name }}">
+                {{ group.name }} ({{ group.students.count }} students)
+              </option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn secondary" onclick="addSelectedGroups()" style="width: 100%; margin-top: 8px;">
+            ➕ Add Selected
+          </button>
+          
+          <div class="tags-container" id="selectedGroupsTags">
+            <span class="empty-tags">No groups assigned yet</span>
+          </div>
+          
+          <!-- Hidden inputs for form submission -->
+          <div id="groupHiddenInputs"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVE BUTTON -->
+    <div class="action-bar" style="margin-top: 24px;">
+      <div></div>
+      <div style="display: flex; gap: 12px;">
+        <button type="submit" class="btn success">
+          💾 Save Test & Assignments
+        </button>
+        <a href="{% url 'tests_list' %}" class="btn secondary">
+          Cancel
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+// ===================== PERSISTENT ASSIGNMENT MANAGEMENT =====================
+
+// Initialize with server-provided data
+const selectedStudents = new Set();
+const selectedGroups = new Set();
+
+// Load existing assignments from server
+{% for student in assigned_students %}
+  selectedStudents.add('{{ student.id }}');
+{% endfor %}
+
+{% for group in assigned_groups %}
+  selectedGroups.add('{{ group.id }}');
+{% endfor %}
+
+// Store student/group data for rendering
+const studentData = new Map();
+const groupData = new Map();
+
+// Populate data maps
+document.querySelectorAll('#studentSelect option').forEach(opt => {
+  studentData.set(opt.value, {
+    name: opt.dataset.name,
+    info: opt.dataset.info,
+    roll: opt.dataset.roll
+  });
+});
+
+document.querySelectorAll('#groupSelect option').forEach(opt => {
+  groupData.set(opt.value, {
+    name: opt.dataset.name
+  });
+});
+
+// ===================== RENDER FUNCTIONS =====================
+
+function renderStudentTags() {
+  const container = document.getElementById('selectedStudentsTags');
+  const hiddenInputs = document.getElementById('studentHiddenInputs');
+  
+  container.innerHTML = '';
+  hiddenInputs.innerHTML = '';
+  
+  if (selectedStudents.size === 0) {
+    container.innerHTML = '<span class="empty-tags">No students assigned yet</span>';
+    return;
+  }
+  
+  selectedStudents.forEach(id => {
+    const data = studentData.get(id);
+    if (data) {
+      const tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.innerHTML = `
+        <span>👨‍🎓 ${data.name}</span>
+        <small style="opacity: 0.9;">(${data.info})</small>
+        <button type="button" onclick="removeStudent('${id}')" title="Remove">×</button>
+      `;
+      container.appendChild(tag);
+      
+      // Add hidden input
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'assigned_students';
+      hidden.value = id;
+      hiddenInputs.appendChild(hidden);
+    }
+  });
+}
+
+function renderGroupTags() {
+  const container = document.getElementById('selectedGroupsTags');
+  const hiddenInputs = document.getElementById('groupHiddenInputs');
+  
+  container.innerHTML = '';
+  hiddenInputs.innerHTML = '';
+  
+  if (selectedGroups.size === 0) {
+    container.innerHTML = '<span class="empty-tags">No groups assigned yet</span>';
+    return;
+  }
+  
+  selectedGroups.forEach(id => {
+    const data = groupData.get(id);
+    if (data) {
+      const tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.innerHTML = `
+        <span>👥 ${data.name}</span>
+        <button type="button" onclick="removeGroup('${id}')" title="Remove">×</button>
+      `;
+      container.appendChild(tag);
+      
+      // Add hidden input
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'assigned_groups';
+      hidden.value = id;
+      hiddenInputs.appendChild(hidden);
+    }
+  });
+}
+
+// ===================== ADD/REMOVE FUNCTIONS =====================
+
+function addSelectedStudents() {
+  const select = document.getElementById('studentSelect');
+  let added = 0;
+  
+  Array.from(select.selectedOptions).forEach(opt => {
+    if (!selectedStudents.has(opt.value)) {
+      selectedStudents.add(opt.value);
+      added++;
+    }
+  });
+  
+  if (added > 0) {
+    renderStudentTags();
+    select.selectedIndex = -1; // Clear selection
+    
+    // Show feedback
+    showToast(`Added ${added} student(s) to assignment`);
+  }
+}
+
+function addSelectedGroups() {
+  const select = document.getElementById('groupSelect');
+  let added = 0;
+  
+  Array.from(select.selectedOptions).forEach(opt => {
+    if (!selectedGroups.has(opt.value)) {
+      selectedGroups.add(opt.value);
+      added++;
+    }
+  });
+  
+  if (added > 0) {
+    renderGroupTags();
+    select.selectedIndex = -1;
+    
+    showToast(`Added ${added} group(s) to assignment`);
+  }
+}
+
+function removeStudent(id) {
+  selectedStudents.delete(id);
+  renderStudentTags();
+  showToast('Student removed from assignment');
+}
+
+function removeGroup(id) {
+  selectedGroups.delete(id);
+  renderGroupTags();
+  showToast('Group removed from assignment');
+}
+
+// ===================== FEEDBACK =====================
+
+function showToast(message) {
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #10b981;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    font-size: 14px;
+    z-index: 10000;
+    animation: slideIn 0.3s ease;
+  `;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  // Remove after 3 seconds
+  setTimeout(() => {
+    toast.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Add animation CSS
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideIn {
+    from {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideOut {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(400px);
+      opacity: 0;
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// ===================== INITIALIZE ON PAGE LOAD =====================
+
+// Render existing assignments on page load
+document.addEventListener('DOMContentLoaded', () => {
+  renderStudentTags();
+  renderGroupTags();
+  
+  console.log(`Loaded ${selectedStudents.size} assigned students`);
+  console.log(`Loaded ${selectedGroups.size} assigned groups`);
+});
+
+// ===================== FORM SUBMISSION =====================
+
+document.getElementById('testForm').addEventListener('submit', (e) => {
+  // Form will submit with hidden inputs containing all assignments
+  console.log('Submitting with:');
+  console.log(`- ${selectedStudents.size} students`);
+  console.log(`- ${selectedGroups.size} groups`);
+});
+</script>
+
+{% endblock %}

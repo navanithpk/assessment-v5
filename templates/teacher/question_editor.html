@@ -1,0 +1,481 @@
+{% extends "teacher/teacher_base.html" %}
+{% load static %}
+
+{% block title %}
+  {% if question %}Edit Question{% else %}Add Question{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<style>
+.editor-card {
+  background: white;
+  border-radius: 14px;
+  padding: 26px;
+  max-width: 1100px;
+  margin: auto;
+  box-shadow: 0 6px 20px rgba(0,0,0,.08);
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.meta-grid label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.meta-grid select,
+.meta-grid input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.section {
+  margin-top: 22px;
+}
+
+.section label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.lo-box {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fafafa;
+}
+
+.lo-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.actions {
+  margin-top: 28px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn {
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn.green { background: #7cb342; color: white; }
+.btn.red { background: #d32f2f; color: white; }
+.btn.ai { background: #9c27b0; color: white; font-size: 13px; padding: 6px 12px; }
+.btn.ai:disabled { background: #bdbdbd; cursor: not-allowed; }
+
+.ai-button-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.ai-status {
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(124, 179, 66, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(124, 179, 66, 0);
+  }
+}
+</style>
+
+<div class="editor-card">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <h1 style="margin: 0;">{% if question %}Edit Question{% else %}Add Question{% endif %}</h1>
+  <div style="display: flex; gap: 12px;">
+    <button type="submit" form="questionForm" class="btn green">💾 Save</button>
+    <a href="{% url 'question_library' %}" class="btn red">❌ Cancel</a>
+  </div>
+</div>
+
+<form id="questionForm" method="post">
+{% csrf_token %}
+
+<div class="meta-grid">
+  <div>
+    <label>Grade</label>
+    <select name="grade" id="gradeSelect" required>
+      <option value="">Select</option>
+      {% for g in grades %}
+      <option value="{{ g.id }}" {% if question.grade_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label>Subject</label>
+    <select name="subject" id="subjectSelect" required>
+      <option value="">Select</option>
+      {% for s in subjects %}
+      <option value="{{ s.id }}" {% if question.subject_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label>Exam Year</label>
+    <input type="number" name="year" min="1990" max="2100" value="{{ question.year|default_if_none:'' }}">
+  </div>
+
+  <div>
+    <label>Marks</label>
+    <input type="number" name="marks" min="1" value="{{ question.marks|default:1 }}" required>
+  </div>
+</div>
+
+<div class="meta-grid">
+  <div>
+    <label>Question Type</label>
+    <select name="question_type" required>
+      <option value="mcq" {% if question.question_type == "mcq" %}selected{% endif %}>MCQ</option>
+      <option value="theory" {% if question.question_type == "theory" %}selected{% endif %}>Theory</option>
+      <option value="structured" {% if question.question_type == "structured" %}selected{% endif %}>Structured</option>
+      <option value="practical" {% if question.question_type == "practical" %}selected{% endif %}>Practical</option>
+    </select>
+  </div>
+
+  <div>
+    <label>Topic</label>
+    <select name="topic" id="topicSelect" required>
+      <option value="">Select topic</option>
+    </select>
+    <div class="ai-button-container">
+      <button type="button" class="btn ai" id="aiTopicBtn" onclick="suggestTopic()" disabled>
+        🤖 AI Suggest Topic
+      </button>
+      <span class="ai-status" id="aiTopicStatus"></span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <label>Learning Objectives</label>
+  <div class="ai-button-container" style="margin-bottom: 8px;">
+    <button type="button" class="btn ai" id="aiLOBtn" onclick="suggestLearningObjectives()" disabled>
+      🤖 AI Suggest Learning Objectives
+    </button>
+    <span class="ai-status" id="aiLOStatus"></span>
+  </div>
+  <div id="loBox" class="lo-box">
+    <em>Select a topic to load learning objectives</em>
+  </div>
+</div>
+
+<div class="section">
+  <label>Question Text</label>
+  <iframe id="questionFrame"
+    src="{% static 'editors/richtext_editor.html' %}"
+    style="width:100%; height:360px; border:1px solid #ccc; border-radius:10px;">
+  </iframe>
+</div>
+
+<div class="section">
+  <label>Answer / Mark Scheme</label>
+  <iframe id="answerFrame"
+    src="{% static 'editors/richtext_editor.html' %}"
+    style="width:100%; height:300px; border:1px solid #ccc; border-radius:10px;">
+  </iframe>
+</div>
+
+<input type="hidden" name="question_text" id="questionTextInput">
+<input type="hidden" name="answer_text" id="answerTextInput">
+<input type="hidden" name="los_selected" id="losSelectedInput">
+
+</form>
+</div>
+
+<script>
+const qFrame = document.getElementById("questionFrame");
+const aFrame = document.getElementById("answerFrame");
+const form   = document.getElementById("questionForm");
+const selectedLOs = new Set({{ selected_lo_ids|default:"[]"|safe }});
+
+qFrame.onload = () => {
+  {% if question %}
+  const questionText = `{{ question.question_text|escapejs }}`;
+  qFrame.contentWindow.setEditorHTML(questionText);
+  {% endif %}
+};
+
+aFrame.onload = () => {
+  {% if question %}
+  const answerText = `{{ question.answer_text|escapejs }}`;
+  aFrame.contentWindow.setEditorHTML(answerText);
+  {% endif %}
+};
+
+form.addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  // force iframe editors to respond
+  const qHTML = qFrame.contentWindow.getEditorHTML().trim();
+  const aHTML = aFrame.contentWindow.getEditorHTML().trim();
+
+  if (!qHTML || qHTML === "<br>" || qHTML === "<p><br></p>") {
+    alert("Question text is empty.");
+    return;
+  }
+
+  document.getElementById("questionTextInput").value = qHTML;
+  document.getElementById("answerTextInput").value   = aHTML;
+  document.getElementById("losSelectedInput").value  = Array.from(selectedLOs).join(",");
+
+  // Store a flag to indicate successful save, then close the window
+  sessionStorage.setItem('questionSaved', 'true');
+
+  form.submit();
+
+  // Auto-close tab after brief delay (allows redirect to complete)
+  setTimeout(() => {
+    window.close();
+  }, 500);
+});
+</script>
+
+<script>
+const gradeSelect = document.getElementById("gradeSelect");
+const subjectSelect = document.getElementById("subjectSelect");
+const topicSelect = document.getElementById("topicSelect");
+const loBox = document.getElementById("loBox");
+
+function loadTopics() {
+  topicSelect.innerHTML = "<option value=''>Select topic</option>";
+  loBox.innerHTML = "<em>Select a topic to load learning objectives</em>";
+
+  if (!gradeSelect.value || !subjectSelect.value) return;
+
+  fetch(`/ajax/topics/?grade_id=${gradeSelect.value}&subject_id=${subjectSelect.value}`)
+    .then(r => r.json())
+    .then(data => {
+      data.topics.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.id;
+        opt.textContent = t.name;
+        {% if question %}
+        if ({{ question.topic_id|default:"null" }} === t.id) opt.selected = true;
+        {% endif %}
+        topicSelect.appendChild(opt);
+      });
+      if (topicSelect.value) loadLOs(topicSelect.value);
+    });
+}
+
+function loadLOs(topicId) {
+  fetch(`/ajax/los/?topic_id=${topicId}`)
+    .then(r => r.json())
+    .then(data => {
+      loBox.innerHTML = "";
+      data.los.forEach(lo => {
+        const label = document.createElement("label");
+        label.className = "lo-item";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = lo.id;
+        cb.checked = selectedLOs.has(lo.id);
+        cb.onchange = () =>
+          cb.checked ? selectedLOs.add(lo.id) : selectedLOs.delete(lo.id);
+
+        label.appendChild(cb);
+        label.insertAdjacentHTML("beforeend",
+          `<strong>${lo.code}</strong> — ${lo.description}`);
+        loBox.appendChild(label);
+      });
+    });
+}
+
+gradeSelect.onchange = loadTopics;
+subjectSelect.onchange = loadTopics;
+topicSelect.onchange = () => loadLOs(topicSelect.value);
+
+loadTopics();
+
+// Enable AI buttons when appropriate fields are filled
+function updateAIButtons() {
+  const hasGrade = gradeSelect.value !== '';
+  const hasSubject = subjectSelect.value !== '';
+  const hasTopic = topicSelect.value !== '';
+
+  document.getElementById('aiTopicBtn').disabled = !(hasGrade && hasSubject);
+  document.getElementById('aiLOBtn').disabled = !hasTopic;
+}
+
+gradeSelect.addEventListener('change', updateAIButtons);
+subjectSelect.addEventListener('change', updateAIButtons);
+topicSelect.addEventListener('change', updateAIButtons);
+
+// AI Topic Suggestion
+async function suggestTopic() {
+  const btn = document.getElementById('aiTopicBtn');
+  const status = document.getElementById('aiTopicStatus');
+
+  // Get question content
+  const questionText = qFrame.contentWindow.getEditorHTML().trim();
+
+  if (!questionText || questionText === '<br>' || questionText === '<p><br></p>') {
+    status.textContent = 'Please enter question text first';
+    status.style.color = '#ef4444';
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = 'Analyzing question...';
+  status.style.color = '#666';
+
+  try {
+    const response = await fetch('/ajax/ai-suggest-topic/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        question_text: questionText,
+        subject_id: subjectSelect.value,
+        grade_id: gradeSelect.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Set the topic dropdown
+      topicSelect.value = data.topic_id;
+
+      // Trigger change event to load LOs
+      topicSelect.dispatchEvent(new Event('change'));
+
+      let statusMsg = `✓ Suggested: ${data.topic_name}`;
+      if (data.ocr_extracted) {
+        statusMsg += ` (${data.ocr_extracted})`;
+      }
+      if (data.service) {
+        statusMsg += ` [${data.service}]`;
+      }
+      statusMsg += ' - Remember to click Save!';
+
+      status.textContent = statusMsg;
+      status.style.color = '#10b981';
+
+      // Highlight the Save button
+      const saveBtn = document.querySelector('.btn.green');
+      saveBtn.style.animation = 'pulse 2s infinite';
+      setTimeout(() => {
+        saveBtn.style.animation = '';
+      }, 6000);
+    } else {
+      status.textContent = data.error || 'AI suggestion failed';
+      status.style.color = '#ef4444';
+    }
+  } catch (error) {
+    status.textContent = 'Error: ' + error.message;
+    status.style.color = '#ef4444';
+  } finally {
+    btn.disabled = false;
+    updateAIButtons();
+  }
+}
+
+// AI Learning Objectives Suggestion
+async function suggestLearningObjectives() {
+  const btn = document.getElementById('aiLOBtn');
+  const status = document.getElementById('aiLOStatus');
+
+  // Get question content
+  const questionText = qFrame.contentWindow.getEditorHTML().trim();
+
+  if (!questionText || questionText === '<br>' || questionText === '<p><br></p>') {
+    status.textContent = 'Please enter question text first';
+    status.style.color = '#ef4444';
+    return;
+  }
+
+  btn.disabled = true;
+  status.textContent = 'Analyzing question...';
+  status.style.color = '#666';
+
+  try {
+    const response = await fetch('/ajax/ai-suggest-los/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        question_text: questionText,
+        topic_id: topicSelect.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Check/select the suggested LOs
+      data.learning_objectives.forEach(lo => {
+        selectedLOs.add(lo.id);
+      });
+
+      // Refresh the LO checkboxes to show selection
+      loadLOs(topicSelect.value);
+
+      const loNames = data.learning_objectives.map(lo => lo.code).join(', ');
+      let statusMsg = `✓ Suggested: ${loNames}`;
+      if (data.ocr_extracted) {
+        statusMsg += ` (${data.ocr_extracted})`;
+      }
+      if (data.service) {
+        statusMsg += ` [${data.service}]`;
+      }
+      statusMsg += ' - Remember to click Save!';
+
+      status.textContent = statusMsg;
+      status.style.color = '#10b981';
+
+      // Highlight the Save button
+      const saveBtn = document.querySelector('.btn.green');
+      saveBtn.style.animation = 'pulse 2s infinite';
+      setTimeout(() => {
+        saveBtn.style.animation = '';
+      }, 6000);
+    } else {
+      status.textContent = data.error || 'AI suggestion failed';
+      status.style.color = '#ef4444';
+    }
+  } catch (error) {
+    status.textContent = 'Error: ' + error.message;
+    status.style.color = '#ef4444';
+  } finally {
+    btn.disabled = false;
+    updateAIButtons();
+  }
+}
+
+updateAIButtons();
+</script>
+{% endblock %}

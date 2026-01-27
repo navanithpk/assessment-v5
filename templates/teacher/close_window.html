@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Saved</title>
+</head>
+<body>
+<script>
+    // If opened as popup → closes
+    window.close();
+
+    // If not allowed to close (normal tab) → fallback
+    window.location.href = "{% url 'question_library' %}";
+</script>
+</body>
+</html>

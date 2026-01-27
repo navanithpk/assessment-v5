@@ -1,0 +1,625 @@
+{% extends 'teacher/teacher_base.html' %}
+
+{% block title %}Answer Space Designer - Q{{ question.id }}{% endblock %}
+
+{% block content %}
+<style>
+.designer-container {
+  display: flex;
+  height: calc(100vh - 100px);
+  gap: 0;
+}
+
+.question-panel {
+  width: 40%;
+  border-right: 2px solid #e5e7eb;
+  background: #f9fafb;
+  overflow: auto;
+  padding: 20px;
+}
+
+.config-panel {
+  width: 60%;
+  background: white;
+  overflow: auto;
+  padding: 20px;
+}
+
+.question-image {
+  width: 100%;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.question-info {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.question-info h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #111827;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 13px;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row .label {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.info-row .value {
+  color: #111827;
+}
+
+.parts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.parts-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.add-part-btn {
+  padding: 8px 16px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.add-part-btn:hover {
+  background: #059669;
+}
+
+.part-card {
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.part-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.part-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #374151;
+}
+
+.part-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.part-actions button {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn-remove {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-remove:hover {
+  background: #dc2626;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.form-group textarea {
+  min-height: 100px;
+  font-family: monospace;
+}
+
+.answer-type-selector {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.answer-type-option {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.answer-type-option:hover {
+  border-color: #3b82f6;
+}
+
+.answer-type-option.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.answer-type-option input[type="radio"] {
+  margin-right: 6px;
+}
+
+.config-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.config-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.save-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 2px solid #e5e7eb;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+
+.save-btn {
+  padding: 12px 32px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.save-btn:hover {
+  background: #2563eb;
+}
+
+.total-marks-display {
+  font-size: 14px;
+  color: #374151;
+}
+
+.total-marks-display strong {
+  font-size: 18px;
+  color: #111827;
+}
+</style>
+
+<div class="designer-container">
+  <!-- Left Panel: Question Preview -->
+  <div class="question-panel">
+    <h2 style="margin-top: 0; font-size: 18px; color: #111827;">Question Preview</h2>
+
+    {% if question.question_text %}
+    <img src="{{ question.question_text }}" alt="Question {{ question.id }}" class="question-image">
+    {% else %}
+    <div style="padding: 60px 20px; text-align: center; background: #f3f4f6; border-radius: 8px; color: #9ca3af;">
+      No preview available
+    </div>
+    {% endif %}
+
+    <div class="question-info">
+      <h3>Question Details</h3>
+      <div class="info-row">
+        <span class="label">Question ID</span>
+        <span class="value">#{{ question.id }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Grade</span>
+        <span class="value">{{ question.grade.name }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Subject</span>
+        <span class="value">{{ question.subject.name }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Topic</span>
+        <span class="value">{{ question.topic.name }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Year</span>
+        <span class="value">{{ question.year|default:"N/A" }}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Current Total Marks</span>
+        <span class="value" id="currentTotalMarks">{{ question.marks }}</span>
+      </div>
+    </div>
+
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 12px; font-size: 12px; color: #1e40af;">
+      <strong>💡 Tip:</strong> Define each question part (a, b, c...) separately. Set answer type (text/canvas) and markscheme for each part.
+    </div>
+  </div>
+
+  <!-- Right Panel: Configuration -->
+  <div class="config-panel">
+    <div class="parts-header">
+      <h2>Question Parts Configuration</h2>
+      <button class="add-part-btn" onclick="addPart()">+ Add Part</button>
+    </div>
+
+    <div id="partsContainer">
+      <!-- Parts will be rendered here by JavaScript -->
+    </div>
+  </div>
+</div>
+
+<!-- Save Bar -->
+<div class="save-bar">
+  <div class="total-marks-display">
+    Total Marks: <strong id="totalMarksDisplay">{{ question.marks }}</strong>
+  </div>
+  <div style="display: flex; gap: 12px;">
+    <button onclick="window.location.href='{% url 'unconfigured_questions_list' %}'" style="padding: 12px 24px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+      Cancel
+    </button>
+    <button class="save-btn" onclick="saveConfiguration()">
+      Save Configuration
+    </button>
+  </div>
+</div>
+
+<script>
+// Initialize parts configuration from Django template
+let partsConfig = {{ parts_config|safe }};
+
+// Render parts on load
+document.addEventListener('DOMContentLoaded', () => {
+  renderParts();
+  updateTotalMarks();
+});
+
+function renderParts() {
+  const container = document.getElementById('partsContainer');
+  container.innerHTML = '';
+
+  partsConfig.parts.forEach((part, index) => {
+    const partCard = createPartCard(part, index);
+    container.appendChild(partCard);
+  });
+}
+
+function createPartCard(part, index) {
+  const div = document.createElement('div');
+  div.className = 'part-card';
+  div.dataset.index = index;
+
+  div.innerHTML = `
+    <div class="part-header">
+      <div class="part-title">Part ${index + 1}</div>
+      <div class="part-actions">
+        ${index > 0 ? '<button class="btn-remove" onclick="removePart(' + index + ')">Remove</button>' : ''}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Part Label (e.g., "(a)", "(b)", "(i)")</label>
+      <input type="text" value="${part.part_label || ''}" onchange="updatePartField(${index}, 'part_label', this.value)" placeholder="(a)">
+    </div>
+
+    <div class="form-group">
+      <label>Marks for this part</label>
+      <input type="number" value="${part.marks}" onchange="updatePartField(${index}, 'marks', parseInt(this.value))" min="1" max="100">
+    </div>
+
+    <div class="form-group">
+      <label>Answer Type</label>
+      <div class="answer-type-selector">
+        <label class="answer-type-option ${part.answer_type === 'text' ? 'active' : ''}">
+          <input type="radio" name="answer_type_${index}" value="text" ${part.answer_type === 'text' ? 'checked' : ''} onchange="updateAnswerType(${index}, 'text')">
+          📝 Text Only
+        </label>
+        <label class="answer-type-option ${part.answer_type === 'canvas' ? 'active' : ''}">
+          <input type="radio" name="answer_type_${index}" value="canvas" ${part.answer_type === 'canvas' ? 'checked' : ''} onchange="updateAnswerType(${index}, 'canvas')">
+          🎨 Canvas Only
+        </label>
+        <label class="answer-type-option ${part.answer_type === 'both' ? 'active' : ''}">
+          <input type="radio" name="answer_type_${index}" value="both" ${part.answer_type === 'both' ? 'checked' : ''} onchange="updateAnswerType(${index}, 'both')">
+          📝🎨 Both
+        </label>
+      </div>
+    </div>
+
+    ${part.answer_type === 'text' || part.answer_type === 'both' ? createTextConfig(part, index) : ''}
+    ${part.answer_type === 'canvas' || part.answer_type === 'both' ? createCanvasConfig(part, index) : ''}
+
+    <div class="form-group">
+      <label>Markscheme / Marking Criteria</label>
+      <textarea onchange="updatePartField(${index}, 'markscheme', this.value)" placeholder="B1: Correct formula&#10;C1: Substitution&#10;A1: Final answer">${part.markscheme || ''}</textarea>
+    </div>
+  `;
+
+  return div;
+}
+
+function createTextConfig(part, index) {
+  const textConfig = part.text_config || {
+    input_type: 'long_text',
+    max_length: 1000,
+    model_answer: '',
+    ai_grading_enabled: true
+  };
+
+  return `
+    <div class="config-section">
+      <div class="config-section-title">Text Answer Configuration</div>
+
+      <div class="form-group">
+        <label>Input Type</label>
+        <select onchange="updateTextConfig(${index}, 'input_type', this.value)">
+          <option value="short_text" ${textConfig.input_type === 'short_text' ? 'selected' : ''}>Short Text (single line)</option>
+          <option value="long_text" ${textConfig.input_type === 'long_text' ? 'selected' : ''}>Long Text (paragraph)</option>
+          <option value="number" ${textConfig.input_type === 'number' ? 'selected' : ''}>Number Only</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Max Length (characters)</label>
+        <input type="number" value="${textConfig.max_length || 1000}" onchange="updateTextConfig(${index}, 'max_length', parseInt(this.value))" min="10" max="5000">
+      </div>
+
+      <div class="form-group">
+        <label>Model Answer (for AI grading reference)</label>
+        <textarea onchange="updateTextConfig(${index}, 'model_answer', this.value)" placeholder="Enter the expected answer for AI comparison">${textConfig.model_answer || ''}</textarea>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" ${textConfig.ai_grading_enabled ? 'checked' : ''} onchange="updateTextConfig(${index}, 'ai_grading_enabled', this.checked)">
+        <label>Enable AI-assisted grading for this part</label>
+      </div>
+    </div>
+  `;
+}
+
+function createCanvasConfig(part, index) {
+  const canvasConfig = part.canvas_config || {
+    width: 600,
+    height: 400,
+    instructions: '',
+    ai_grading_enabled: false
+  };
+
+  return `
+    <div class="config-section">
+      <div class="config-section-title">Canvas Answer Configuration</div>
+
+      <div class="form-group">
+        <label>Canvas Dimensions</label>
+        <div style="display: flex; gap: 12px;">
+          <div style="flex: 1;">
+            <input type="number" value="${canvasConfig.width || 600}" onchange="updateCanvasConfig(${index}, 'width', parseInt(this.value))" min="200" max="1200" placeholder="Width">
+          </div>
+          <div style="flex: 1;">
+            <input type="number" value="${canvasConfig.height || 400}" onchange="updateCanvasConfig(${index}, 'height', parseInt(this.value))" min="200" max="800" placeholder="Height">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Drawing Instructions for Students</label>
+        <textarea onchange="updateCanvasConfig(${index}, 'instructions', this.value)" placeholder="e.g., Draw a free body diagram showing all forces">${canvasConfig.instructions || ''}</textarea>
+      </div>
+
+      <div class="checkbox-group">
+        <input type="checkbox" ${canvasConfig.ai_grading_enabled ? 'checked' : ''} onchange="updateCanvasConfig(${index}, 'ai_grading_enabled', this.checked)">
+        <label>Enable AI image analysis (experimental)</label>
+      </div>
+    </div>
+  `;
+}
+
+function addPart() {
+  const newPart = {
+    part_id: String(partsConfig.parts.length + 1),
+    part_label: "",
+    marks: 1,
+    answer_type: "text",
+    text_config: {
+      input_type: "long_text",
+      max_length: 1000,
+      model_answer: "",
+      ai_grading_enabled: true
+    },
+    canvas_config: null,
+    markscheme: ""
+  };
+
+  partsConfig.parts.push(newPart);
+  renderParts();
+  updateTotalMarks();
+}
+
+function removePart(index) {
+  if (partsConfig.parts.length === 1) {
+    alert('Cannot remove the last part. At least one part is required.');
+    return;
+  }
+
+  if (confirm('Remove this part?')) {
+    partsConfig.parts.splice(index, 1);
+    // Renumber part IDs
+    partsConfig.parts.forEach((part, i) => {
+      part.part_id = String(i + 1);
+    });
+    renderParts();
+    updateTotalMarks();
+  }
+}
+
+function updatePartField(index, field, value) {
+  partsConfig.parts[index][field] = value;
+  if (field === 'marks') {
+    updateTotalMarks();
+  }
+}
+
+function updateAnswerType(index, type) {
+  partsConfig.parts[index].answer_type = type;
+
+  // Initialize configs based on type
+  if (type === 'text') {
+    partsConfig.parts[index].text_config = partsConfig.parts[index].text_config || {
+      input_type: 'long_text',
+      max_length: 1000,
+      model_answer: '',
+      ai_grading_enabled: true
+    };
+    partsConfig.parts[index].canvas_config = null;
+  } else if (type === 'canvas') {
+    partsConfig.parts[index].canvas_config = partsConfig.parts[index].canvas_config || {
+      width: 600,
+      height: 400,
+      instructions: '',
+      ai_grading_enabled: false
+    };
+    partsConfig.parts[index].text_config = null;
+  } else if (type === 'both') {
+    partsConfig.parts[index].text_config = partsConfig.parts[index].text_config || {
+      input_type: 'long_text',
+      max_length: 1000,
+      model_answer: '',
+      ai_grading_enabled: true
+    };
+    partsConfig.parts[index].canvas_config = partsConfig.parts[index].canvas_config || {
+      width: 600,
+      height: 400,
+      instructions: '',
+      ai_grading_enabled: false
+    };
+  }
+
+  renderParts();
+}
+
+function updateTextConfig(index, field, value) {
+  if (!partsConfig.parts[index].text_config) {
+    partsConfig.parts[index].text_config = {};
+  }
+  partsConfig.parts[index].text_config[field] = value;
+}
+
+function updateCanvasConfig(index, field, value) {
+  if (!partsConfig.parts[index].canvas_config) {
+    partsConfig.parts[index].canvas_config = {};
+  }
+  partsConfig.parts[index].canvas_config[field] = value;
+}
+
+function updateTotalMarks() {
+  const total = partsConfig.parts.reduce((sum, part) => sum + (parseInt(part.marks) || 0), 0);
+  document.getElementById('totalMarksDisplay').textContent = total;
+  document.getElementById('currentTotalMarks').textContent = total;
+}
+
+async function saveConfiguration() {
+  // Validate
+  if (partsConfig.parts.length === 0) {
+    alert('Please add at least one part');
+    return;
+  }
+
+  for (let i = 0; i < partsConfig.parts.length; i++) {
+    const part = partsConfig.parts[i];
+    if (!part.marks || part.marks < 1) {
+      alert(`Part ${i + 1}: Please enter valid marks`);
+      return;
+    }
+  }
+
+  const formData = new FormData();
+  formData.append('parts_config', JSON.stringify(partsConfig));
+  formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  try {
+    const response = await fetch('{% url "save_answer_spaces" question.id %}', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert('✅ Configuration saved successfully!\n\nTotal Marks: ' + data.total_marks + '\nParts: ' + partsConfig.parts.length);
+      window.location.href = '{% url "unconfigured_questions_list" %}';
+    } else {
+      alert('Error: ' + data.error);
+    }
+  } catch (error) {
+    alert('Error saving configuration: ' + error.message);
+  }
+}
+</script>
+{% endblock %}

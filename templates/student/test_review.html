@@ -1,0 +1,789 @@
+{% extends "student/student_base.html" %}
+
+{% block title %}{{ test.title }} - Review{% endblock %}
+
+{% block header_title %}{{ test.title }}{% endblock %}
+{% block header_subtitle %}Review your submitted answers{% endblock %}
+
+{% block extra_css %}
+<style>
+  .review-container {
+    padding: 32px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .summary-card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+    border: 2px solid var(--gray-200);
+  }
+
+  .summary-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .summary-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+  }
+
+  .submission-time {
+    font-size: 14px;
+    color: var(--gray-500);
+  }
+
+  .summary-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .summary-stat {
+    text-align: center;
+    padding: 20px;
+    background: var(--gray-50);
+    border-radius: 12px;
+  }
+
+  .summary-stat-value {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--primary);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .summary-stat-label {
+    font-size: 13px;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .question-review-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .question-review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--gray-200);
+  }
+
+  .question-number {
+    background: var(--primary);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .question-marks {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-600);
+    background: var(--gray-100);
+    padding: 8px 16px;
+    border-radius: 10px;
+  }
+
+  .question-text {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--gray-900);
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--gray-50);
+    border-radius: 12px;
+  }
+
+  .question-text img,
+  .your-answer img,
+  .correct-answer img {
+    max-width: 100%;
+    height: auto;
+    margin: 12px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .answer-section {
+    margin-top: 24px;
+  }
+
+  .answer-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gray-700);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .your-answer {
+    padding: 20px;
+    background: #f0f9ff;
+    border: 2px solid #bfdbfe;
+    border-radius: 12px;
+    min-height: 80px;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .no-answer {
+    color: var(--gray-400);
+    font-style: italic;
+  }
+
+  .correct-answer {
+    padding: 20px;
+    background: #f0fdf4;
+    border: 2px solid #bbf7d0;
+    border-radius: 12px;
+    margin-top: 16px;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  .score-display {
+    margin-top: 16px;
+    padding: 12px 20px;
+    background: var(--gray-100);
+    border-radius: 10px;
+    display: inline-block;
+    font-weight: 600;
+  }
+
+  .score-display.evaluated {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .score-display.pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--gray-200);
+    color: var(--gray-700);
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    margin-bottom: 24px;
+  }
+
+  .back-btn:hover {
+    background: var(--gray-300);
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .print-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .print-btn:hover {
+    background: #059669;
+  }
+
+  .print-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+
+  .questions-navigation {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 2px solid var(--gray-200);
+  }
+
+  .nav-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 12px;
+  }
+
+  .question-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+  }
+
+  .question-nav-btn {
+    padding: 10px;
+    border: 2px solid var(--gray-300);
+    border-radius: 8px;
+    background: white;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    text-decoration: none;
+    color: var(--gray-700);
+  }
+
+  .question-nav-btn:hover {
+    border-color: var(--primary);
+    background: #f0f9ff;
+  }
+
+  .question-nav-btn.correct {
+    background: #dcfce7;
+    border-color: #10b981;
+    color: #065f46;
+  }
+
+  .question-nav-btn.partial {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+  }
+
+  .question-nav-btn.incorrect {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+  }
+
+  .question-nav-btn.pending {
+    background: var(--gray-100);
+    border-color: var(--gray-300);
+    color: var(--gray-600);
+  }
+
+  .performance-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .perf-stat {
+    text-align: center;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--gray-50);
+  }
+
+  .perf-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    display: block;
+  }
+
+  .perf-stat-label {
+    font-size: 11px;
+    color: var(--gray-600);
+    margin-top: 4px;
+  }
+
+  .scroll-to-top {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 50px;
+    height: 50px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .scroll-to-top:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+  }
+
+  .scroll-to-top.visible {
+    display: flex;
+  }
+
+  @media (max-width: 768px) {
+    .summary-stats {
+      grid-template-columns: 1fr;
+    }
+
+    .review-container {
+      padding: 20px;
+    }
+
+    .question-nav-grid {
+      grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    }
+  }
+
+  @media print {
+    .action-buttons,
+    .back-btn,
+    .questions-navigation,
+    .scroll-to-top {
+      display: none !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review-container">
+  <div class="action-buttons">
+    <a href="{% url 'student_results' %}" class="back-btn">
+      ← Back to Results
+    </a>
+    <button id="downloadPdfBtn" class="print-btn" onclick="generatePDF()">
+      📄 Download PDF Report
+    </button>
+  </div>
+
+  {% if not is_fully_graded %}
+  <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 24px 0; color: #92400e;">
+    <strong>⚠️ Grading In Progress:</strong> Some questions haven't been graded yet. Your final score may change.
+  </div>
+  {% endif %}
+
+  <div class="summary-card" id="summary-card">
+    <div class="summary-header">
+      <h2 class="summary-title">{{ test.title }}</h2>
+      <h3 style="font-size: 32px; font-weight: 700; color: {% if percentage >= 80 %}#16a34a{% elif percentage >= 60 %}#2563eb{% elif percentage >= 40 %}#ca8a04{% else %}#dc2626{% endif %}; margin: 12px 0;">
+        {{ percentage }}%
+      </h3>
+      <p class="submission-time">
+        {{ scored_marks|floatformat:1 }} out of {{ total_marks }} marks
+      </p>
+    </div>
+
+    <div class="summary-stats">
+      <div class="summary-stat">
+        <span class="summary-stat-value">{{ scored_marks|floatformat:1 }}</span>
+        <span class="summary-stat-label">Marks Earned</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-stat-value">{{ total_marks }}</span>
+        <span class="summary-stat-label">Total Marks</span>
+      </div>
+      <div class="summary-stat">
+        <span class="summary-stat-value">{{ review_data|length }}</span>
+        <span class="summary-stat-label">Total Questions</span>
+      </div>
+    </div>
+
+    <div class="performance-summary">
+      <div class="perf-stat" style="background: #dcfce7;">
+        <span class="perf-stat-value" style="color: #16a34a;" id="correct-count">0</span>
+        <span class="perf-stat-label">Correct</span>
+      </div>
+      <div class="perf-stat" style="background: #fef3c7;">
+        <span class="perf-stat-value" style="color: #ca8a04;" id="partial-count">0</span>
+        <span class="perf-stat-label">Partial</span>
+      </div>
+      <div class="perf-stat" style="background: #fee2e2;">
+        <span class="perf-stat-value" style="color: #dc2626;" id="incorrect-count">0</span>
+        <span class="perf-stat-label">Incorrect</span>
+      </div>
+      <div class="perf-stat" style="background: #f3f4f6;">
+        <span class="perf-stat-value" style="color: #6b7280;" id="pending-count">0</span>
+        <span class="perf-stat-label">Pending</span>
+      </div>
+    </div>
+  </div>
+
+  {% if review_data|length > 3 %}
+  <div class="questions-navigation">
+    <div class="nav-title">Jump to Question:</div>
+    <div class="question-nav-grid">
+      {% for rd in review_data %}
+      <a href="#question-{{ forloop.counter }}" class="question-nav-btn" data-question-id="{{ forloop.counter }}" data-awarded="{{ rd.awarded_marks|default:'null' }}" data-max="{{ rd.max_marks }}">
+        Q{{ forloop.counter }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 20px; color: var(--gray-900);">
+    Question-wise Review
+  </h3>
+
+  {% for rd in review_data %}
+  <div class="question-review-card" id="question-{{ forloop.counter }}">
+    <div class="question-review-header">
+      <span class="question-number">Question {{ forloop.counter }}</span>
+      <span class="question-marks">
+        {% if rd.awarded_marks is not None %}
+          {{ rd.awarded_marks|floatformat:1 }} / {{ rd.max_marks }} marks
+        {% else %}
+          {{ rd.max_marks }} marks
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="question-text">
+      {{ rd.question.question_text|linebreaksbr|safe }}
+    </div>
+
+    <div class="answer-section">
+      <div class="answer-label">
+        📝 Your Answer:
+      </div>
+      <div class="your-answer">
+        {% if rd.student_answer and rd.student_answer.answer_text %}
+          {{ rd.student_answer.answer_text|linebreaksbr|safe }}
+        {% else %}
+          <span class="no-answer">No answer provided</span>
+        {% endif %}
+      </div>
+
+      {% if rd.awarded_marks is not None %}
+        <div class="score-display evaluated">
+          Score: {{ rd.awarded_marks|floatformat:1 }} / {{ rd.max_marks }}
+        </div>
+      {% else %}
+        <div class="score-display pending">
+          ⏳ Awaiting teacher evaluation
+        </div>
+      {% endif %}
+
+      {% if rd.question.answer_text %}
+      <div style="margin-top: 20px;">
+        <div class="answer-label">
+          ✅ Model Answer:
+        </div>
+        <div class="correct-answer">
+          {{ rd.question.answer_text|linebreaksbr|safe }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <div style="text-align: center; margin-top: 40px;">
+    <a href="{% url 'student_results' %}" class="back-btn" style="font-size: 16px; padding: 14px 32px;">
+      ← Return to My Results
+    </a>
+  </div>
+</div>
+
+<button class="scroll-to-top" id="scrollToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+  ↑
+</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+// Calculate performance stats
+document.addEventListener('DOMContentLoaded', function() {
+  const navButtons = document.querySelectorAll('.question-nav-btn');
+  let correctCount = 0;
+  let partialCount = 0;
+  let incorrectCount = 0;
+  let pendingCount = 0;
+
+  navButtons.forEach(btn => {
+    const awarded = btn.dataset.awarded;
+    const max = parseFloat(btn.dataset.max);
+
+    if (awarded === 'null' || awarded === 'None') {
+      btn.classList.add('pending');
+      pendingCount++;
+    } else {
+      const awardedNum = parseFloat(awarded);
+      const percentage = (awardedNum / max) * 100;
+
+      if (percentage >= 90) {
+        btn.classList.add('correct');
+        correctCount++;
+      } else if (percentage >= 40) {
+        btn.classList.add('partial');
+        partialCount++;
+      } else {
+        btn.classList.add('incorrect');
+        incorrectCount++;
+      }
+    }
+  });
+
+  document.getElementById('correct-count').textContent = correctCount;
+  document.getElementById('partial-count').textContent = partialCount;
+  document.getElementById('incorrect-count').textContent = incorrectCount;
+  document.getElementById('pending-count').textContent = pendingCount;
+
+  // Scroll to top button
+  const scrollBtn = document.getElementById('scrollToTop');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 300) {
+      scrollBtn.classList.add('visible');
+    } else {
+      scrollBtn.classList.remove('visible');
+    }
+  });
+
+  // Smooth scroll for navigation
+  document.querySelectorAll('a[href^="#question-"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+});
+
+function generatePDF() {
+  const btn = document.getElementById('downloadPdfBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating PDF...';
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Extract data from the page
+  const testTitle = "{{ test.title }}";
+  const studentName = "{{ request.user.get_full_name|default:request.user.username }}";
+  const percentage = {{ percentage }};
+  const scoredMarks = {{ scored_marks|floatformat:1 }};
+  const totalMarks = {{ total_marks }};
+  const totalQuestions = {{ review_data|length }};
+
+  const correctCount = parseInt(document.getElementById('correct-count').textContent);
+  const partialCount = parseInt(document.getElementById('partial-count').textContent);
+  const incorrectCount = parseInt(document.getElementById('incorrect-count').textContent);
+  const pendingCount = parseInt(document.getElementById('pending-count').textContent);
+
+  // Set colors
+  const primaryColor = [37, 99, 235];
+  const successColor = [22, 163, 74];
+  const warningColor = [202, 138, 4];
+  const dangerColor = [220, 38, 38];
+  const grayColor = [107, 114, 128];
+
+  let scoreColor = primaryColor;
+  if (percentage >= 80) scoreColor = successColor;
+  else if (percentage >= 60) scoreColor = primaryColor;
+  else if (percentage >= 40) scoreColor = warningColor;
+  else scoreColor = dangerColor;
+
+  // Page setup
+  let yPos = 20;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - (2 * margin);
+
+  // Header
+  doc.setFillColor(37, 99, 235);
+  doc.rect(0, 0, pageWidth, 40, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont(undefined, 'bold');
+  doc.text('Test Results Report', pageWidth / 2, 25, { align: 'center' });
+
+  yPos = 55;
+
+  // Student and Test Info
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Student: ${studentName}`, margin, yPos);
+  yPos += 7;
+  doc.text(`Test: ${testTitle}`, margin, yPos);
+  yPos += 7;
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, margin, yPos);
+  yPos += 15;
+
+  // Score Box
+  doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+  doc.roundedRect(margin, yPos, contentWidth, 35, 3, 3, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(32);
+  doc.setFont(undefined, 'bold');
+  doc.text(`${percentage}%`, pageWidth / 2, yPos + 15, { align: 'center' });
+
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'normal');
+  doc.text(`${scoredMarks} out of ${totalMarks} marks`, pageWidth / 2, yPos + 27, { align: 'center' });
+
+  yPos += 45;
+
+  // Performance Summary
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('Performance Summary', margin, yPos);
+  yPos += 10;
+
+  const boxWidth = (contentWidth - 15) / 4;
+  const boxHeight = 30;
+
+  // Correct box
+  doc.setFillColor(220, 252, 231);
+  doc.roundedRect(margin, yPos, boxWidth, boxHeight, 2, 2, 'F');
+  doc.setTextColor(22, 163, 74);
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.text(correctCount.toString(), margin + boxWidth / 2, yPos + 15, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.text('Correct', margin + boxWidth / 2, yPos + 23, { align: 'center' });
+
+  // Partial box
+  doc.setFillColor(254, 243, 199);
+  doc.roundedRect(margin + boxWidth + 5, yPos, boxWidth, boxHeight, 2, 2, 'F');
+  doc.setTextColor(202, 138, 4);
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.text(partialCount.toString(), margin + boxWidth * 1.5 + 5, yPos + 15, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.text('Partial', margin + boxWidth * 1.5 + 5, yPos + 23, { align: 'center' });
+
+  // Incorrect box
+  doc.setFillColor(254, 226, 226);
+  doc.roundedRect(margin + boxWidth * 2 + 10, yPos, boxWidth, boxHeight, 2, 2, 'F');
+  doc.setTextColor(220, 38, 38);
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.text(incorrectCount.toString(), margin + boxWidth * 2.5 + 10, yPos + 15, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.text('Incorrect', margin + boxWidth * 2.5 + 10, yPos + 23, { align: 'center' });
+
+  // Pending box
+  doc.setFillColor(243, 244, 246);
+  doc.roundedRect(margin + boxWidth * 3 + 15, yPos, boxWidth, boxHeight, 2, 2, 'F');
+  doc.setTextColor(107, 114, 128);
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.text(pendingCount.toString(), margin + boxWidth * 3.5 + 15, yPos + 15, { align: 'center' });
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.text('Pending', margin + boxWidth * 3.5 + 15, yPos + 23, { align: 'center' });
+
+  yPos += 45;
+
+  // Question-wise breakdown
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('Question-wise Breakdown', margin, yPos);
+  yPos += 10;
+
+  const reviewData = [
+    {% for rd in review_data %}
+    {
+      number: {{ forloop.counter }},
+      awarded: {% if rd.awarded_marks is not None %}{{ rd.awarded_marks|floatformat:1 }}{% else %}null{% endif %},
+      max: {{ rd.max_marks }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+
+  reviewData.forEach((q, index) => {
+    if (yPos > pageHeight - 30) {
+      doc.addPage();
+      yPos = margin;
+    }
+
+    let status = 'Pending';
+    let statusColor = grayColor;
+
+    if (q.awarded !== null) {
+      const perc = (q.awarded / q.max) * 100;
+      if (perc >= 90) {
+        status = 'Correct';
+        statusColor = successColor;
+      } else if (perc >= 40) {
+        status = 'Partial';
+        statusColor = warningColor;
+      } else {
+        status = 'Incorrect';
+        statusColor = dangerColor;
+      }
+    }
+
+    doc.setDrawColor(229, 231, 235);
+    doc.setFillColor(249, 250, 251);
+    doc.roundedRect(margin, yPos, contentWidth, 12, 2, 2, 'FD');
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Q${q.number}`, margin + 3, yPos + 8);
+
+    doc.setFont(undefined, 'normal');
+    const marksText = q.awarded !== null ? `${q.awarded} / ${q.max}` : `- / ${q.max}`;
+    doc.text(`Marks: ${marksText}`, margin + 25, yPos + 8);
+
+    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.text(status, pageWidth - margin - 20, yPos + 8);
+
+    yPos += 15;
+  });
+
+  // Footer
+  yPos = pageHeight - 20;
+  doc.setTextColor(107, 114, 128);
+  doc.setFontSize(8);
+  doc.text('Generated on ' + new Date().toLocaleString(), pageWidth / 2, yPos, { align: 'center' });
+
+  // Save PDF
+  doc.save(`${testTitle.replace(/[^a-z0-9]/gi, '_')}_Results.pdf`);
+
+  // Reset button
+  btn.disabled = false;
+  btn.textContent = '📄 Download PDF Report';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Class Performance{% endblock %}
+
+{% block content %}
+
+<style>
+.performance-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px 0;
+}
+
+.header p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.placeholder-card {
+  background: white;
+  border-radius: 16px;
+  padding: 60px 40px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.placeholder-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.3;
+}
+
+.placeholder-card h2 {
+  font-size: 24px;
+  color: #374151;
+  margin: 0 0 12px 0;
+}
+
+.placeholder-card p {
+  color: #6b7280;
+  font-size: 16px;
+  margin: 0;
+}
+</style>
+
+<div class="performance-container">
+  <div class="header">
+    <h1>📊 Class Performance</h1>
+    <p>Analytics and insights for your classes</p>
+  </div>
+
+  <div class="placeholder-card">
+    <div class="placeholder-icon">📈</div>
+    <h2>Performance Analytics Coming Soon</h2>
+    <p>This feature will show detailed performance metrics, test scores, and learning objective coverage for your classes.</p>
+  </div>
+</div>
+
+{% endblock %}

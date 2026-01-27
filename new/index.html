@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>QP Manual Slicer</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+
+<style>
+body{
+    margin:0;
+    display:flex;
+    height:100vh;
+    font-family:system-ui;
+}
+
+/* Sidebar */
+#sidebar{
+    width:240px;
+    border-right:1px solid #ccc;
+    display:flex;
+    flex-direction:column;
+}
+#fileList{
+    flex:1;
+    overflow:auto;
+    padding:6px;
+}
+.done{
+    background:#d4f7d4;
+}
+
+/* Center */
+#center{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+#toolbar{
+    padding:8px;
+    border-bottom:1px solid #ddd;
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+/* FIXED viewer */
+#viewer{
+    flex:1;
+    background:#eee;
+    overflow:auto;
+    padding:20px;
+}
+
+#viewer canvas{
+    display:block;
+    margin:auto;
+}
+
+/* Log */
+#log{
+    width:260px;
+    border-left:1px solid #ddd;
+    font-size:12px;
+    padding:6px;
+    overflow:auto;
+}
+</style>
+</head>
+
+<body>
+
+<div id="sidebar">
+<input type="file" id="folderPicker" webkitdirectory multiple>
+<div id="fileList"></div>
+</div>
+
+<div id="center">
+
+<div id="toolbar">
+<button onclick="prevPage()">◀</button>
+<input id="pageBox" style="width:60px">
+<button onclick="nextPage()">▶</button>
+
+<label>
+<input type="checkbox" id="includeFirst">
+Include first page
+</label>
+
+<button onclick="sliceDocument()">Slice</button>
+
+<span style="font-size:12px">
+Z=start | X=end | C=pair | ↑↓ move | ←→ pages | Shift+←→ docs | Delete remove
+</span>
+</div>
+
+<div id="viewer">
+<canvas id="canvas"></canvas>
+</div>
+</div>
+
+<div id="log"></div>
+
+<script>
+const processed = {{ processed|tojson }};
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let files=[], pdfDoc=null;
+let pageNum=1, currentName="";
+let canvas=new fabric.Canvas("canvas");
+let scale=1.4;
+
+let linesByPage={};
+let activeRect;
+
+const logBox=document.getElementById("log");
+const log=m=>logBox.innerHTML+=m+"<br>";
+
+/* ---------------- File Picker ---------------- */
+folderPicker.onchange=e=>{
+
+    files=[...e.target.files].filter(f=>f.name.includes("qp"));
+
+    fileList.innerHTML="";
+
+    files.forEach((f,i)=>{
+        let d=document.createElement("div");
+        d.textContent=f.name;
+
+        if(processed.includes(f.name.replace(".pdf","")))
+            d.className="done";
+
+        d.onclick=()=>loadFile(i);
+        fileList.appendChild(d);
+    });
+
+    if(files.length) loadFile(0);
+};
+
+/* ---------------- Load ---------------- */
+async function loadFile(i){
+
+    currentName=files[i].name.replace(".pdf","");
+
+    const buf=await files[i].arrayBuffer();
+    pdfDoc=await pdfjsLib.getDocument(buf).promise;
+
+    pageNum=1;
+    linesByPage={};
+
+    renderPage();
+}
+
+/* ---------------- Render ---------------- */
+async function renderPage(){
+
+    const page=await pdfDoc.getPage(pageNum);
+    const vp=page.getViewport({scale});
+
+    const tmp=document.createElement("canvas");
+    tmp.width=vp.width;
+    tmp.height=vp.height;
+
+    await page.render({
+        canvasContext:tmp.getContext("2d"),
+        viewport:vp
+    }).promise;
+
+    canvas.clear();
+    canvas.setWidth(vp.width);
+    canvas.setHeight(vp.height);
+
+    canvas.setBackgroundImage(
+        new fabric.Image(tmp,{selectable:false}),
+        canvas.renderAll.bind(canvas)
+    );
+
+    canvas.calcOffset();
+
+    if(!activeRect){
+        activeRect=new fabric.Rect({
+            left:40,
+            top:40,
+            width:canvas.width-80,
+            height:canvas.height-80,
+            fill:"rgba(0,0,255,0.05)",
+            stroke:"blue"
+        });
+    }
+
+    canvas.add(activeRect);
+
+    if(linesByPage[pageNum])
+        linesByPage[pageNum].forEach(l=>canvas.add(l));
+
+    pageBox.value=pageNum;
+}
+
+/* ---------------- Line creation ---------------- */
+function makeLine(y,color){
+    return new fabric.Line([0,y,canvas.width,y],{
+        stroke:color,
+        strokeWidth:3,
+        selectable:true,
+        lockScalingY:true
+    });
+}
+
+function addLine(y,color){
+    let l=makeLine(y,color);
+    canvas.add(l);
+
+    if(!linesByPage[pageNum]) linesByPage[pageNum]=[];
+    linesByPage[pageNum].push(l);
+}
+
+/* ⭐ NEW: Add pair */
+function addPair(y){
+    addLine(y,"red");
+    addLine(y+10,"green");
+}
+
+/* ---------------- Keyboard ---------------- */
+let mouseY=0;
+canvas.on("mouse:move",e=>mouseY=e.pointer.y);
+
+document.addEventListener("keydown",e=>{
+
+    /* page nav */
+    if(e.key==="ArrowRight" && !e.shiftKey) return nextPage();
+    if(e.key==="ArrowLeft" && !e.shiftKey) return prevPage();
+
+    /* doc nav */
+    if(e.key==="ArrowRight" && e.shiftKey) return nextFile();
+    if(e.key==="ArrowLeft" && e.shiftKey) return prevFile();
+
+    /* line shortcuts */
+    if(e.key==="z") addLine(mouseY,"green");
+    if(e.key==="x") addLine(mouseY,"red");
+
+    /* ⭐ NEW KEY */
+    if(e.key==="c") addPair(mouseY);
+
+    let obj=canvas.getActiveObject();
+    if(!obj) return;
+
+    if(e.key==="ArrowUp"){ obj.top-=2; canvas.renderAll(); }
+    if(e.key==="ArrowDown"){ obj.top+=2; canvas.renderAll(); }
+    if(e.key==="Delete") canvas.remove(obj);
+});
+
+/* ---------------- Navigation ---------------- */
+function nextPage(){ if(pageNum<pdfDoc.numPages){pageNum++;renderPage();}}
+function prevPage(){ if(pageNum>1){pageNum--;renderPage();}}
+
+pageBox.onchange=()=>{pageNum=parseInt(pageBox.value);renderPage();};
+
+function nextFile(){
+    let i=files.findIndex(f=>f.name.replace(".pdf","")===currentName)+1;
+    if(i<files.length) loadFile(i);
+}
+
+function prevFile(){
+    let i=files.findIndex(f=>f.name.replace(".pdf","")===currentName)-1;
+    if(i>=0) loadFile(i);
+}
+
+/* ---------------- Slice ---------------- */
+async function sliceDocument(){
+
+    let images=[];
+    let startPage = includeFirst.checked ? 1 : 2;
+
+    let openSegment=null;
+
+    for(let p=startPage;p<=pdfDoc.numPages;p++){
+
+        const page=await pdfDoc.getPage(p);
+        const vp=page.getViewport({scale});
+
+        const tmp=document.createElement("canvas");
+        tmp.width=vp.width;
+        tmp.height=vp.height;
+
+        await page.render({canvasContext:tmp.getContext("2d"),viewport:vp}).promise;
+
+        let lines=(linesByPage[p]||[]).sort((a,b)=>a.top-b.top);
+
+        const left=activeRect.left;
+        const width=activeRect.getScaledWidth();
+
+        for(let l of lines){
+
+            if(l.stroke==="green"){
+                openSegment={canvas:null,start:l.top};
+            }
+
+            if(l.stroke==="red" && openSegment){
+
+                let part=crop(tmp,left,openSegment.start,width,l.top-openSegment.start);
+                openSegment.canvas=stitch(openSegment.canvas,part);
+
+                images.push(openSegment.canvas.toDataURL());
+                openSegment=null;
+            }
+        }
+    }
+
+    await fetch("/save_slices",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({filename:currentName,images})
+    });
+
+    log("Saved ✔");
+}
+
+function crop(src,x,y,w,h){
+    let c=document.createElement("canvas");
+    c.width=w; c.height=h;
+    c.getContext("2d").drawImage(src,x,y,w,h,0,0,w,h);
+    return c;
+}
+
+function stitch(a,b){
+    if(!a) return b;
+    let c=document.createElement("canvas");
+    c.width=a.width;
+    c.height=a.height+b.height;
+    let ctx=c.getContext("2d");
+    ctx.drawImage(a,0,0);
+    ctx.drawImage(b,0,a.height);
+    return c;
+}
+</script>
+
+</body>
+</html>

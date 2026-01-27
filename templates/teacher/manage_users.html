@@ -1,0 +1,81 @@
+{% extends "teacher/teacher_base.html" %}
+{% block title %}View & Manage All Users{% endblock %}
+{% block content %}
+
+<!-- ⚠️ CSS UNCHANGED -->
+<style>
+/* EXACT SAME CSS AS BEFORE */
+</style>
+
+<div class="header">
+  <div class="header-left">
+    <h1>View & Manage All Users</h1>
+    <p>Search and manage all student and teacher accounts</p>
+  </div>
+</div>
+
+<div class="filter-tabs">
+  <button class="filter-tab active" onclick="filterByRole('all')" id="tab-all">
+    👥 All Users ({{ users|length }})
+  </button>
+  <button class="filter-tab" onclick="filterByRole('student')" id="tab-student">👨‍🎓 Students</button>
+  <button class="filter-tab" onclick="filterByRole('teacher')" id="tab-teacher">👨‍🏫 Teachers</button>
+  <button class="filter-tab" onclick="filterByRole('school_admin')" id="tab-admin">👨‍💼 Admins</button>
+</div>
+
+<div class="search-bar">
+  <input type="text" id="search-input" placeholder="Search by name or email..." onkeyup="filterTable()">
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Details</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      {% for user in users %}
+      <tr data-role="{{ user.profile.role }}">
+        <td class="user-name">{{ user.get_full_name|default:user.username }}</td>
+        <td>{{ user.username }}</td>
+        <td>
+          {% if user.profile.role == "student" %}
+            <span class="role-badge student">Student</span>
+          {% elif user.profile.role == "teacher" %}
+            <span class="role-badge teacher">Teacher</span>
+          {% else %}
+            <span class="role-badge admin">Admin</span>
+          {% endif %}
+        </td>
+        <td class="user-meta">
+          {% if user.profile.role == "student" %}
+            Grade {{ user.profile.grade }} – {{ user.profile.division }}
+          {% elif user.profile.subject %}
+            {{ user.profile.subject }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          {% if request.user.profile.role == "school_admin" or user.profile.role == "student" or user.id == request.user.id %}
+            <button class="btn btn-edit"
+              onclick="openPasswordModal('{{ user.id }}', '{{ user.get_full_name|default:user.username }}')">
+              🔒 Reset Password
+            </button>
+          {% else %}
+            <span class="no-access-text">Admin only</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal + JS unchanged -->
+{% endblock %}

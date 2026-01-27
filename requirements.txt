@@ -1,0 +1,14 @@
+Django==4.2
+pandas
+openpyxl
+PyMuPDF
+Pillow
+requests
+anthropic
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+gunicorn
+psycopg2-binary
+whitenoise
+dj-database-url

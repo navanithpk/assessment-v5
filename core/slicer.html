@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>QP Slicer Workstation</title>
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<!-- Fabric.js (drawing tools) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+
+<!-- JSZip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:system-ui;
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+}
+
+/* LEFT PANEL */
+#sidebar{
+    width:260px;
+    border-right:1px solid #ddd;
+    display:flex;
+    flex-direction:column;
+}
+
+#fileList{
+    flex:1;
+    overflow:auto;
+    padding:6px;
+}
+
+.fileItem{
+    padding:6px;
+    cursor:pointer;
+    border-radius:6px;
+}
+.fileItem:hover{ background:#eee }
+
+/* CENTER */
+#center{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+#toolbar{
+    padding:8px;
+    border-bottom:1px solid #ddd;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+}
+
+button{ padding:6px 10px }
+
+#viewer{
+    flex:1;
+    overflow:auto;
+    display:flex;
+    justify-content:center;
+    background:#f3f3f3;
+}
+
+/* LOG */
+#log{
+    width:260px;
+    border-left:1px solid #ddd;
+    font-size:12px;
+    overflow:auto;
+    padding:6px;
+    background:#fafafa;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LEFT -->
+<div id="sidebar">
+    <input type="file" id="folderPicker" webkitdirectory multiple>
+    <div id="fileList"></div>
+</div>
+
+<!-- CENTER -->
+<div id="center">
+
+    <div id="toolbar">
+        <button onclick="addRedLine()">➕ Red Line</button>
+        <button onclick="prevPage()">◀ Page</button>
+        <input id="pageNum" type="number" style="width:60px" onchange="gotoPage()">
+        <button onclick="nextPage()">Page ▶</button>
+        <button onclick="nextFile()">Next File ▶▶</button>
+        <button onclick="sliceDocument()">✂ Slice</button>
+		<button onclick="undo()">Undo</button>
+		<button onclick="redo()">Redo</button>
+
+    </div>
+
+    <div id="viewer">
+        <canvas id="canvas"></canvas>
+    </div>
+</div>
+
+<!-- RIGHT -->
+<div id="log"></div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let files = [];
+let currentFileIndex = 0;
+let pdfDoc = null;
+let pageNum = 1;
+
+let canvas = new fabric.Canvas('canvas');
+let scale = 1.5;
+
+let redLines = {}; // page -> lines
+let activeRect = null;
+
+function log(msg){
+    const el = document.getElementById("log");
+    el.innerHTML += msg + "<br>";
+    el.scrollTop = el.scrollHeight;
+}
+
+/* -------------------------
+   FOLDER LOAD
+------------------------- */
+folderPicker.onchange = (e)=>{
+    files = [...e.target.files].filter(f =>
+        f.name.toLowerCase().includes("qp") && f.name.endsWith(".pdf")
+    );
+
+    let list = document.getElementById("fileList");
+    list.innerHTML="";
+
+    files.forEach((f,i)=>{
+        let div = document.createElement("div");
+        div.className="fileItem";
+        div.innerText=f.name;
+        div.onclick=()=>loadFile(i);
+        list.appendChild(div);
+    });
+
+    log("Loaded "+files.length+" qp files");
+};
+
+async function loadFile(i){
+    currentFileIndex=i;
+
+    const arrayBuffer = await files[i].arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument(arrayBuffer).promise;
+
+    pageNum=1;
+    redLines={};
+
+    renderPage();
+    log("Opened: "+files[i].name);
+}
+
+function nextFile(){
+    if(currentFileIndex < files.length-1)
+        loadFile(currentFileIndex+1);
+}
+
+/* -------------------------
+   PAGE RENDER
+------------------------- */
+async function renderPage(){
+
+    const page = await pdfDoc.getPage(pageNum);
+    const viewport = page.getViewport({scale});
+
+    const temp = document.createElement("canvas");
+    temp.width = viewport.width;
+    temp.height = viewport.height;
+
+    await page.render({canvasContext:temp.getContext("2d"), viewport}).promise;
+
+    canvas.clear();
+    canvas.setWidth(viewport.width);
+    canvas.setHeight(viewport.height);
+
+    let bg = new fabric.Image(temp, { selectable:false });
+    canvas.setBackgroundImage(bg, canvas.renderAll.bind(canvas));
+
+    if(!redLines[pageNum]) redLines[pageNum]=[];
+
+    restoreLines();
+    restoreActiveRect();
+
+    pageNumInput.value = pageNum;
+}
+
+/* -------------------------
+   NAVIGATION
+------------------------- */
+const pageNumInput = document.getElementById("pageNum");
+
+function nextPage(){
+    if(pageNum < pdfDoc.numPages){
+        pageNum++;
+        renderPage();
+    }
+}
+
+function prevPage(){
+    if(pageNum>1){
+        pageNum--;
+        renderPage();
+    }
+}
+
+function gotoPage(){
+    pageNum = parseInt(pageNumInput.value);
+    renderPage();
+}
+
+/* -------------------------
+   RED LINES
+------------------------- */
+function addRedLine(){
+
+    let line = new fabric.Line(
+        [0, 200, canvas.width, 200],
+        {
+            stroke:"red",
+            strokeWidth:2,
+            selectable:true
+        }
+    );
+
+    canvas.add(line);
+    redLines[pageNum].push(line);
+
+    log("Added line on page "+pageNum);
+}
+
+function restoreLines(){
+    redLines[pageNum].forEach(l=>canvas.add(l));
+}
+
+/* -------------------------
+   ACTIVE AREA RECTANGLE
+------------------------- */
+function restoreActiveRect(){
+    if(!activeRect){
+        activeRect = new fabric.Rect({
+            left:50, top:50,
+            width:canvas.width-100,
+            height:canvas.height-100,
+            fill:"rgba(0,0,255,0.05)",
+            stroke:"blue",
+            strokeWidth:2,
+            hasRotatingPoint:false
+        });
+    }
+    canvas.add(activeRect);
+}
+
+/* -------------------------
+   SLICE + EXPORT
+------------------------- */
+async function sliceDocument(){
+
+    log("Slicing document...");
+
+    let zip = new JSZip();
+    let segmentIndex=1;
+
+    let carrySegment=null;
+
+    for(let p=1;p<=pdfDoc.numPages;p++){
+
+        const page = await pdfDoc.getPage(p);
+        const viewport = page.getViewport({scale});
+
+        const temp = document.createElement("canvas");
+        temp.width=viewport.width;
+        temp.height=viewport.height;
+
+        await page.render({canvasContext:temp.getContext("2d"), viewport}).promise;
+
+        let lines = (redLines[p]||[])
+            .map(l=>l.top)
+            .sort((a,b)=>a-b);
+
+        let segments=[];
+        let start = activeRect.top;
+        let bottom = activeRect.top + activeRect.height;
+
+        lines.forEach(y=>{
+            segments.push([start,y]);
+            start=y;
+        });
+
+        segments.push([start,bottom]);
+
+        for(let seg of segments){
+
+            let h = seg[1]-seg[0];
+            if(h<=0) continue;
+
+            let part = document.createElement("canvas");
+            part.width=temp.width;
+            part.height=h;
+
+            part.getContext("2d")
+                .drawImage(temp,0,seg[0],temp.width,h,0,0,temp.width,h);
+
+            if(carrySegment){
+                carrySegment = stitch(carrySegment,part);
+            }else{
+                carrySegment = part;
+            }
+
+            if(lines.length % 2 === 0){
+                zip.file(
+                    "segment_"+(segmentIndex++)+".png",
+                    carrySegment.toDataURL().split(",")[1],
+                    {base64:true}
+                );
+                carrySegment=null;
+            }
+        }
+    }
+
+    const blob = await zip.generateAsync({type:"blob"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download="slices.zip";
+    a.click();
+
+    log("Slices saved.");
+}
+
+function stitch(c1,c2){
+    let out = document.createElement("canvas");
+    out.width=c1.width;
+    out.height=c1.height+c2.height;
+
+    let ctx=out.getContext("2d");
+    ctx.drawImage(c1,0,0);
+    ctx.drawImage(c2,0,c1.height);
+
+    return out;
+}
+/* ======================================================
+   ADDITIONS ONLY (undo/redo + X key + persist rect)
+====================================================== */
+
+/* ---------- Mouse tracking for X key ---------- */
+let mouseY = 200;
+
+canvas.on("mouse:move", (e)=>{
+    mouseY = e.pointer.y;
+});
+
+/* ---------- Keyboard: insert line ---------- */
+document.addEventListener("keydown",(e)=>{
+
+    if(e.key === "x" || e.key === "X"){
+        let line = new fabric.Line(
+            [0, mouseY, canvas.width, mouseY],
+            {
+                stroke:"red",
+                strokeWidth:2,
+                selectable:true
+            }
+        );
+
+        canvas.add(line);
+        redLines[pageNum].push(line);
+
+        saveState();
+        log("Inserted line at cursor");
+    }
+
+    if(e.key === "Delete"){
+        let obj = canvas.getActiveObject();
+        if(obj){
+            canvas.remove(obj);
+
+            redLines[pageNum] =
+                redLines[pageNum].filter(l => l !== obj);
+
+            saveState();
+        }
+    }
+});
+
+
+/* ---------- UNDO / REDO ---------- */
+let undoStack = [];
+let redoStack = [];
+
+function saveState(){
+    redoStack = [];
+    undoStack.push(JSON.stringify(canvas.toJSON()));
+}
+
+function undo(){
+    if(!undoStack.length) return;
+
+    redoStack.push(JSON.stringify(canvas.toJSON()));
+    let state = undoStack.pop();
+
+    canvas.loadFromJSON(state, ()=>{
+        canvas.renderAll();
+    });
+}
+
+function redo(){
+    if(!redoStack.length) return;
+
+    undoStack.push(JSON.stringify(canvas.toJSON()));
+    let state = redoStack.pop();
+
+    canvas.loadFromJSON(state, ()=>{
+        canvas.renderAll();
+    });
+}
+
+/* auto save on changes */
+canvas.on("object:modified", saveState);
+canvas.on("object:added", saveState);
+canvas.on("object:removed", saveState);
+
+
+/* ---------- Persist ACTIVE RECT ---------- */
+
+function saveActiveRect(){
+    if(!activeRect) return;
+
+    localStorage.setItem(
+        "qp_active_rect",
+        JSON.stringify({
+            left:activeRect.left,
+            top:activeRect.top,
+            width:activeRect.width * activeRect.scaleX,
+            height:activeRect.height * activeRect.scaleY
+        })
+    );
+}
+
+function loadActiveRect(){
+
+    let data = localStorage.getItem("qp_active_rect");
+    if(!data) return;
+
+    let r = JSON.parse(data);
+
+    activeRect.set({
+        left:r.left,
+        top:r.top,
+        width:r.width,
+        height:r.height,
+        scaleX:1,
+        scaleY:1
+    });
+}
+
+/* save whenever rectangle changed */
+canvas.on("object:modified",(e)=>{
+    if(e.target === activeRect){
+        saveActiveRect();
+    }
+});
+
+/* hook into your existing restoreActiveRect */
+const originalRestore = restoreActiveRect;
+
+restoreActiveRect = function(){
+    originalRestore();
+    loadActiveRect();
+};
+
+</script>
+</body>
+</html>

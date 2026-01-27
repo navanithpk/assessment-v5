@@ -1,0 +1,438 @@
+{% extends 'teacher/teacher_base.html' %}
+
+{% block title %}PDF Processing Tasks{% endblock %}
+
+{% block content %}
+<style>
+    .tasks-container {
+        padding: 24px;
+    }
+
+    .tasks-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+    .tasks-header h1 {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0;
+    }
+
+    .task-stats {
+        display: flex;
+        gap: 24px;
+    }
+
+    .stat-badge {
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    .stat-badge.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 32px 0 16px 0;
+        color: #1a1a1a;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-title .count {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+
+    .tasks-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .task-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.2s;
+    }
+
+    .task-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .task-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .task-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin-bottom: 4px;
+    }
+
+    .task-meta {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-badge.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.in-progress {
+        background: #cfe2ff;
+        color: #084298;
+    }
+
+    .status-badge.paused {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-badge.completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .progress-container {
+        margin: 16px 0;
+    }
+
+    .progress-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .progress-bar-bg {
+        width: 100%;
+        height: 8px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 4px;
+        transition: width 0.3s;
+    }
+
+    .task-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        opacity: 0.9;
+    }
+
+    .btn-secondary {
+        background: white;
+        color: #667eea;
+        border: 1px solid #667eea;
+    }
+
+    .btn-secondary:hover {
+        background: #f5f5f5;
+    }
+
+    .btn-danger {
+        background: #dc2626;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #b91c1c;
+    }
+
+    .btn-success {
+        background: #16a34a;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #15803d;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.3;
+    }
+
+    .new-task-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-block;
+    }
+</style>
+
+<div class="tasks-container">
+    <div class="tasks-header">
+        <div>
+            <h1>📋 PDF Processing Tasks</h1>
+            <p style="color: #666; margin-top: 8px;">Manage and track your PDF import sessions</p>
+        </div>
+        <div class="task-stats">
+            <div class="stat-badge pending">
+                {{ total_pending }} Pending
+            </div>
+            <a href="{% url 'import_mcq_pdf' %}" class="new-task-btn">
+                ➕ New Import
+            </a>
+        </div>
+    </div>
+
+    <!-- Pending Tasks -->
+    {% if pending_sessions %}
+        <h2 class="section-title">
+            ⏳ Pending
+            <span class="count">{{ pending_sessions.count }}</span>
+        </h2>
+
+        <div class="tasks-grid">
+            {% for session in pending_sessions %}
+                <div class="task-card">
+                    <div class="task-card-header">
+                        <div>
+                            <div class="task-name">{{ session.session_name }}</div>
+                            <div class="task-meta">
+                                {{ session.grade.name }} • {{ session.subject.name }} • Year {{ session.year }}
+                            </div>
+                        </div>
+                        <div class="status-badge pending">Pending</div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>{{ session.processed_files }}/{{ session.total_files }} files processed</span>
+                            <span>{{ session.progress_percentage }}%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: {{ session.progress_percentage }}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="task-meta" style="margin-top: 12px;">
+                        Created {{ session.created_at|timesince }} ago
+                    </div>
+
+                    <div class="task-actions">
+                        <a href="{% url 'resume_import_session' session.id %}" class="btn btn-primary" title="Mark as in-progress and go to PDF import page">
+                            ▶️ Resume
+                        </a>
+                        <a href="{% url 'mark_task_complete' session.id %}" class="btn btn-success" onclick="return confirm('Mark this task as complete?')" title="Mark this task as completed">
+                            ✅ Mark Complete
+                        </a>
+                        <a href="{% url 'delete_task' session.id %}" class="btn btn-danger" onclick="return confirm('Delete this task? This cannot be undone.')" title="Permanently delete this task">
+                            🗑️ Delete
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- In Progress Tasks -->
+    {% if in_progress_sessions %}
+        <h2 class="section-title">
+            🔄 In Progress
+            <span class="count">{{ in_progress_sessions.count }}</span>
+        </h2>
+
+        <div class="tasks-grid">
+            {% for session in in_progress_sessions %}
+                <div class="task-card">
+                    <div class="task-card-header">
+                        <div>
+                            <div class="task-name">{{ session.session_name }}</div>
+                            <div class="task-meta">
+                                {{ session.grade.name }} • {{ session.subject.name }} • Year {{ session.year }}
+                            </div>
+                        </div>
+                        <div class="status-badge in-progress">In Progress</div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>{{ session.processed_files }}/{{ session.total_files }} files processed</span>
+                            <span>{{ session.progress_percentage }}%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: {{ session.progress_percentage }}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="task-meta" style="margin-top: 12px;">
+                        Last updated {{ session.updated_at|timesince }} ago
+                    </div>
+
+                    <div class="task-actions">
+                        <a href="{% url 'resume_import_session' session.id %}" class="btn btn-primary" title="Continue working on this task">
+                            ▶️ Continue
+                        </a>
+                        <a href="{% url 'pause_task' session.id %}" class="btn btn-secondary" title="Pause this task">
+                            ⏸️ Pause
+                        </a>
+                        <a href="{% url 'mark_task_complete' session.id %}" class="btn btn-success" onclick="return confirm('Mark this task as complete?')" title="Mark as completed">
+                            ✅ Complete
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Paused Tasks -->
+    {% if paused_sessions %}
+        <h2 class="section-title">
+            ⏸️ Paused
+            <span class="count">{{ paused_sessions.count }}</span>
+        </h2>
+
+        <div class="tasks-grid">
+            {% for session in paused_sessions %}
+                <div class="task-card">
+                    <div class="task-card-header">
+                        <div>
+                            <div class="task-name">{{ session.session_name }}</div>
+                            <div class="task-meta">
+                                {{ session.grade.name }} • {{ session.subject.name }} • Year {{ session.year }}
+                            </div>
+                        </div>
+                        <div class="status-badge paused">Paused</div>
+                    </div>
+
+                    <div class="progress-container">
+                        <div class="progress-label">
+                            <span>{{ session.processed_files }}/{{ session.total_files }} files processed</span>
+                            <span>{{ session.progress_percentage }}%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: {{ session.progress_percentage }}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="task-meta" style="margin-top: 12px;">
+                        Paused {{ session.updated_at|timesince }} ago
+                    </div>
+
+                    <div class="task-actions">
+                        <a href="{% url 'resume_task' session.id %}" class="btn btn-primary" title="Resume this paused task">
+                            ▶️ Resume
+                        </a>
+                        <a href="{% url 'delete_task' session.id %}" class="btn btn-danger" onclick="return confirm('Delete this task? This cannot be undone.')" title="Permanently delete this task">
+                            🗑️ Delete
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Completed Tasks -->
+    {% if completed_sessions %}
+        <h2 class="section-title">
+            ✅ Recently Completed
+            <span class="count">{{ completed_sessions.count }}</span>
+        </h2>
+
+        <div class="tasks-grid">
+            {% for session in completed_sessions %}
+                <div class="task-card" style="opacity: 0.8;">
+                    <div class="task-card-header">
+                        <div>
+                            <div class="task-name">{{ session.session_name }}</div>
+                            <div class="task-meta">
+                                {{ session.grade.name }} • {{ session.subject.name }} • Year {{ session.year }}
+                            </div>
+                        </div>
+                        <div class="status-badge completed">Completed</div>
+                    </div>
+
+                    <div class="task-meta" style="margin-top: 12px;">
+                        Completed {{ session.completed_at|timesince }} ago • {{ session.total_files }} files processed
+                    </div>
+
+                    <div class="task-actions">
+                        <a href="{% url 'delete_task' session.id %}" class="btn btn-secondary" onclick="return confirm('Delete this completed task?')">
+                            🗑️ Remove
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Empty State -->
+    {% if not pending_sessions and not in_progress_sessions and not paused_sessions and not completed_sessions %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No PDF processing tasks yet</div>
+            <div style="margin-bottom: 24px;">Start importing questions from PDFs to see tasks here</div>
+            <a href="{% url 'import_mcq_pdf' %}" class="new-task-btn">
+                ➕ Start New Import
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
