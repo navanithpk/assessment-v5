@@ -6,6 +6,7 @@ from . import analytics_views
 from . import pdf_tasks_views
 from . import descriptive_pdf_slicer_views
 from . import answer_space_designer_views
+from . import report_card_views
 from core import analytics_api
 
 urlpatterns = [
@@ -156,6 +157,10 @@ urlpatterns = [
 
     path("teacher/tests/<int:test_id>/analytics/questions/", analytics_api.question_analytics),
     path("teacher/tests/<int:test_id>/analytics/lo-heatmap/", analytics_api.lo_mastery_heatmap),
+
+    # Report Cards
+    path("teacher/report-cards/", report_card_views.report_card_dashboard, name="report_card_dashboard"),
+    path("teacher/report-cards/<int:student_id>/data/", report_card_views.report_card_detail, name="report_card_detail"),
     path("teacher/tests/<int:test_id>/analytics/risk/", analytics_api.risk_prediction),
     path("teacher/tests/<int:test_id>/analytics/summary/", analytics_api.lmstudio_summary),
 
