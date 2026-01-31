@@ -155,6 +155,11 @@ body {
 	  📊 Test Analytics
 	</a>
 
+	<a href="{% url 'report_card_dashboard' %}"
+	   class="{% if '/report-cards/' in request.path %}active{% endif %}">
+	  📋 Report Cards
+	</a>
+
 
     <!-- User Management Section -->
     <div class="section-title">User Management</div>
