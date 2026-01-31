@@ -3777,11 +3777,13 @@ def test_analytics_view(request, test_id):
         success_rate = round((correct / attempts) * 100, 1)
 
         question_stats.append({
+            "id": q.id,
             "number": idx,
             "topic": q.topic.name if q.topic else "",
             "marks": float(q.marks),
             "attempts": attempts,
             "success_rate": success_rate,
+            "type": q.question_type,
             "difficulty": (
                 "easy" if success_rate >= 75 else
                 "medium" if success_rate >= 50 else
@@ -3817,43 +3819,75 @@ def test_analytics_view(request, test_id):
         })
 
     # ─────────────────────────────────────────────
-    # 6. Cognitive Rigor (Bloom's Taxonomy) - REAL DATA
+    # 6. Assessment Quality Radar - REAL DATA
     # ─────────────────────────────────────────────
-    bloom_distribution = {
-        'remember': {"correct": 0, "total": 0},
-        'understand': {"correct": 0, "total": 0},
-        'apply': {"correct": 0, "total": 0},
-        'analyze': {"correct": 0, "total": 0},
-        'evaluate': {"correct": 0, "total": 0},
-        'create': {"correct": 0, "total": 0},
-    }
+    # Six meaningful metrics for assessment quality
 
+    # 1. Question Variety (0-100): Based on question type distribution
+    question_types = {'mcq': 0, 'theory': 0, 'structured': 0, 'practical': 0}
+    for q in question_stats:
+        qtype = q.get('type', 'mcq')
+        if qtype in question_types:
+            question_types[qtype] += 1
+
+    # Calculate variety score (more uniform = better)
+    total_q = sum(question_types.values()) or 1
+    type_percentages = [v/total_q for v in question_types.values() if v > 0]
+    variety_score = (len(type_percentages) / 4.0) * 100  # Max 100% if all 4 types used
+
+    # 2. Difficulty Balance (0-100): How balanced easy/medium/hard questions are
+    difficulty_dist = {'easy': 0, 'medium': 0, 'hard': 0}
+    for q in question_stats:
+        difficulty_dist[q['difficulty']] += 1
+
+    # Ideal is 20% easy, 60% medium, 20% hard
+    ideal = {'easy': 0.2, 'medium': 0.6, 'hard': 0.2}
+    total_q = sum(difficulty_dist.values()) or 1
+    balance_score = 100 - sum([abs((difficulty_dist[k]/total_q) - ideal[k]) for k in ideal]) * 100
+    balance_score = max(0, balance_score)
+
+    # 3. Discrimination Power (0-100): How well test separates high/low performers
+    # Top 27% vs Bottom 27% - classic item discrimination
+    sorted_students = sorted(students, key=lambda x: x['score'], reverse=True)
+    n_group = max(1, int(len(sorted_students) * 0.27))
+    top_group = sorted_students[:n_group]
+    bottom_group = sorted_students[-n_group:]
+
+    if top_group and bottom_group:
+        avg_top = sum(s['score'] for s in top_group) / len(top_group)
+        avg_bottom = sum(s['score'] for s in bottom_group) / len(bottom_group)
+        discrimination_score = min(100, (avg_top - avg_bottom))  # Difference as percentage
+    else:
+        discrimination_score = 0
+
+    # 4. Coverage Breadth (0-100): Topic coverage across test
+    unique_topics = set()
     for q in questions:
-        # Map question_type to bloom level (proxy until we add bloom_level field)
-        if q.question_type == 'mcq':
-            level = 'remember' if q.marks <= 2 else 'understand'
-        elif q.question_type == 'theory':
-            level = 'apply'
-        elif q.question_type == 'structured':
-            level = 'analyze'
-        else:  # practical
-            level = 'evaluate'
+        if q.topic:
+            unique_topics.add(q.topic.name)
 
-        # Calculate success rate for this level
-        q_answers = answers.filter(question=q)
-        if q_answers.count() > 0:
-            correct = q_answers.filter(marks_awarded__gte=float(q.marks) * 0.7).count()
-            bloom_distribution[level]["correct"] += correct
-            bloom_distribution[level]["total"] += q_answers.count()
+    # Assume 5+ unique topics is excellent coverage
+    coverage_score = min(100, (len(unique_topics) / 5.0) * 100)
 
-    # Calculate percentages for radar chart
-    bloom_data = []
-    for level in ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create']:
-        if bloom_distribution[level]["total"] > 0:
-            percentage = (bloom_distribution[level]["correct"] / bloom_distribution[level]["total"]) * 100
-        else:
-            percentage = 0
-        bloom_data.append(round(percentage, 1))
+    # 5. Reliability Indicator (0-100): Based on std dev (lower std = more reliable)
+    # Ideal std is around 15-20 for a well-constructed test
+    if std > 0:
+        reliability_score = max(0, 100 - abs(std - 17.5) * 3)  # Penalize deviation from ideal
+    else:
+        reliability_score = 0
+
+    # 6. Performance Level (0-100): Overall cohort performance
+    performance_score = mean  # Already a percentage
+
+    # Compile radar data
+    assessment_quality_radar = [
+        round(variety_score, 1),
+        round(balance_score, 1),
+        round(discrimination_score, 1),
+        round(coverage_score, 1),
+        round(reliability_score, 1),
+        round(performance_score, 1)
+    ]
 
     # ─────────────────────────────────────────────
     # 7. LO Competency Matrix - REAL DATA
@@ -3955,7 +3989,7 @@ def test_analytics_view(request, test_id):
             },
             "questions": question_stats,
             "learning_objectives": learning_objectives,
-            "bloom_taxonomy": bloom_data,  # NEW: Real Bloom's data
+            "assessment_quality_radar": assessment_quality_radar,  # NEW: Assessment quality metrics
             "differentiated_groups": differentiated_groups,  # NEW: Real groups
             "examiner_report": examiner_report,
         }
