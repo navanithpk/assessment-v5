@@ -469,18 +469,23 @@
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
 }
 
-/* Navigation Buttons */
+/* Navigation Buttons - FIXED: Floating at top */
 .navigation-controls {
+  position: sticky;
+  top: 60px;  /* Below the header */
+  z-index: 90;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 24px;
-  padding: 20px;
+  margin-bottom: 24px;
+  padding: 16px 20px;
   background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   flex-wrap: wrap;
   gap: 12px;
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .nav-btn {
@@ -822,12 +827,26 @@
   }
 
   .navigation-controls {
-    padding: 16px;
+    padding: 12px 16px;
+    top: 56px;  /* Adjust for mobile header */
+    flex-direction: column;
+  }
+
+  .navigation-controls > div {
+    order: -1;  /* Show indicator first on mobile */
+    width: 100%;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .navigation-controls > div span:last-child {
+    display: none;  /* Hide keyboard hint on mobile */
   }
 
   .nav-btn {
     padding: 10px 20px;
     font-size: 14px;
+    flex: 1;
   }
 }
 
@@ -972,20 +991,26 @@
 
     <!-- Center Panel: Question Area -->
     <div class="center-panel">
-      <!-- Question Card -->
-      <div class="question-card" id="questionCard">
-        <!-- Content dynamically loaded here -->
-      </div>
-
-      <!-- Navigation Controls -->
+      <!-- Navigation Controls - MOVED TO TOP -->
       <div class="navigation-controls">
         <button class="nav-btn secondary" id="prevBtn" onclick="previousPage()" disabled>
           ← Previous
         </button>
 
+        <div style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: #5f6368;">
+          <span id="currentQuestionIndicator">Question 1 of {{ test.questions.count }}</span>
+          <span style="color: #dadce0;">|</span>
+          <span style="font-size: 11px;">Use ← → arrow keys to navigate</span>
+        </div>
+
         <button class="nav-btn primary" id="nextBtn" onclick="nextPage()">
           Next →
         </button>
+      </div>
+
+      <!-- Question Card -->
+      <div class="question-card" id="questionCard">
+        <!-- Content dynamically loaded here -->
       </div>
     </div>
 
@@ -1113,6 +1138,43 @@ document.addEventListener('fullscreenchange', () => {
     if (confirm('Please stay in fullscreen mode during the test. Return to fullscreen?')) {
       enterFullscreen();
     }
+  }
+});
+
+// ===============================================
+// KEYBOARD NAVIGATION - Arrow Keys
+// ===============================================
+document.addEventListener('keydown', (e) => {
+  // Ignore if user is typing in an input/textarea
+  const activeElement = document.activeElement;
+  const isTyping = activeElement.tagName === 'INPUT' ||
+                   activeElement.tagName === 'TEXTAREA' ||
+                   activeElement.isContentEditable;
+
+  if (isTyping) return;
+
+  // Left Arrow - Previous Question
+  if (e.key === 'ArrowLeft' || e.keyCode === 37) {
+    e.preventDefault();
+    const prevBtn = document.getElementById('prevBtn');
+    if (prevBtn && !prevBtn.disabled) {
+      previousPage();
+    }
+  }
+
+  // Right Arrow - Next Question
+  if (e.key === 'ArrowRight' || e.keyCode === 39) {
+    e.preventDefault();
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn && !nextBtn.disabled) {
+      nextPage();
+    }
+  }
+
+  // F key - Flag/Unflag current question
+  if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    toggleFlag();
   }
 });
 
@@ -1456,8 +1518,14 @@ function updateProgress() {
 function updateNavButtons() {
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
+  const indicator = document.getElementById('currentQuestionIndicator');
 
   prevBtn.disabled = currentPageIndex === 0;
+
+  // Update question indicator
+  if (indicator) {
+    indicator.textContent = `Question ${currentPageIndex + 1} of ${testData.pages.length}`;
+  }
 
   if (currentPageIndex === testData.pages.length - 1) {
     nextBtn.textContent = 'Submit Test ✓';
