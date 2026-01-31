@@ -103,8 +103,8 @@ def report_card_dashboard(request):
                 test = Test.objects.get(id=test_id[0])
                 test_answers = answers.filter(test=test)
 
-                total_marks = sum(float(a.question.marks) for a in test_answers)
-                earned_marks = sum(float(a.marks_awarded) for a in test_answers)
+                total_marks = sum(float(a.question.marks or 0) for a in test_answers)
+                earned_marks = sum(float(a.marks_awarded or 0) for a in test_answers)
 
                 if total_marks > 0:
                     percentage = (earned_marks / total_marks) * 100
@@ -194,8 +194,8 @@ def report_card_detail(request, student_id):
             }
 
         tests_data[test_id]['answers'].append(answer)
-        tests_data[test_id]['total_marks'] += float(answer.question.marks)
-        tests_data[test_id]['earned_marks'] += float(answer.marks_awarded)
+        tests_data[test_id]['total_marks'] += float(answer.question.marks or 0)
+        tests_data[test_id]['earned_marks'] += float(answer.marks_awarded or 0)
 
     # Calculate percentages and build response
     tests_list = []
