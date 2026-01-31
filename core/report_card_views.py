@@ -99,7 +99,7 @@ def report_card_dashboard(request):
         if test_count > 0:
             # Group by test, calculate percentage for each
             test_scores = []
-            for test_id in answers.values_list('test__id', distinct=True):
+            for test_id in answers.values_list('test__id').distinct():
                 test = Test.objects.get(id=test_id[0])
                 test_answers = answers.filter(test=test)
 
