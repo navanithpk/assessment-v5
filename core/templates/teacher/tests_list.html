@@ -195,6 +195,11 @@ tr:not(:last-child) td {
             <a href="{% url 'grade_test_answers' test.id %}" style="color: #8b5cf6;">
               ✅ Grade
             </a>
+			<a href="{% url 'test_analytics' test.id %}"
+			   onclick="event.stopPropagation(); window.location.href=this.href; return false;"
+			   class="btn btn-sm btn-outline-primary">
+			   📊 Analytics
+			</a>
             <a href="{% url 'edit_test' test.id %}">
               Edit<span class="experimental-badge">Experimental</span>
             </a>

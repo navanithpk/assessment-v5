@@ -478,4 +478,61 @@ async function suggestLearningObjectives() {
 
 updateAIButtons();
 </script>
+<script>
+document.addEventListener("keydown", function (e) {
+  if (!e.ctrlKey) return;
+
+  const key = e.key.toLowerCase();
+
+  // Ctrl + B → AI Suggest Topic
+  if (key === "b") {
+    e.preventDefault();
+    const btn = document.getElementById("aiTopicBtn");
+    if (!btn.disabled) {
+      btn.click();
+    }
+  }
+
+  // Ctrl + M → AI Suggest Learning Objectives
+  if (key === "m") {
+    e.preventDefault();
+    const btn = document.getElementById("aiLOBtn");
+    if (!btn.disabled) {
+      btn.click();
+    }
+  }
+
+  // Ctrl + Y → Save
+  if (key === "y") {
+    e.preventDefault();
+    document.querySelector("button.btn.green")?.click();
+  }
+
+  // Ctrl + Right Arrow → Next Question
+  if (e.key === "ArrowRight") {
+    e.preventDefault();
+    navigateQuestion(1);
+  }
+
+  // Ctrl + Left Arrow → Previous Question
+  if (e.key === "ArrowLeft") {
+    e.preventDefault();
+    navigateQuestion(-1);
+  }
+});
+
+// Navigate between questions by ID
+function navigateQuestion(offset) {
+  const match = window.location.pathname.match(/\/questions\/edit\/(\d+)\//);
+  if (!match) return;
+
+  const currentId = parseInt(match[1], 10);
+  const nextId = currentId + offset;
+
+  if (nextId > 0) {
+    window.location.href = `/questions/edit/${nextId}/`;
+  }
+}
+</script>
+
 {% endblock %}

@@ -25,3 +25,6 @@ urlpatterns = [
     path("accounts/", include("django.contrib.auth.urls")),
 ]
 
+# Custom error handlers
+handler404 = 'core.views_404.custom_404'
+

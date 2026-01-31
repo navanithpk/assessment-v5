@@ -147,12 +147,14 @@ body {
       📋 PDF Import Tasks
     </a>
 
-    <!-- Analytics Section -->
-    <div class="section-title">Analytics</div>
-    <a href="{% url 'teacher_analytics' %}"
-       class="{% if '/analytics/' in request.path %}active{% endif %}">
-      📊 Performance Analytics
-    </a>
+	<!-- Analytics Section -->
+	<div class="section-title">Analytics</div>
+
+	<a href="{% url 'tests_list' %}"
+	   class="{% if request.resolver_match.url_name == 'tests_list' %}active{% endif %}">
+	  📊 Test Analytics
+	</a>
+
 
     <!-- User Management Section -->
     <div class="section-title">User Management</div>

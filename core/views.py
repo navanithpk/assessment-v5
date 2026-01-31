@@ -10,6 +10,9 @@ from django.template.loader import render_to_string
 from django.db import models
 from django.db.models import Q
 import json
+from core.ai.topic_tagger import suggest_topic_for_question
+from core.ai.lo_tagger import suggest_los_for_question
+from django.db.models import Count
 
 from .models import (
     Grade,
@@ -655,7 +658,10 @@ def school_users_list(request):
 @login_required
 def tests_list(request):
     school = get_user_school(request.user)
-    tests = Test.objects.filter(created_by=request.user).order_by("-id")
+    if request.user.username == "sis_admin":
+        tests = Test.objects.all()
+    else:
+        tests = Test.objects.filter(created_by=request.user).order_by("-id")
 
     return render(
         request,
@@ -1592,7 +1598,15 @@ def edit_descriptive_test(request, test_id):
     Edit an existing descriptive test
     """
     school = get_user_school(request.user)
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    if request.user.username == "sis_admin":
+        test = get_object_or_404(Test, id=test_id)
+    else:
+        test = get_object_or_404(
+            Test,
+            id=test_id,
+            created_by=request.user
+        )
+
     
     if request.method == 'POST':
         try:
@@ -1635,7 +1649,14 @@ def test_editor(request, test_id):
     """
     Test editor with proper student assignment handling
     """
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    if request.user.username == "sis_admin":
+        test = get_object_or_404(Test, id=test_id)
+    else:
+        test = get_object_or_404(
+            Test,
+            id=test_id,
+            created_by=request.user
+        )
     school = get_user_school(request.user)
 
     if request.method == "POST":
@@ -2360,7 +2381,15 @@ def grade_test_spreadsheet(request, test_id):
     """
     Spreadsheet-style grading view with all students and questions
     """
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    if request.user.username == "sis_admin":
+        test = get_object_or_404(Test, id=test_id)
+    else:
+        test = get_object_or_404(
+            Test,
+            id=test_id,
+            created_by=request.user
+        )
+
 
     # Get all students who submitted answers
     students_with_answers = Student.objects.filter(
@@ -2962,7 +2991,7 @@ def ai_suggest_topic(request):
         from .ai_tagging_improved import ImageTextExtractor, ContextAwarePromptBuilder
 
         api_key = os.environ.get('ANTHROPIC_API_KEY')
-        google_api_key = os.environ.get('GOOGLE_API_KEY', 'AIzaSyCzbW72vCJ3YfxBEkQNb8HZkBTXD3iL6QE')
+        google_api_key = os.environ.get('GOOGLE_API_KEY')
         lmstudio_url = os.environ.get('LMSTUDIO_URL', 'http://localhost:1234/v1/chat/completions')
 
         # Check if question contains image
@@ -3343,341 +3372,594 @@ def ai_suggest_learning_objectives(request):
 @staff_member_required
 def bulk_ai_tag_questions(request):
     """
-    Bulk AI tagging with OCR, context-aware prompting, and comprehensive logging
+    Bulk AI tagging that EXACTLY emulates pressing the AI buttons
+    in the Edit Question page.
     """
-    from django.http import StreamingHttpResponse
-    import time
-    from .ai_tagging_improved import (
-        AITaggingLogger, ImageTextExtractor, ContextAwarePromptBuilder,
-        call_lmstudio, call_google_gemini, call_anthropic
-    )
 
-    # Initialize logger
-    tag_logger = AITaggingLogger()
+    from django.http import StreamingHttpResponse
+    from django.db.models import Count
+    from django.test import RequestFactory
+    import json
+    import time
+
+    factory = RequestFactory()
 
     def event_stream():
         try:
-            # Get all untagged questions (without topic or LOs)
-            untagged_questions = Question.objects.filter(
-                Q(topic__isnull=True) | Q(learning_objectives__isnull=True)
-            ).distinct()
+            qs = (
+                Question.objects
+                .annotate(lo_count=Count("learning_objectives"))
+                .filter(
+                    Q(topic__isnull=True) | Q(lo_count=0)
+                )
+                .select_related("grade", "subject", "topic")
+                .distinct()
+            )
 
-            total = untagged_questions.count()
+            total = qs.count()
             processed = 0
 
-            for question in untagged_questions:
+            yield f"data: {json.dumps({'status': 'started', 'total': total})}\n\n"
+
+            for question in qs:
+                log = {
+                    "question_id": question.id,
+                    "topic": None,
+                    "learning_objectives": []
+                }
+
                 try:
-                    # Skip if both topic and LOs are already set
-                    has_topic = question.topic is not None
-                    has_los = question.learning_objectives.count() > 0
+                    # ---------------- TOPIC ----------------
+                    question.refresh_from_db(fields=["topic"])
 
-                    if has_topic and has_los:
-                        processed += 1
-                        yield f'data: {json.dumps({"progress": processed, "total": total})}\n\n'
-                        continue
+                    if question.topic_id is None:
+                        payload = {
+                            "question_text": question.question_text,
+                            "subject_id": question.subject_id,
+                            "grade_id": question.grade_id,
+                        }
 
-                    # Tag topic if missing
-                    if not has_topic and question.subject and question.grade:
-                        # Call AI topic suggestion
-                        try:
-                            topic_data = {
-                                'question_text': question.question_text,
-                                'subject_id': question.subject.id,
-                                'grade_id': question.grade.id
-                            }
+                        fake_request = factory.post(
+                            "/ai/suggest-topic/",
+                            data=json.dumps(payload),
+                            content_type="application/json",
+                        )
+                        fake_request.user = request.user
 
-                            # Use the existing ai_suggest_topic logic inline
-                            import anthropic
-                            import os
-                            import re
-                            import requests
+                        response = ai_suggest_topic(fake_request)
+                        data = json.loads(response.content)
 
-                            api_key = os.environ.get('ANTHROPIC_API_KEY')
-                            google_api_key = os.environ.get('GOOGLE_API_KEY', 'AIzaSyCzbW72vCJ3YfxBEkQNb8HZkBTXD3iL6QE')
-                            lmstudio_url = os.environ.get('LMSTUDIO_URL', 'http://localhost:1234/v1/chat/completions')
+                        if data.get("success"):
+                            question.topic_id = data["topic_id"]
+                            question.save(update_fields=["topic"])
+                            log["topic"] = data["topic_name"]
 
-                            topics = Topic.objects.filter(
-                                subject_id=question.subject.id,
-                                grade_id=question.grade.id
-                            ).values('id', 'name')
-                            topic_list = [{'id': t['id'], 'name': t['name']} for t in topics]
+                    # ---------------- LOS ----------------
+                    question.refresh_from_db(fields=["topic"])
 
-                            if topic_list:
-                                topic_names = '\n'.join([f"{i+1}. {t['name']}" for i, t in enumerate(topic_list)])
-                                clean_text = re.sub(r'<[^>]+>', '', question.question_text)
+                    if question.topic_id and question.learning_objectives.count() == 0:
+                        payload = {
+                            "question_text": question.question_text,
+                            "topic_id": question.topic_id,
+                        }
 
-                                suggested_topic_id = None
+                        fake_request = factory.post(
+                            "/ai/suggest-los/",
+                            data=json.dumps(payload),
+                            content_type="application/json",
+                        )
+                        fake_request.user = request.user
 
-                                # Try Anthropic first
-                                if api_key:
-                                    try:
-                                        client = anthropic.Anthropic(api_key=api_key)
-                                        message = client.messages.create(
-                                            model="claude-3-5-sonnet-20241022",
-                                            max_tokens=200,
-                                            messages=[{
-                                                "role": "user",
-                                                "content": f"""Analyze this question and select the most appropriate topic from the list below.
+                        response = ai_suggest_learning_objectives(fake_request)
+                        data = json.loads(response.content)
 
-Question:
-{clean_text}
-
-Available topics:
-{topic_names}
-
-Respond with ONLY the topic number (e.g., "3" for the third topic). Do not include any explanation or additional text."""
-                                            }]
-                                        )
-                                        response_text = message.content[0].text.strip()
-                                        topic_number = int(re.search(r'\d+', response_text).group())
-                                        suggested_topic_id = topic_list[topic_number - 1]['id']
-                                    except:
-                                        pass
-
-                                # Try Google Gemini if Anthropic failed
-                                if not suggested_topic_id and google_api_key:
-                                    try:
-                                        google_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={google_api_key}"
-                                        response = requests.post(
-                                            google_url,
-                                            json={
-                                                "contents": [{
-                                                    "parts": [{
-                                                        "text": f"""Analyze this question and select the most appropriate topic from the list below.
-
-Question:
-{clean_text}
-
-Available topics:
-{topic_names}
-
-Respond with ONLY the topic number (e.g., "3" for the third topic). Do not include any explanation or additional text."""
-                                                    }]
-                                                }]
-                                            },
-                                            timeout=30
-                                        )
-                                        if response.status_code == 200:
-                                            response_data = response.json()
-                                            response_text = response_data['candidates'][0]['content']['parts'][0]['text'].strip()
-                                            topic_number = int(re.search(r'\d+', response_text).group())
-                                            suggested_topic_id = topic_list[topic_number - 1]['id']
-                                    except:
-                                        pass
-
-                                if suggested_topic_id:
-                                    question.topic_id = suggested_topic_id
-                                    question.save()
-
-                        except Exception as e:
-                            print(f"Error tagging topic for question {question.id}: {str(e)}")
-
-                    # Tag LOs if missing and topic is now set
-                    if question.topic and question.learning_objectives.count() == 0:
-                        try:
-                            # Use the existing ai_suggest_los logic inline
-                            import anthropic
-                            import os
-                            import re
-                            import requests
-
-                            api_key = os.environ.get('ANTHROPIC_API_KEY')
-                            google_api_key = os.environ.get('GOOGLE_API_KEY', 'AIzaSyCzbW72vCJ3YfxBEkQNb8HZkBTXD3iL6QE')
-
-                            los = LearningObjective.objects.filter(topic_id=question.topic.id).values('id', 'code', 'description')
-                            lo_list = [{'id': lo['id'], 'code': lo['code'], 'description': lo['description']} for lo in los]
-
-                            if lo_list:
-                                lo_descriptions = '\n'.join([f"{i+1}. [{lo['code']}] {lo['description']}" for i, lo in enumerate(lo_list)])
-                                clean_text = re.sub(r'<[^>]+>', '', question.question_text)
-
-                                suggested_los = []
-
-                                # Try Anthropic first
-                                if api_key:
-                                    try:
-                                        client = anthropic.Anthropic(api_key=api_key)
-                                        message = client.messages.create(
-                                            model="claude-3-5-sonnet-20241022",
-                                            max_tokens=300,
-                                            messages=[{
-                                                "role": "user",
-                                                "content": f"""Analyze this question and select the most relevant learning objective(s) from the list below.
-
-Topic: {question.topic.name}
-
-Question:
-{clean_text}
-
-Available learning objectives:
-{lo_descriptions}
-
-You may select multiple learning objectives if relevant. Respond with ONLY the numbers separated by commas (e.g., "1,3,5"). Do not include any explanation or additional text."""
-                                            }]
-                                        )
-                                        response_text = message.content[0].text.strip()
-                                        lo_numbers = [int(n.strip()) for n in re.findall(r'\d+', response_text)]
-                                        suggested_los = [lo_list[n - 1] for n in lo_numbers if 0 < n <= len(lo_list)]
-                                    except:
-                                        pass
-
-                                # Try Google Gemini if Anthropic failed
-                                if not suggested_los and google_api_key:
-                                    try:
-                                        google_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={google_api_key}"
-                                        response = requests.post(
-                                            google_url,
-                                            json={
-                                                "contents": [{
-                                                    "parts": [{
-                                                        "text": f"""Analyze this question and select the most relevant learning objective(s) from the list below.
-
-Topic: {question.topic.name}
-
-Question:
-{clean_text}
-
-Available learning objectives:
-{lo_descriptions}
-
-You may select multiple learning objectives if relevant. Respond with ONLY the numbers separated by commas (e.g., "1,3,5"). Do not include any explanation or additional text."""
-                                                    }]
-                                                }]
-                                            },
-                                            timeout=30
-                                        )
-                                        if response.status_code == 200:
-                                            response_data = response.json()
-                                            response_text = response_data['candidates'][0]['content']['parts'][0]['text'].strip()
-                                            lo_numbers = [int(n.strip()) for n in re.findall(r'\d+', response_text)]
-                                            suggested_los = [lo_list[n - 1] for n in lo_numbers if 0 < n <= len(lo_list)]
-                                    except:
-                                        pass
-
-                                if suggested_los:
-                                    for lo in suggested_los:
-                                        question.learning_objectives.add(lo['id'])
-
-                        except Exception as e:
-                            print(f"Error tagging LOs for question {question.id}: {str(e)}")
+                        if data.get("success"):
+                            lo_ids = [lo["id"] for lo in data["learning_objectives"]]
+                            question.learning_objectives.set(lo_ids)
+                            log["learning_objectives"] = [
+                                lo["code"] for lo in data["learning_objectives"]
+                            ]
 
                     processed += 1
-                    yield f'data: {json.dumps({"progress": processed, "total": total})}\n\n'
 
-                    # Small delay to avoid rate limiting
-                    time.sleep(0.5)
+                    payload = {
+                        "progress": processed,
+                        "total": total,
+                        "log": log,
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+                    time.sleep(0.2)
 
                 except Exception as e:
-                    print(f"Error processing question {question.id}: {str(e)}")
                     processed += 1
-                    yield f'data: {json.dumps({"progress": processed, "total": total, "error": str(e)})}\n\n'
 
-            yield f'data: {json.dumps({"complete": True, "total": total})}\n\n'
+                    payload = {
+                        "progress": processed,
+                        "total": total,
+                        "error": f"Q{question.id}: {str(e)}"
+                    }
+
+                    yield f"data: {json.dumps(payload)}\n\n"
+
+
+            yield f"data: {json.dumps({'complete': True, 'total': total})}\n\n"
 
         except Exception as e:
-            yield f'data: {json.dumps({"error": str(e)})}\n\n'
+            yield f"data: {json.dumps({'fatal_error': str(e)})}\n\n"
 
-    return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    return StreamingHttpResponse(
+        event_stream(),
+        content_type="text/event-stream"
+    )
+
+
 
 # ===================== UNTAGGED QUESTIONS & BACKGROUND TAGGING =====================
 
 @login_required
 @staff_member_required
 def untagged_questions_view(request):
-    """View to display and manage untagged questions"""
+    """
+    Display questions missing topic and/or learning objectives
+    (ORM-safe, no ghost data)
+    """
     from django.db.models import Count
 
-    # Get all questions that are missing topic OR learning objectives
-    untagged_questions = Question.objects.filter(
-        Q(topic__isnull=True) | Q(learning_objectives__isnull=True)
-    ).select_related('grade', 'subject', 'topic').prefetch_related('learning_objectives').distinct()
+    # Base queryset with safe annotation
+    qs = (
+        Question.objects
+        .annotate(lo_count=Count("learning_objectives"))
+        .filter(
+            Q(topic__isnull=True) | Q(lo_count=0)
+        )
+        .select_related("grade", "subject", "topic")
+        .prefetch_related("learning_objectives")
+        .distinct()
+    )
 
-    # Filter by school if user is not superuser
+    # School filtering
     if not request.user.is_superuser:
         try:
             user_school = request.user.userprofile.school
-            untagged_questions = untagged_questions.filter(
-                created_by__userprofile__school=user_school
-            )
+            qs = qs.filter(created_by__userprofile__school=user_school)
         except (AttributeError, UserProfile.DoesNotExist):
-            # User doesn't have a profile or school, show only their own questions
-            untagged_questions = untagged_questions.filter(created_by=request.user)
+            qs = qs.filter(created_by=request.user)
 
-    # Statistics
-    total_untagged = untagged_questions.count()
-    missing_topics = untagged_questions.filter(topic__isnull=True).count()
-    missing_los = untagged_questions.filter(learning_objectives__isnull=True).count()
+    # Statistics (ALL derived from the SAME annotated queryset)
+    total_untagged = qs.count()
+    missing_topics = qs.filter(topic__isnull=True).count()
+    missing_los = qs.filter(lo_count=0).count()
 
     context = {
-        'questions': untagged_questions,
-        'total_untagged': total_untagged,
-        'missing_topics': missing_topics,
-        'missing_los': missing_los,
+        "questions": qs,
+        "total_untagged": total_untagged,
+        "missing_topics": missing_topics,
+        "missing_los": missing_los,
     }
 
-    return render(request, 'teacher/untagged_questions.html', context)
+    return render(request, "teacher/untagged_questions.html", context)
+
 
 
 @login_required
 @staff_member_required
 def start_background_tagging(request):
-    """Start a background tagging task"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST required'}, status=405)
+    """
+    Start a background AI tagging task with a clean, correct queryset
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
 
     try:
+        from django.db.models import Count
         from .background_tagging import create_tagging_task
 
         data = json.loads(request.body)
-        mode = data.get('mode', 'both')  # 'topics', 'los', or 'both'
+        mode = data.get("mode", "both")  # 'topics', 'los', 'both'
 
-        # Validate mode
-        if mode not in ['topics', 'los', 'both']:
-            return JsonResponse({'error': 'Invalid mode'}, status=400)
+        if mode not in ["topics", "los", "both"]:
+            return JsonResponse({"error": "Invalid mode"}, status=400)
 
-        # Get untagged questions
-        questions = Question.objects.filter(
-            Q(topic__isnull=True) | Q(learning_objectives__isnull=True)
-        ).select_related('grade', 'subject', 'topic').distinct()
+        # ORM-safe untagged queryset
+        qs = (
+            Question.objects
+            .annotate(lo_count=Count("learning_objectives"))
+            .filter(
+                Q(topic__isnull=True) | Q(lo_count=0)
+            )
+            .select_related("grade", "subject", "topic")
+            .distinct()
+        )
 
-        # Filter by school
+        # School filtering
         if not request.user.is_superuser:
             try:
                 user_school = request.user.userprofile.school
-                questions = questions.filter(
-                    created_by__userprofile__school=user_school
-                )
+                qs = qs.filter(created_by__userprofile__school=user_school)
             except (AttributeError, UserProfile.DoesNotExist):
-                # User doesn't have a profile or school, show only their own questions
-                questions = questions.filter(created_by=request.user)
+                qs = qs.filter(created_by=request.user)
 
-        if not questions.exists():
-            return JsonResponse({'error': 'No untagged questions found'}, status=400)
+        if not qs.exists():
+            return JsonResponse(
+                {"error": "No untagged questions found"},
+                status=400
+            )
 
-        # Create and start the background task
-        task = create_tagging_task(mode, questions)
+        # Start background task
+        task = create_tagging_task(mode, qs)
 
         return JsonResponse({
-            'success': True,
-            'task_id': task.task_id,
-            'total_questions': task.total,
-            'mode': mode
+            "success": True,
+            "task_id": task.task_id,
+            "total_questions": task.total,
+            "mode": mode,
         })
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
+        return JsonResponse({"error": str(e)}, status=500)
 
 @login_required
 @staff_member_required
 def get_tagging_progress(request, task_id):
-    """Get the progress of a background tagging task"""
+    """
+    Get progress for a background tagging task
+    """
     from .background_tagging import get_task_status
 
     task_status = get_task_status(task_id)
 
-    if not task_status:
-        return JsonResponse({'error': 'Task not found'}, status=404)
+    if task_status is None:
+        return JsonResponse(
+            {"error": "Task not found"},
+            status=404
+        )
 
     return JsonResponse(task_status)
+
+@login_required
+@staff_member_required
+def mcq_examiner_report(request, test_id):
+    test = get_object_or_404(Test, id=test_id)
+
+    from core.analytics.mcq_signals import compute_mcq_signals
+    from core.analytics.examiner_schema import build_examiner_schema
+    from core.analytics.examiner_ai import generate_examiner_report
+
+    if not test.student_answers.exists():
+        return JsonResponse({
+            "examiner_report": "No candidate response data is available for this test.",
+            "structured_data": {
+                "question_analysis": [],
+                "learning_objective_analysis": []
+            }
+        })
+
+    signals = compute_mcq_signals(test)
+    schema = build_examiner_schema(test, signals)
+    narrative = generate_examiner_report(schema)
+
+    return JsonResponse({
+        "examiner_report": narrative,
+        "structured_data": schema
+    })
+
+from django.shortcuts import render, get_object_or_404
+from collections import defaultdict
+from decimal import Decimal
+import statistics
+import math
+
+from core.models import Test, StudentAnswer
+from django.db.models import Avg, Count, Sum
+
+
+def test_analytics_view(request, test_id):
+    test = get_object_or_404(Test, id=test_id)
+
+    # ─────────────────────────────────────────────
+    # 1. Pull all evaluated answers safely
+    # ─────────────────────────────────────────────
+    answers = (
+        StudentAnswer.objects
+        .select_related("student", "question", "question__topic")
+        .filter(test=test, marks_awarded__isnull=False)
+    )
+    
+    
+
+    if not answers.exists():
+        return render(request, "analytics_dashboard.html", {
+            "test": test,
+            "error": "No evaluated student responses available for this test."
+        })
+
+    # ─────────────────────────────────────────────
+    # 2. Student-level aggregation
+    # ─────────────────────────────────────────────
+    student_map = {}
+    total_test_marks = float(
+        test.questions.aggregate(total=Sum("marks"))["total"] or 0
+    )
+
+    for a in answers:
+        sid = a.student_id
+        student_map.setdefault(sid, {
+            "id": sid,
+            "name": a.student.full_name,
+            "grade": a.student.grade.name if a.student.grade else "",
+            "section": a.student.section or "",
+            "earned": 0.0,
+            "max": 0.0,
+            "answered": 0,
+        })
+
+        student_map[sid]["earned"] += float(a.marks_awarded)
+        student_map[sid]["max"] += float(a.question.marks)
+        student_map[sid]["answered"] += 1
+
+    students = []
+    scores = []
+
+    for s in student_map.values():
+        percent = round((s["earned"] / total_test_marks) * 100, 2) if total_test_marks else 0.0
+        scores.append(percent)
+
+        # rule-based risk
+        if percent < 40:
+            risk = "high"
+        elif percent < 60:
+            risk = "medium"
+        else:
+            risk = "low"
+
+        students.append({
+            "id": s["id"],
+            "name": s["name"],
+            "grade": s["grade"],
+            "section": s["section"],
+            "score": percent,
+            "risk": risk,
+            "completion": {
+                "answered": s["answered"],
+                "total": test.questions.count(),
+                "complete": s["answered"] == test.questions.count(),
+            }
+        })
+
+    students.sort(key=lambda x: x["score"], reverse=True)
+
+    # ─────────────────────────────────────────────
+    # 3. Cohort distribution & statistics
+    # ─────────────────────────────────────────────
+    mean = statistics.mean(scores)
+    std = statistics.stdev(scores) if len(scores) > 1 else 0.0
+
+    def histogram(values):
+        bins = [0] * 10
+        for v in values:
+            idx = min(9, int(v // 10))
+            bins[idx] += 1
+        return bins
+
+    def gaussian_curve(mu, sigma, n):
+        curve_x = list(range(0, 101, 2))
+        curve_y = []
+        if sigma == 0:
+            curve_y = [0 for _ in curve_x]
+        else:
+            for x in curve_x:
+                pdf = (1 / (sigma * math.sqrt(2 * math.pi))) * math.exp(
+                    -0.5 * ((x - mu) / sigma) ** 2
+                )
+                curve_y.append(pdf * n * 10)
+        return curve_x, curve_y
+
+    curve_x, curve_y = gaussian_curve(mean, std, len(scores))
+
+    # ─────────────────────────────────────────────
+    # 4. Question-level analytics
+    # ─────────────────────────────────────────────
+    question_stats = []
+    questions = test.questions.all().select_related("topic")
+
+    for idx, q in enumerate(questions, 1):
+        q_answers = answers.filter(question=q)
+        attempts = q_answers.count()
+
+        if attempts == 0:
+            continue
+
+        correct = q_answers.filter(
+            marks_awarded__gte=float(q.marks) * 0.5
+        ).count()
+
+        success_rate = round((correct / attempts) * 100, 1)
+
+        question_stats.append({
+            "number": idx,
+            "topic": q.topic.name if q.topic else "",
+            "marks": float(q.marks),
+            "attempts": attempts,
+            "success_rate": success_rate,
+            "difficulty": (
+                "easy" if success_rate >= 75 else
+                "medium" if success_rate >= 50 else
+                "hard"
+            )
+        })
+
+    # ─────────────────────────────────────────────
+    # 5. Topic / LO mastery
+    # ─────────────────────────────────────────────
+    topic_map = defaultdict(lambda: {"earned": 0.0, "max": 0.0})
+
+    for a in answers:
+        topic = a.question.topic
+        topic_map[topic]["earned"] += float(a.marks_awarded)
+        topic_map[topic]["max"] += float(a.question.marks)
+
+    learning_objectives = []
+    for topic, d in topic_map.items():
+        mastery = round((d["earned"] / d["max"]) * 100, 1) if d["max"] else 0.0
+
+        band = (
+            "mastered" if mastery >= 80 else
+            "developing" if mastery >= 65 else
+            "weak"
+        )
+
+        learning_objectives.append({
+            "name": topic.name,
+            "avg_mastery": mastery,
+            "band": band,
+            "question_count": test.questions.filter(topic=topic).count()
+        })
+
+    # ─────────────────────────────────────────────
+    # 6. Cognitive Rigor (Bloom's Taxonomy) - REAL DATA
+    # ─────────────────────────────────────────────
+    bloom_distribution = {
+        'remember': {"correct": 0, "total": 0},
+        'understand': {"correct": 0, "total": 0},
+        'apply': {"correct": 0, "total": 0},
+        'analyze': {"correct": 0, "total": 0},
+        'evaluate': {"correct": 0, "total": 0},
+        'create': {"correct": 0, "total": 0},
+    }
+
+    for q in questions:
+        # Map question_type to bloom level (proxy until we add bloom_level field)
+        if q.question_type == 'mcq':
+            level = 'remember' if q.marks <= 2 else 'understand'
+        elif q.question_type == 'theory':
+            level = 'apply'
+        elif q.question_type == 'structured':
+            level = 'analyze'
+        else:  # practical
+            level = 'evaluate'
+
+        # Calculate success rate for this level
+        q_answers = answers.filter(question=q)
+        if q_answers.count() > 0:
+            correct = q_answers.filter(marks_awarded__gte=float(q.marks) * 0.7).count()
+            bloom_distribution[level]["correct"] += correct
+            bloom_distribution[level]["total"] += q_answers.count()
+
+    # Calculate percentages for radar chart
+    bloom_data = []
+    for level in ['remember', 'understand', 'apply', 'analyze', 'evaluate', 'create']:
+        if bloom_distribution[level]["total"] > 0:
+            percentage = (bloom_distribution[level]["correct"] / bloom_distribution[level]["total"]) * 100
+        else:
+            percentage = 0
+        bloom_data.append(round(percentage, 1))
+
+    # ─────────────────────────────────────────────
+    # 7. LO Competency Matrix - REAL DATA
+    # ─────────────────────────────────────────────
+    # Build per-student, per-LO performance matrix
+    lo_matrix = {}  # {student_id: {lo_name: {earned, max}}}
+
+    for a in answers:
+        sid = a.student_id
+
+        # Get all LOs for this question (using topic as proxy for now)
+        # In future, use a.question.learning_objectives.all() if properly tagged
+        lo_name = a.question.topic.name if a.question.topic else "Uncategorized"
+
+        if sid not in lo_matrix:
+            lo_matrix[sid] = {}
+        if lo_name not in lo_matrix[sid]:
+            lo_matrix[sid][lo_name] = {"earned": 0.0, "max": 0.0}
+
+        lo_matrix[sid][lo_name]["earned"] += float(a.marks_awarded)
+        lo_matrix[sid][lo_name]["max"] += float(a.question.marks)
+
+    # Add LO performance to each student
+    for s in students:
+        s["lo_performance"] = {}
+        for lo in learning_objectives:
+            lo_name = lo["name"]
+            if s["id"] in lo_matrix and lo_name in lo_matrix[s["id"]]:
+                data = lo_matrix[s["id"]][lo_name]
+                percentage = (data["earned"] / data["max"]) * 100 if data["max"] > 0 else 0
+                s["lo_performance"][lo_name] = round(percentage, 1)
+            else:
+                s["lo_performance"][lo_name] = None  # No questions for this LO
+
+    # ─────────────────────────────────────────────
+    # 8. Differentiated Groups - REAL DATA
+    # ─────────────────────────────────────────────
+    extension_threshold = 80  # Top performers
+    intervention_threshold = 50  # Needs support
+
+    extension_group = [s for s in students if s["score"] >= extension_threshold]
+    intervention_group = [s for s in students if s["score"] < intervention_threshold]
+
+    # Identify common weak LO for intervention group
+    weak_los = [lo["name"] for lo in learning_objectives if lo["band"] == "weak"]
+    primary_weak_lo = weak_los[0] if weak_los else "fundamental concepts"
+
+    differentiated_groups = {
+        "extension": {
+            "count": len(extension_group),
+            "students": [s["name"] for s in extension_group[:5]],  # First 5 names
+        },
+        "intervention": {
+            "count": len(intervention_group),
+            "students": [s["name"] for s in intervention_group[:5]],
+            "focus_area": primary_weak_lo
+        }
+    }
+
+    # ─────────────────────────────────────────────
+    # 9. Examiner-style narrative (rule-based)
+    # ─────────────────────────────────────────────
+    overview = (
+        "Overall performance was strong."
+        if mean >= 70 else
+        "Overall performance was moderate."
+        if mean >= 50 else
+        "Overall performance was below expectations."
+    )
+
+    examiner_report = {
+        "overview": overview,
+        "strengths": [
+            lo["name"] for lo in learning_objectives if lo["band"] == "mastered"
+        ],
+        "weaknesses": [
+            lo["name"] for lo in learning_objectives if lo["band"] == "weak"
+        ],
+        "recommendations": [
+            "Reinforce weak learning objectives.",
+            "Provide targeted practice for at-risk students.",
+        ]
+    }
+
+    # ─────────────────────────────────────────────
+    # FINAL CONTEXT
+    # ─────────────────────────────────────────────
+    context = {
+        "test": test,
+        "analytics": {
+            "students": students,
+            "distribution": {
+                "scores": scores,
+                "histogram": histogram(scores),
+                "mean": round(mean, 2),
+                "median": round(statistics.median(scores), 2),
+                "std_dev": round(std, 2),
+                "curve": {"x": curve_x, "y": curve_y},
+            },
+            "questions": question_stats,
+            "learning_objectives": learning_objectives,
+            "bloom_taxonomy": bloom_data,  # NEW: Real Bloom's data
+            "differentiated_groups": differentiated_groups,  # NEW: Real groups
+            "examiner_report": examiner_report,
+        }
+    }
+
+    return render(request, "teacher/analytics_dashboard.html", context)
 

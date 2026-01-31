@@ -6,6 +6,7 @@ from . import analytics_views
 from . import pdf_tasks_views
 from . import descriptive_pdf_slicer_views
 from . import answer_space_designer_views
+from core import analytics_api
 
 urlpatterns = [
     # Root
@@ -129,8 +130,17 @@ urlpatterns = [
 
     # Analytics
     path("student/analytics/", analytics_views.student_analytics_dashboard, name="student_analytics"),
-    path("teacher/analytics/", analytics_views.teacher_analytics_dashboard, name="teacher_analytics"),
-    path("teacher/tests/<int:test_id>/analytics/", analytics_views.test_analytics, name="test_analytics"),
+    #path("teacher/analytics/", analytics_views.teacher_analytics_dashboard, name="teacher_analytics"),
+    #path("teacher/tests/<int:test_id>/analytics/", analytics_views.test_analytics, name="test_analytics"),
+    # Examiner report API (JSON)
+    path(
+        "teacher/tests/<int:test_id>/mcq-examiner-report/",
+        analytics_views.mcq_examiner_report,
+        name="mcq_examiner_report",
+    ),
+    path('teacher/tests/<int:test_id>/analytics/', 
+         views.test_analytics_view, 
+         name='test_analytics'),
 
     # Test Monitoring & Grading
     path("teacher/tests/<int:test_id>/monitor/", views.monitor_test, name="monitor_test"),
@@ -142,4 +152,11 @@ urlpatterns = [
     path("teacher/grading/save-space-grade/", views.save_answer_space_grade, name="save_answer_space_grade"),
     path("teacher/grading/ai-grade/", views.ai_grade_answer, name="ai_grade_answer"),
     path("teacher/tests/<int:test_id>/publish-results/", views.publish_results, name="publish_results"),
+    
+
+    path("teacher/tests/<int:test_id>/analytics/questions/", analytics_api.question_analytics),
+    path("teacher/tests/<int:test_id>/analytics/lo-heatmap/", analytics_api.lo_mastery_heatmap),
+    path("teacher/tests/<int:test_id>/analytics/risk/", analytics_api.risk_prediction),
+    path("teacher/tests/<int:test_id>/analytics/summary/", analytics_api.lmstudio_summary),
+
 ]

@@ -7,7 +7,7 @@ from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta
 from .models import Student, ClassGroup, Grade, Subject
-from .analytics import StudentAnalytics, ClassAnalytics
+#from .analytics import StudentAnalytics, ClassAnalytics
 from .views import get_user_school, staff_member_required
 
 
@@ -108,14 +108,7 @@ def teacher_analytics_dashboard(request):
     class_group = ClassGroup.objects.get(id=group_id) if group_id else None
 
     # Initialize class analytics
-    class_analytics = ClassAnalytics(
-        school=school,
-        grade=grade,
-        section=section,
-        class_group=class_group,
-        start_date=start_date,
-        end_date=end_date
-    )
+    #class_analytics = ClassAnalytics( school=school, section=section, class_group=class_group, start_date=start_date,, end_date=end_date)
 
     # Get student list for individual analysis
     students = class_analytics._get_students()
@@ -176,7 +169,7 @@ def test_analytics(request, test_id):
     school = get_user_school(request.user)
 
     try:
-        test = Test.objects.get(id=test_id, created_by=request.user)
+        test = Test.objects.get(id=test_id)
     except Test.DoesNotExist:
         messages.error(request, "Test not found")
         return redirect("tests_list")
@@ -205,11 +198,13 @@ def test_analytics(request, test_id):
     for student_id, data in student_totals.items():
         percentage = (data['earned_marks'] / data['total_marks'] * 100) if data['total_marks'] > 0 else 0
         student_results.append({
-            'student': data['student'],
+            'student_id': data['student'].id,
+            'student_name': data['student'].full_name,
             'total_marks': data['total_marks'],
             'earned_marks': data['earned_marks'],
             'percentage': round(percentage, 2)
         })
+
 
     student_results.sort(key=lambda x: x['percentage'], reverse=True)
 
@@ -232,4 +227,43 @@ def test_analytics(request, test_id):
         'class_stats': class_stats,
     }
 
-    return render(request, 'teacher/test_analytics.html', context)
+    return render(request, 'teacher/analytics_dashboard.html', context)
+
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
+
+from core.models import Test
+from core.analytics.mcq_signals import compute_mcq_signals
+from core.analytics.examiner_schema import build_examiner_schema
+from core.analytics.examiner_ai import generate_examiner_report
+
+
+@login_required
+@staff_member_required
+def mcq_examiner_report(request, test_id):
+    """
+    JSON API: MCQ Examiner-style report for a test
+    """
+
+    test = get_object_or_404(Test, id=test_id)
+
+    # No responses → graceful exit
+    if not test.student_answers.exists():
+        return JsonResponse({
+            "examiner_report": "No candidate response data is available for this test.",
+            "structured_data": {
+                "question_analysis": [],
+                "learning_objective_analysis": []
+            }
+        })
+
+    signals = compute_mcq_signals(test)
+    schema = build_examiner_schema(test, signals)
+    narrative = generate_examiner_report(schema)
+
+    return JsonResponse({
+        "examiner_report": narrative,
+        "structured_data": schema
+    })

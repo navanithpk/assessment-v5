@@ -435,7 +435,7 @@ body {
       <button onclick="clearLines()">🗑️ Clear Lines</button>
 
       <span class="help-text">
-        <strong>Shortcuts:</strong> Z=start | X=end | C=pair | ↑↓ move | Del remove
+        <strong>Shortcuts:</strong> A=white box | Z=start | X=end | C=pair | Del remove
       </span>
     </div>
 
@@ -1076,7 +1076,10 @@ document.addEventListener('keydown', e => {
   // Page navigation without Shift
   if (e.key === 'ArrowRight' && !e.shiftKey) return nextPage();
   if (e.key === 'ArrowLeft' && !e.shiftKey) return prevPage();
-
+  if (e.key === 'a' || e.key === 'A') {
+    // We use mouseX and mouseY (ensure mouseX is being tracked)
+    addMask(pointerX, mouseY); 
+  }
   if (e.key === 'z' || e.key === 'Z') addLine(mouseY, 'green');
   if (e.key === 'x' || e.key === 'X') addLine(mouseY, 'red');
   if (e.key === 'c' || e.key === 'C') addPair(mouseY);
@@ -1093,7 +1096,13 @@ document.addEventListener('keydown', e => {
     }
   }
 });
-
+// Update your mouse move tracker to capture X as well
+let mouseX = 0;
+let pointerX = 0; // Better to track the actual canvas pointer
+canvas.on('mouse:move', e => {
+  pointerX = e.pointer.x;
+  mouseY = e.pointer.y;
+});
 // Navigation
 function nextPage() {
   if (pageNum < qpDoc.numPages) {
@@ -1114,7 +1123,6 @@ pageBox.addEventListener('change', () => {
   renderPage();
 });
 
-// Slice document and show modal
 async function sliceDocument() {
   if (!qpDoc) {
     alert('Please upload a question paper first');
@@ -1130,13 +1138,30 @@ async function sliceDocument() {
     const page = await qpDoc.getPage(p);
     const vp = page.getViewport({ scale });
 
+    // 1. Create the temporary canvas for the raw PDF page
     const tmp = document.createElement('canvas');
+    const ctx = tmp.getContext('2d');
     tmp.width = vp.width;
     tmp.height = vp.height;
 
-    await page.render({ canvasContext: tmp.getContext('2d'), viewport: vp }).promise;
+    // 2. Render the PDF page into the tmp canvas
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
 
-    let lines = (linesByPage[p] || []).sort((a, b) => a.top - b.top);
+    // 3. Draw the white masks directly onto the tmp canvas
+    // We look for objects on the current page that were marked as masks
+    const pageObjects = linesByPage[p] || [];
+    pageObjects.forEach(obj => {
+      // Check if it's a mask (white fill, rectangular)
+      if (obj.type === 'rect' && obj.fill === 'white' && !obj.stroke.includes('blue')) {
+        ctx.fillStyle = 'white';
+        // We use the object's coordinates and dimensions
+        // Fabric objects are centered by default or top-left depending on your setup
+        // Here we assume standard top-left/scale properties
+        ctx.fillRect(obj.left, obj.top, obj.width * obj.scaleX, obj.height * obj.scaleY);
+      }
+    });
+
+    let lines = pageObjects.filter(l => l.type === 'line').sort((a, b) => a.top - b.top);
 
     const left = activeRect.left;
     const width = activeRect.getScaledWidth();
@@ -1147,6 +1172,7 @@ async function sliceDocument() {
       }
 
       if (l.stroke === 'red' && openSegment) {
+        // 4. Crop from 'tmp' which now contains the PDF + the burned-in masks
         let part = crop(tmp, left, openSegment.start, width, l.top - openSegment.start);
         openSegment.canvas = stitch(openSegment.canvas, part);
 
@@ -1463,6 +1489,27 @@ document.addEventListener('keydown', (e) => {
     closeModal();
   }
 });
+// Function to create a white masking square
+function addMask(x, y) {
+  const mask = new fabric.Rect({
+    left: x - 15, // Center the 30px box on the cursor
+    top: y - 15,
+    width: 30,
+    height: 30,
+    fill: 'white',
+    stroke: 'white', // Light border so you can see it against white pages
+    strokeWidth: 1,
+    selectable: true,
+    hasControls: true, // Allow resizing if the question number is larger
+    transparentCorners: false
+  });
+
+  canvas.add(mask);
+  
+  // Track masks so they persist or can be cleared
+  if (!linesByPage[pageNum]) linesByPage[pageNum] = [];
+  linesByPage[pageNum].push(mask);
+}
 </script>
 
 {% endblock %}
