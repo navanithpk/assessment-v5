@@ -1,0 +1,276 @@
+{% extends 'student/student_base.html' %}
+
+{% block title %}Performance Analytics{% endblock %}
+
+{% block content %}
+<style>
+    .analytics-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px;
+    }
+
+    .analytics-header {
+        margin-bottom: 32px;
+    }
+
+    .analytics-header h1 {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 8px;
+    }
+
+    .analytics-header p {
+        color: #666;
+        font-size: 16px;
+    }
+
+    .time-range-selector {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        padding: 16px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        flex-wrap: wrap;
+    }
+
+    .time-range-btn {
+        padding: 8px 16px;
+        border: 1px solid #e0e0e0;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: #333;
+    }
+
+    .time-range-btn:hover {
+        background: #f5f5f5;
+    }
+
+    .time-range-btn.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: transparent;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .metric-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-bottom: 16px;
+    }
+
+    .metric-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .metric-value {
+        font-size: 36px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .section-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: #1a1a1a;
+    }
+
+    .subject-list {
+        display: grid;
+        gap: 16px;
+    }
+
+    .subject-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .subject-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .subject-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .subject-score {
+        font-size: 24px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 8px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s;
+    }
+
+    .progress-bar.excellent {
+        background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .progress-bar.good {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .progress-bar.average {
+        background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .progress-bar.poor {
+        background: linear-gradient(90deg, #fa709a 0%, #fee140 100%);
+    }
+
+    .subject-meta {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .empty-state {
+        background: white;
+        border-radius: 12px;
+        padding: 48px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+        font-size: 20px;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .empty-state p {
+        color: #666;
+        font-size: 16px;
+    }
+</style>
+
+<div class="analytics-container">
+    <!-- Header -->
+    <div class="analytics-header">
+        <h1>📊 Performance Analytics</h1>
+        <p>Track your academic progress and performance trends</p>
+    </div>
+
+    <!-- Time Range Selector -->
+    <div class="time-range-selector">
+        <a href="?range=1m" class="time-range-btn {% if time_range == '1m' %}active{% endif %}">Last Month</a>
+        <a href="?range=3m" class="time-range-btn {% if time_range == '3m' %}active{% endif %}">Last 3 Months</a>
+        <a href="?range=6m" class="time-range-btn {% if time_range == '6m' %}active{% endif %}">Last 6 Months</a>
+        <a href="?range=1y" class="time-range-btn {% if time_range == '1y' %}active{% endif %}">Last Year</a>
+    </div>
+
+    <!-- Overview Metrics -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon">📝</div>
+            <div class="metric-label">Total Tests Taken</div>
+            <div class="metric-value">{{ total_tests }}</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon">📈</div>
+            <div class="metric-label">Average Score</div>
+            <div class="metric-value">{{ average_score }}%</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon">❓</div>
+            <div class="metric-label">Questions Attempted</div>
+            <div class="metric-value">{{ total_questions }}</div>
+        </div>
+    </div>
+
+    <!-- Subject Performance -->
+    {% if subject_performance %}
+    <h2 class="section-title">Subject Performance</h2>
+    <div class="subject-list">
+        {% for subject in subject_performance %}
+        <div class="subject-card">
+            <div class="subject-header">
+                <div class="subject-name">{{ subject.name }}</div>
+                <div class="subject-score">{{ subject.score }}%</div>
+            </div>
+            <div class="progress-bar-container">
+                <div class="progress-bar {% if subject.score >= 80 %}excellent{% elif subject.score >= 60 %}good{% elif subject.score >= 40 %}average{% else %}poor{% endif %}"
+                     style="width: {{ subject.score }}%"></div>
+            </div>
+            <div class="subject-meta">
+                {{ subject.tests }} test{{ subject.tests|pluralize }} completed
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📚</div>
+        <h3>No Test Data Available</h3>
+        <p>You haven't taken any tests in the selected time period. Complete some tests to see your analytics!</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

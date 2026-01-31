@@ -7,6 +7,8 @@ from django.contrib import messages
 from django.utils import timezone
 from datetime import timedelta
 from .models import Student, ClassGroup, Grade, Subject
+# Note: analytics.py file is shadowed by analytics/ package
+# Commenting out for now - will create simplified version
 #from .analytics import StudentAnalytics, ClassAnalytics
 from .views import get_user_school, staff_member_required
 
@@ -14,7 +16,7 @@ from .views import get_user_school, staff_member_required
 @login_required
 def student_analytics_dashboard(request):
     """
-    Comprehensive analytics dashboard for students
+    Simplified analytics dashboard for students
     """
     try:
         student = Student.objects.get(user=request.user)
@@ -38,41 +40,55 @@ def student_analytics_dashboard(request):
 
     end_date = timezone.now()
 
-    # Initialize analytics
-    analytics = StudentAnalytics(student, start_date, end_date)
+    # Get student's test data
+    from .models import StudentAnswer, Test
 
-    # Get selected subject for detailed view
-    selected_subject = request.GET.get('subject')
+    answers = StudentAnswer.objects.filter(
+        student=student,
+        test__created_at__gte=start_date,
+        test__created_at__lte=end_date
+    ).select_related('test', 'test__subject', 'question')
 
-    # Gather metrics
+    # Calculate basic metrics
+    total_tests = answers.values('test').distinct().count()
+    total_questions = answers.count()
+
+    # Calculate average score
+    total_marks = sum(float(a.question.marks or 0) for a in answers)
+    earned_marks = sum(float(a.marks_awarded or 0) for a in answers)
+    average_score = (earned_marks / total_marks * 100) if total_marks > 0 else 0
+
+    # Subject performance
+    subject_performance = []
+    subjects = answers.values_list('test__subject', flat=True).distinct()
+    for subject_id in subjects:
+        if not subject_id:
+            continue
+        subject_answers = answers.filter(test__subject_id=subject_id)
+        subject = Subject.objects.get(id=subject_id)
+
+        subj_total = sum(float(a.question.marks or 0) for a in subject_answers)
+        subj_earned = sum(float(a.marks_awarded or 0) for a in subject_answers)
+        subj_score = (subj_earned / subj_total * 100) if subj_total > 0 else 0
+
+        subject_performance.append({
+            'name': subject.name,
+            'score': round(subj_score, 1),
+            'tests': subject_answers.values('test').distinct().count()
+        })
+
     context = {
         'student': student,
         'time_range': time_range,
         'start_date': start_date,
         'end_date': end_date,
-
-        # Subject-level
-        'subject_performance': analytics.subject_performance_summary(),
-
-        # Topic & LO level
-        'topic_performance': analytics.topic_performance(),
-        'lo_performance': analytics.lo_performance()[:15],  # Top 15 LOs
-
-        # Strengths & weaknesses
-        'strengths_weaknesses': analytics.strengths_and_weaknesses(),
-
-        # Engagement
-        'engagement': analytics.engagement_metrics(),
-
-        # Selected subject
-        'selected_subject': selected_subject,
+        'total_tests': total_tests,
+        'total_questions': total_questions,
+        'average_score': round(average_score, 1),
+        'subject_performance': subject_performance,
     }
 
-    # If subject selected, get trend
-    if selected_subject:
-        context['subject_trend'] = analytics.subject_performance_trend(selected_subject)
-
-    return render(request, 'student/analytics_dashboard.html', context)
+    return render(request, 'student/analytics_dashboard_simple.html', context)
 
 
 @login_required
