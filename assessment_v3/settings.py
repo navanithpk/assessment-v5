@@ -29,8 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-h=9a(!o)u!le4os-2_vz1b)lwc-@idf7vq(%kn4773#u3v(n7*')
 
-# ── LMStudio configuration ────────────────────────────────────────
-# Change these if your LMStudio server moves to a different IP/port.
+# ── LMStudio configuration (unused in production) ────────
 LMSTUDIO_URL = 'http://192.168.1.105:1234/v1/chat/completions'
 LMSTUDIO_MODEL = 'openai/gpt-oss-20b'
 
@@ -40,38 +39,29 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-<<<<<<< HEAD
     ".pythonanywhere.com",   # PythonAnywhere
     ".ngrok-free.app",       # ngrok tunnels
     ".railway.app",          # Railway
     ".run.app",              # Google Cloud Run
+    "16.171.182.19",         # AWS EC2
 ]
 
-# Allow any extra host specified via environment variable (e.g. custom domain)
+# Allow any extra host via env var (custom domain, Elastic IP, etc.)
 if os.environ.get('ALLOWED_HOST'):
     ALLOWED_HOSTS.append(os.environ['ALLOWED_HOST'])
-=======
-    ".ngrok-free.app",   # allows ALL ngrok subdomains
-    ".railway.app",      # Railway domains
-    ".run.app",          # Google Cloud Run domains
-]
-
-# Add Cloud Run domain dynamically
-if os.environ.get('CLOUD_RUN_SERVICE_NAME'):
-    ALLOWED_HOSTS.append(f"{os.environ.get('CLOUD_RUN_SERVICE_NAME')}.run.app")
->>>>>>> 00fd1b539d0cd3c647de646bd917a039c05b2cda
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.pythonanywhere.com",
     "https://*.ngrok-free.app",
     "https://*.railway.app",
-<<<<<<< HEAD
     "https://*.run.app",
-=======
-    "https://*.run.app",  # Google Cloud Run
->>>>>>> 00fd1b539d0cd3c647de646bd917a039c05b2cda
+    "http://16.171.182.19",
 ]
 
+# If a custom domain is set, trust it for CSRF too
+if os.environ.get('ALLOWED_HOST'):
+    _host = os.environ['ALLOWED_HOST']
+    CSRF_TRUSTED_ORIGINS += [f"http://{_host}", f"https://{_host}"]
 
 
 # Application definition
@@ -102,7 +92,7 @@ ROOT_URLCONF = 'assessment_v3.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR/"templates"],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -120,21 +110,12 @@ WSGI_APPLICATION = 'assessment_v3.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-<<<<<<< HEAD
 # Use PostgreSQL if DATABASE_URL env var is set, otherwise SQLite
+
 if os.environ.get('DATABASE_URL') and _HAS_DJ_DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(
             os.environ['DATABASE_URL'],
-=======
-# Use PostgreSQL in production (Cloud Run/Railway), SQLite in development
-if os.environ.get('DATABASE_URL'):
-    DATABASES = {
-        'default': dj_database_url.parse(
-            os.environ.get('DATABASE_URL'),
->>>>>>> 00fd1b539d0cd3c647de646bd917a039c05b2cda
             conn_max_age=600,
             conn_health_checks=True,
         )
@@ -154,39 +135,22 @@ STATICFILES_DIRS = [
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Password validation
-# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/4.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
-
 STATIC_URL = '/static/'
 
 # Whitenoise: serve compressed, cached static files in production
@@ -196,13 +160,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Media files (user uploads)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-
 # Default primary key field type
-# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = "/accounts/login/"
@@ -213,6 +171,5 @@ LOGOUT_REDIRECT_URL = "/accounts/login/"
 GOOGLE_OAUTH_CLIENT_ID = '833291367883-dm8ebjtstku36gm673tj3cpk84prjr97.apps.googleusercontent.com'
 GOOGLE_OAUTH_CLIENT_SECRET = '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'
 
-# Dynamic redirect URI - will be set at runtime based on request domain
-# This is overridden in google_oauth.py to use the actual request domain
+# Dynamic redirect URI - overridden in google_oauth.py to use actual request domain
 GOOGLE_OAUTH_REDIRECT_URI = 'http://127.0.0.1:8000/accounts/google/callback/'
