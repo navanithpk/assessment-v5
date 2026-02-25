@@ -40,6 +40,7 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
+<<<<<<< HEAD
     ".pythonanywhere.com",   # PythonAnywhere
     ".ngrok-free.app",       # ngrok tunnels
     ".railway.app",          # Railway
@@ -49,12 +50,26 @@ ALLOWED_HOSTS = [
 # Allow any extra host specified via environment variable (e.g. custom domain)
 if os.environ.get('ALLOWED_HOST'):
     ALLOWED_HOSTS.append(os.environ['ALLOWED_HOST'])
+=======
+    ".ngrok-free.app",   # allows ALL ngrok subdomains
+    ".railway.app",      # Railway domains
+    ".run.app",          # Google Cloud Run domains
+]
+
+# Add Cloud Run domain dynamically
+if os.environ.get('CLOUD_RUN_SERVICE_NAME'):
+    ALLOWED_HOSTS.append(f"{os.environ.get('CLOUD_RUN_SERVICE_NAME')}.run.app")
+>>>>>>> 00fd1b539d0cd3c647de646bd917a039c05b2cda
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.pythonanywhere.com",
     "https://*.ngrok-free.app",
     "https://*.railway.app",
+<<<<<<< HEAD
     "https://*.run.app",
+=======
+    "https://*.run.app",  # Google Cloud Run
+>>>>>>> 00fd1b539d0cd3c647de646bd917a039c05b2cda
 ]
 
 
@@ -107,11 +122,19 @@ WSGI_APPLICATION = 'assessment_v3.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+<<<<<<< HEAD
 # Use PostgreSQL if DATABASE_URL env var is set, otherwise SQLite
 if os.environ.get('DATABASE_URL') and _HAS_DJ_DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(
             os.environ['DATABASE_URL'],
+=======
+# Use PostgreSQL in production (Cloud Run/Railway), SQLite in development
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.parse(
+            os.environ.get('DATABASE_URL'),
+>>>>>>> 00fd1b539d0cd3c647de646bd917a039c05b2cda
             conn_max_age=600,
             conn_health_checks=True,
         )
@@ -168,6 +191,10 @@ STATIC_URL = '/static/'
 
 # Whitenoise: serve compressed, cached static files in production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Media files (user uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Media files (user uploads)
 MEDIA_URL = '/media/'
