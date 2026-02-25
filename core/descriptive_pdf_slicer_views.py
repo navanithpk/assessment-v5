@@ -14,7 +14,12 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
 from django.contrib import messages
-import fitz  # PyMuPDF
+try:
+    import fitz  # PyMuPDF
+    _FITZ_AVAILABLE = True
+except ImportError:
+    fitz = None
+    _FITZ_AVAILABLE = False
 
 from .models import (
     Question, Grade, Subject, Topic, LearningObjective,
@@ -249,6 +254,12 @@ def descriptive_pdf_slicer(request):
     Handles question paper slicing with colored lines and
     auto-parses Cambridge mark scheme table format.
     """
+    if not _FITZ_AVAILABLE:
+        from django.contrib import messages as _msg
+        _msg.error(request, 'PDF processing (PyMuPDF) is not installed on this server. '
+                             'Ask your administrator to run: pip install PyMuPDF')
+        return redirect('teacher_dashboard')
+
     grades = Grade.objects.all().order_by('name')
     subjects = Subject.objects.all().order_by('name')
     topics = Topic.objects.all().order_by('name')

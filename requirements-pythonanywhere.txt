@@ -1,0 +1,14 @@
+# Minimal requirements for PythonAnywhere free tier
+# Heavy optional packages (PyMuPDF, pandas, numpy) are excluded.
+# The app will start and run fully without them.
+# Only PDF slicing and Excel bulk-import features are unavailable.
+
+Django==4.2
+asgiref==3.8.1
+sqlparse==0.5.1
+whitenoise==6.7.0
+pillow==10.4.0
+python-dotenv==1.0.1
+pytz==2024.1
+tzdata==2024.1
+openpyxl==3.1.5

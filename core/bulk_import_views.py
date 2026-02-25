@@ -3,7 +3,13 @@ Bulk Import Views - For importing users from XLSX / XLS / CSV files
 """
 import re
 import datetime
-import pandas as pd
+
+try:
+    import pandas as pd
+    _PANDAS_AVAILABLE = True
+except ImportError:
+    pd = None
+    _PANDAS_AVAILABLE = False
 
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
@@ -84,6 +90,11 @@ def _read_excel(file_obj):
 @login_required
 def bulk_import_users(request):
     """Bulk import users from XLSX / XLS / CSV file."""
+    if not _PANDAS_AVAILABLE:
+        messages.error(request, 'Bulk import requires pandas which is not installed on this server. '
+                                 'Ask your administrator to run: pip install pandas openpyxl')
+        return redirect('teacher_dashboard')
+
     if request.user.profile.role not in ['teacher', 'school_admin']:
         messages.error(request, "You don't have permission to import users.")
         return redirect('teacher_dashboard')
