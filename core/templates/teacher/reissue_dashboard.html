@@ -1,0 +1,266 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Topic Re-issue Suggestions{% endblock %}
+
+{% block content %}
+<style>
+h1 { margin-top: 0; }
+
+.page-header { margin-bottom: 24px; }
+.page-header p { color: #5f6368; font-size: 14px; margin: 4px 0 0; }
+
+.filter-card {
+    background: white; border-radius: 12px; padding: 20px;
+    margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,.08);
+}
+.filter-row { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; }
+.filter-row label { font-size: 12px; font-weight: 600; color: #5f6368; display: block; margin-bottom: 4px; }
+.filter-row select { padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; min-width: 160px; }
+
+.btn { border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.btn-primary { background: #2563eb; color: white; }
+.btn-success { background: #10b981; color: white; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+
+.summary-bar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.summary-chip {
+    background: white; padding: 14px 20px; border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06); display: flex; align-items: center; gap: 10px;
+}
+.summary-chip .num { font-size: 22px; font-weight: 700; color: #ef4444; }
+.summary-chip .lbl { font-size: 12px; color: #5f6368; }
+
+.topic-card {
+    background: white; border-radius: 12px; padding: 20px;
+    margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    border-left: 4px solid #ef4444;
+}
+.topic-card.developing { border-left-color: #f59e0b; }
+
+.topic-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.topic-name { font-size: 16px; font-weight: 700; color: #1e293b; }
+.topic-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge { padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.badge-weak { background: #fef2f2; color: #dc2626; }
+.badge-developing { background: #fffbeb; color: #d97706; }
+.badge-info { background: #eff6ff; color: #2563eb; }
+
+.lo-coverage { margin-bottom: 12px; }
+.lo-coverage-bar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+.lo-coverage-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+.untested-los { margin: 8px 0 16px; padding: 10px 14px; background: #fefce8; border-radius: 8px; border: 1px solid #fde68a; }
+.untested-los summary { cursor: pointer; font-size: 12px; font-weight: 600; color: #92400e; }
+.untested-los ul { margin: 6px 0 0 16px; padding: 0; font-size: 12px; color: #78350f; }
+.untested-los li { margin-bottom: 3px; }
+
+.students-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.students-table th { background: #f8fafc; padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; color: #5f6368; border-bottom: 1px solid #e2e8f0; }
+.students-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+.students-table tr:hover { background: #f8fafc; }
+
+.mastery-bar { display: inline-block; width: 60px; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.mastery-fill { height: 100%; border-radius: 4px; }
+
+.assign-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.empty-state { text-align: center; padding: 60px; background: white; border-radius: 12px; color: #9ca3af; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+
+#loading { display: none; text-align: center; padding: 40px; color: #6b7280; font-size: 14px; }
+</style>
+
+<div class="page-header">
+    <h1>📋 Topic Re-issue Suggestions</h1>
+    <p>Identify weak topics and assign targeted practice to the students who need it</p>
+</div>
+
+<!-- Filters -->
+<div class="filter-card">
+    <div class="filter-row">
+        <div>
+            <label>Grade</label>
+            <select id="gradeSelect">
+                <option value="">Select Grade</option>
+                {% for g in grades %}
+                <option value="{{ g.id }}">{{ g.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Subject</label>
+            <select id="subjectSelect">
+                <option value="">Select Subject</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="loadSuggestions()">🔍 Analyze</button>
+        </div>
+    </div>
+</div>
+
+<div id="loading">⏳ Analyzing student performance…</div>
+<div id="results"></div>
+
+<!-- Test selector modal -->
+<div id="assignModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:14px; padding:28px; max-width:500px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.2);">
+        <h3 style="margin:0 0 16px;">Assign Practice Test</h3>
+        <p id="assignInfo" style="font-size:13px; color:#5f6368; margin-bottom:16px;"></p>
+        <label style="font-size:12px; font-weight:600; color:#5f6368; display:block; margin-bottom:6px;">Select a test to assign:</label>
+        <select id="testSelect" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-size:14px; margin-bottom:16px;">
+            <option value="">Select Test…</option>
+            {% for test in tests %}
+            <option value="{{ test.id }}">{{ test.title }} ({{ test.subject.name|default:"General" }})</option>
+            {% endfor %}
+        </select>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button class="btn" style="background:#e5e7eb; color:#374151;" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-success" id="assignBtn" onclick="confirmAssign()">Assign to Students</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSuggestions = null;
+
+async function loadSuggestions() {
+    const grade = document.getElementById('gradeSelect').value;
+    const subject = document.getElementById('subjectSelect').value;
+    if (!grade || !subject) { alert('Please select both grade and subject'); return; }
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').innerHTML = '';
+
+    try {
+        const res = await fetch(`/teacher/report-cards/reissue-suggestions/?grade=${grade}&subject=${subject}`);
+        const data = await res.json();
+        currentSuggestions = data;
+        renderResults(data);
+    } catch (e) {
+        document.getElementById('results').innerHTML = '<div class="empty-state"><p>Error loading data.</p></div>';
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function renderResults(data) {
+    const container = document.getElementById('results');
+
+    if (!data.suggestions || data.suggestions.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p style="font-size:48px;">🎉</p><h3>No weak topics found!</h3><p>All students are performing well in ' + data.grade + ' ' + data.subject + '.</p></div>';
+        return;
+    }
+
+    let html = '<div class="summary-bar">';
+    html += '<div class="summary-chip"><div class="num">' + data.total_topics_with_issues + '</div><div class="lbl">Topics Need<br>Attention</div></div>';
+    var totalWeak = data.suggestions.reduce(function(sum, s) { return sum + s.weak_student_count; }, 0);
+    html += '<div class="summary-chip"><div class="num">' + totalWeak + '</div><div class="lbl">Student-Topic<br>Gaps</div></div>';
+    html += '</div>';
+
+    data.suggestions.forEach(function(topic, idx) {
+        var isWeak = topic.students.some(function(s) { return s.mastery < 40; });
+        var cardClass = isWeak ? '' : 'developing';
+        var bandClass = isWeak ? 'badge-weak' : 'badge-developing';
+        var bandText = isWeak ? 'Weak Students' : 'Developing';
+
+        html += '<div class="topic-card ' + cardClass + '">';
+        html += '<div class="topic-header">';
+        html += '<span class="topic-name">' + topic.topic + '</span>';
+        html += '<div class="topic-badges">';
+        html += '<span class="badge ' + bandClass + '">' + topic.weak_student_count + ' ' + bandText + '</span>';
+        if (topic.total_los > 0) {
+            var tested = topic.students.length > 0 ? topic.students[0].tested_los : 0;
+            html += '<span class="badge badge-info">LOs: ' + tested + '/' + topic.total_los + ' tested</span>';
+        }
+        html += '</div></div>';
+
+        // LO coverage bar
+        if (topic.total_los > 0 && topic.students.length > 0) {
+            var cov = topic.students[0].lo_coverage;
+            var covColor = cov >= 80 ? '#10b981' : cov >= 50 ? '#f59e0b' : '#ef4444';
+            html += '<div class="lo-coverage">';
+            html += '<div style="font-size:11px;color:#5f6368;margin-bottom:3px;">LO Coverage: ' + cov + '%</div>';
+            html += '<div class="lo-coverage-bar"><div class="lo-coverage-fill" style="width:' + cov + '%;background:' + covColor + ';"></div></div>';
+            html += '</div>';
+        }
+
+        // Students table
+        html += '<table class="students-table">';
+        html += '<thead><tr><th>Student</th><th>Roll No</th><th>Mastery</th><th>LOs Tested</th></tr></thead>';
+        html += '<tbody>';
+        topic.students.forEach(function(s) {
+            var masteryColor = s.mastery < 40 ? '#ef4444' : s.mastery < 60 ? '#f59e0b' : '#10b981';
+            html += '<tr>';
+            html += '<td><strong>' + s.name + '</strong></td>';
+            html += '<td>' + (s.roll_number || '-') + '</td>';
+            html += '<td><span class="mastery-bar"><span class="mastery-fill" style="width:' + s.mastery + '%;background:' + masteryColor + ';"></span></span>' + s.mastery + '%</td>';
+            html += '<td>' + s.tested_los + '/' + s.total_los + '</td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        // Assign button
+        html += '<div class="assign-section">';
+        html += '<button class="btn btn-success btn-sm" onclick="openAssignModal(' + idx + ')">📝 Assign Practice Test to These Students</button>';
+        html += '<span style="font-size:11px;color:#9ca3af;">Assign an existing test to the ' + topic.weak_student_count + ' student(s) above</span>';
+        html += '</div>';
+
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
+}
+
+let assignTopicIdx = null;
+
+function openAssignModal(topicIdx) {
+    assignTopicIdx = topicIdx;
+    var topic = currentSuggestions.suggestions[topicIdx];
+    document.getElementById('assignInfo').textContent = 'Assigning practice for "' + topic.topic + '" to ' + topic.weak_student_count + ' student(s).';
+    document.getElementById('assignModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('assignModal').style.display = 'none';
+    assignTopicIdx = null;
+}
+
+async function confirmAssign() {
+    var testId = document.getElementById('testSelect').value;
+    if (!testId) { alert('Please select a test'); return; }
+    if (assignTopicIdx === null) return;
+
+    var topic = currentSuggestions.suggestions[assignTopicIdx];
+    var studentIds = topic.students.map(function(s) { return s.id; });
+
+    var btn = document.getElementById('assignBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Assigning…';
+
+    try {
+        var res = await fetch('/teacher/assign-practice/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ test_id: testId, student_ids: studentIds }),
+        });
+        var data = await res.json();
+        if (data.success) {
+            alert('✅ Test assigned to ' + studentIds.length + ' student(s)!');
+            closeModal();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown'));
+        }
+    } catch (e) {
+        alert('Network error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Assign to Students';
+    }
+}
+</script>
+
+{% endblock %}

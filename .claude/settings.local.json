@@ -41,7 +41,14 @@
       "Bash(railway service:*)",
       "Bash(railway run:*)",
       "Bash(railway link:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git restore:*)",
+      "Bash(python3:*)",
+      "Bash(docker:*)",
+      "Bash(findstr:*)",
+      "Bash(pip show:*)",
+      "Bash(dir:*)",
+      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && wc -l {}')"
     ]
   }
 }

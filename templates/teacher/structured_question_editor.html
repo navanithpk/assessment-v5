@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Structured Question Editor | Lumen</title>
+  {% load static %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f3f4f6;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #dbeafe;
+      --primary-pale: #eff6ff;
+      --success: #10b981;
+      --success-light: #d1fae5;
+      --warning: #f59e0b;
+      --warning-light: #fef3c7;
+      --danger: #ef4444;
+      --danger-light: #fee2e2;
+      --purple: #8b5cf6;
+      --purple-light: #ede9fe;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --radius: 8px;
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    }
+
+    /* ========== LAYOUT ========== */
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    .header {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .back-btn {
+      padding: 8px 14px;
+      background: var(--gray-100);
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius);
+      color: var(--gray-700);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .back-btn:hover { background: var(--gray-200); }
+
+    .header-title { font-size: 18px; font-weight: 700; color: var(--gray-800); }
+
+    .header-actions { display: flex; gap: 12px; align-items: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: #059669; }
+    .btn-secondary { background: white; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-secondary:hover { background: var(--gray-100); }
+    .btn-purple { background: var(--purple); color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-danger { background: var(--danger); color: white; }
+
+    /* ========== THREE PANEL LAYOUT ========== */
+    .three-panel {
+      display: grid;
+      grid-template-columns: 260px 1fr 320px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL - Structure */
+    .panel-left {
+      background: white;
+      border-right: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--gray-200);
+      background: var(--gray-50);
+    }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--gray-700);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    /* Structure Tree */
+    .tree-item {
+      margin-bottom: 4px;
+    }
+
+    .tree-node {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 14px;
+    }
+
+    .tree-node:hover { background: var(--gray-100); }
+    .tree-node.active { background: var(--primary-light); color: var(--primary); }
+
+    .tree-number {
+      font-weight: 700;
+      min-width: 30px;
+    }
+
+    .tree-preview {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--gray-500);
+      font-size: 12px;
+    }
+
+    .tree-marks {
+      font-size: 11px;
+      color: var(--gray-400);
+      background: var(--gray-100);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .tree-children {
+      margin-left: 24px;
+      border-left: 2px solid var(--gray-200);
+      padding-left: 8px;
+    }
+
+    .add-btn {
+      width: 100%;
+      padding: 12px;
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius);
+      background: white;
+      color: var(--gray-500);
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 8px;
+      transition: all 0.15s;
+    }
+
+    .add-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-pale);
+    }
+
+    .panel-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--gray-200);
+      background: var(--gray-50);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat-box {
+      text-align: center;
+      padding: 8px;
+      background: white;
+      border-radius: var(--radius);
+    }
+
+    .stat-value { font-size: 18px; font-weight: 700; color: var(--gray-800); }
+    .stat-label { font-size: 10px; color: var(--gray-500); text-transform: uppercase; }
+
+    /* CENTER PANEL - Editor */
+    .panel-center {
+      background: var(--gray-100);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .editor-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .question-card {
+      background: white;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      border: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    .question-card.active { border-color: var(--primary); }
+    .question-card.hidden { display: none; }
+
+    .question-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+      border-radius: 10px 10px 0 0;
+    }
+
+    .q-number {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .q-meta { flex: 1; display: flex; align-items: center; gap: 12px; }
+
+    .q-type-badge {
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-parent { background: var(--purple-light); color: var(--purple); }
+    .badge-standalone { background: var(--primary-light); color: var(--primary); }
+
+    .marks-input {
+      width: 60px;
+      padding: 6px 8px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .q-actions { display: flex; gap: 6px; }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      background: transparent;
+      color: var(--gray-500);
+    }
+
+    .icon-btn:hover { background: var(--gray-200); color: var(--gray-700); }
+    .icon-btn.danger:hover { background: var(--danger-light); color: var(--danger); }
+
+    .question-card-body { padding: 20px; }
+
+    .editor-section { margin-bottom: 16px; }
+
+    .editor-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-600);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .editor-frame {
+      width: 100%;
+      height: 180px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius);
+    }
+
+    .editor-frame.short { height: 120px; }
+
+    /* Sub-parts */
+    .sub-parts-area {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 2px dashed var(--gray-300);
+    }
+
+    .sub-parts-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .sub-parts-title { font-size: 14px; font-weight: 600; color: var(--gray-600); }
+
+    .sub-part-card {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      border-left: 4px solid var(--purple);
+    }
+
+    .sub-part-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .sub-part-letter {
+      font-weight: 700;
+      color: var(--purple);
+      font-size: 14px;
+      min-width: 30px;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 40px;
+      text-align: center;
+      background: white;
+      border-radius: 12px;
+      border: 2px dashed var(--gray-300);
+    }
+
+    .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.5; }
+    .empty-text { font-size: 18px; color: var(--gray-600); margin-bottom: 8px; }
+    .empty-hint { font-size: 14px; color: var(--gray-400); margin-bottom: 24px; }
+
+    /* RIGHT PANEL - Tagging */
+    .panel-right {
+      background: white;
+      border-left: 1px solid var(--gray-200);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tagging-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .tagging-section {
+      margin-bottom: 20px;
+    }
+
+    .tagging-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius);
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .lo-box {
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius);
+      padding: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: var(--gray-50);
+    }
+
+    .lo-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .lo-item:last-child { border-bottom: none; }
+
+    .lo-code { font-weight: 600; color: var(--primary); white-space: nowrap; }
+    .lo-desc { color: var(--gray-600); line-height: 1.4; }
+
+    .no-selection {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray-400);
+    }
+
+    .current-item-badge {
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+
+    /* Global settings */
+    .global-settings {
+      background: var(--gray-50);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 16px;
+    }
+
+    .global-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .global-grid .form-group { margin-bottom: 0; }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      margin-bottom: 4px;
+    }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+    }
+
+    .toast {
+      padding: 12px 24px;
+      border-radius: var(--radius);
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      animation: slideUp 0.3s ease;
+    }
+
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Import modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.hidden { display: none; }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title { font-size: 16px; font-weight: 600; }
+
+    .modal-body {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--gray-200);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .json-input {
+      width: 100%;
+      height: 300px;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius);
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <a href="{% url 'question_library' %}" class="back-btn">← Back</a>
+        <h1 class="header-title">Structured Question Editor</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="showImportModal()">📥 Import JSON</button>
+        <button class="btn btn-secondary" onclick="exportJSON()">📤 Export JSON</button>
+        <button class="btn btn-success" onclick="saveAllQuestions()">💾 Save All to Library</button>
+      </div>
+    </header>
+
+    <!-- Three Panel Layout -->
+    <div class="three-panel">
+      <!-- LEFT: Structure Navigator -->
+      <div class="panel-left">
+        <div class="panel-header">
+          <span class="panel-title">📋 Structure</span>
+        </div>
+
+        <div class="panel-content">
+          <div id="structureTree"></div>
+
+          <button class="add-btn" onclick="addQuestion('standalone')">➕ Add Question</button>
+          <button class="add-btn" onclick="addQuestion('parent')">📑 Add Question with Parts</button>
+        </div>
+
+        <div class="panel-footer">
+          <div class="stat-box">
+            <div class="stat-value" id="statQuestions">0</div>
+            <div class="stat-label">Questions</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="statMarks">0</div>
+            <div class="stat-label">Marks</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: Question Editor -->
+      <div class="panel-center">
+        <!-- Global Settings Bar -->
+        <div class="global-settings">
+          <div class="global-grid">
+            <div class="form-group">
+              <label>Grade *</label>
+              <select class="form-select" id="globalGrade" onchange="loadGlobalTopics()">
+                <option value="">Select Grade</option>
+                {% for g in grades %}
+                <option value="{{ g.id }}">{{ g.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Subject *</label>
+              <select class="form-select" id="globalSubject" onchange="loadGlobalTopics()">
+                <option value="">Select Subject</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Default Type</label>
+              <select class="form-select" id="globalType">
+                <option value="structured">Structured</option>
+                <option value="theory">Theory</option>
+                <option value="mcq">MCQ</option>
+                <option value="practical">Practical</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Exam Year</label>
+              <input type="number" class="form-select" id="globalYear" placeholder="2024" min="1990" max="2100">
+            </div>
+          </div>
+        </div>
+
+        <div class="editor-scroll" id="editorScroll">
+          <div id="questionsContainer"></div>
+
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">📝</div>
+            <div class="empty-text">No Questions Yet</div>
+            <div class="empty-hint">Add questions using the structure panel on the left, or import from JSON</div>
+            <button class="btn btn-primary" onclick="addQuestion('standalone')">➕ Add First Question</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Tagging Panel -->
+      <div class="panel-right">
+        <div class="panel-header">
+          <span class="panel-title">🏷️ Topic & LO Tagging</span>
+        </div>
+
+        <div class="tagging-content" id="taggingPanel">
+          <div class="no-selection" id="noSelectionMsg">
+            <div style="font-size: 32px; margin-bottom: 12px;">👈</div>
+            <div>Select a question or sub-part to tag it with topics and learning objectives</div>
+          </div>
+
+          <div id="taggingForm" style="display: none;">
+            <div class="current-item-badge" id="currentItemBadge">Question 1</div>
+
+            <div class="tagging-section">
+              <div class="tagging-label">📁 Topic</div>
+              <select class="form-select" id="itemTopic" onchange="loadItemLOs()">
+                <option value="">Select Topic</option>
+              </select>
+            </div>
+
+            <div class="tagging-section">
+              <div class="tagging-label">🎯 Learning Objectives</div>
+              <div class="lo-box" id="itemLOBox">
+                <em style="color: var(--gray-400);">Select a topic first</em>
+              </div>
+            </div>
+
+            <div class="tagging-section">
+              <div class="tagging-label">📝 Question Type</div>
+              <select class="form-select" id="itemType">
+                <option value="structured">Structured</option>
+                <option value="theory">Theory</option>
+                <option value="mcq">MCQ</option>
+                <option value="practical">Practical</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-overlay hidden" id="importModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">📥 Import from JSON</span>
+        <button class="icon-btn" onclick="hideImportModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px; color: var(--gray-600); font-size: 14px;">
+          Paste your structured question JSON below. This can be exported from the PDF slicer or manually created.
+        </p>
+        <textarea class="json-input" id="jsonInput" placeholder='[
+  {
+    "number": 1,
+    "type": "parent",
+    "stem": "Question stem HTML...",
+    "parts": [
+      {
+        "letter": "a",
+        "content": "Part (a) content...",
+        "answer": "Answer for (a)...",
+        "marks": 2
+      }
+    ]
+  }
+]'></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="hideImportModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="importJSON()">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+  // ============================================
+  // DATA MODEL
+  // ============================================
+  let questions = [];
+  let idCounter = 1;
+  let activeItemId = null;  // Currently selected question/part
+  let activeParentId = null; // If selecting a sub-part, this is the parent
+  let globalTopics = [];
+
+  // ============================================
+  // QUESTION MANAGEMENT - NO FULL RE-RENDER
+  // ============================================
+  function addQuestion(type) {
+    const q = {
+      id: idCounter++,
+      type: type,
+      content: '',
+      answer: '',
+      marks: type === 'parent' ? 0 : 1,
+      topic_id: null,
+      question_type: document.getElementById('globalType').value,
+      los: [],
+      children: type === 'parent' ? [] : null
+    };
+
+    questions.push(q);
+
+    // Append to DOM without full re-render
+    appendQuestionToDOM(q, questions.length);
+    updateStructureTree();
+    updateStats();
+    hideEmptyState();
+
+    // Select the new question
+    selectItem(q.id, null);
+
+    return q;
+  }
+
+  function addSubPart(parentId) {
+    const parent = questions.find(q => q.id === parentId);
+    if (!parent || parent.type !== 'parent') return;
+
+    const letter = String.fromCharCode(97 + parent.children.length);
+    const part = {
+      id: idCounter++,
+      letter: letter,
+      content: '',
+      answer: '',
+      marks: 1,
+      topic_id: null,
+      question_type: document.getElementById('globalType').value,
+      los: []
+    };
+
+    parent.children.push(part);
+
+    // Append sub-part to DOM without full re-render
+    appendSubPartToDOM(parent, part);
+    updateStructureTree();
+    updateStats();
+
+    // Select the new part
+    selectItem(part.id, parentId);
+
+    return part;
+  }
+
+  function removeQuestion(id) {
+    if (!confirm('Delete this question?')) return;
+
+    // Remove from data
+    questions = questions.filter(q => q.id !== id);
+
+    // Remove from DOM
+    const card = document.querySelector(`[data-question-id="${id}"]`);
+    if (card) card.remove();
+
+    updateStructureTree();
+    updateStats();
+    showEmptyStateIfNeeded();
+
+    if (activeItemId === id) {
+      activeItemId = null;
+      activeParentId = null;
+      showNoSelection();
+    }
+  }
+
+  function removeSubPart(parentId, partId) {
+    const parent = questions.find(q => q.id === parentId);
+    if (!parent) return;
+
+    parent.children = parent.children.filter(p => p.id !== partId);
+
+    // Re-letter remaining parts
+    parent.children.forEach((p, i) => {
+      p.letter = String.fromCharCode(97 + i);
+    });
+
+    // Remove from DOM
+    const partCard = document.querySelector(`[data-part-id="${partId}"]`);
+    if (partCard) partCard.remove();
+
+    // Update letters in DOM
+    const container = document.getElementById(`subparts_${parentId}`);
+    if (container) {
+      container.querySelectorAll('.sub-part-card').forEach((card, i) => {
+        const letterEl = card.querySelector('.sub-part-letter');
+        if (letterEl) letterEl.textContent = `(${String.fromCharCode(97 + i)})`;
+      });
+    }
+
+    updateStructureTree();
+    updateStats();
+
+    if (activeItemId === partId) {
+      activeItemId = null;
+      activeParentId = null;
+      showNoSelection();
+    }
+  }
+
+  // ============================================
+  // DOM MANIPULATION (NO FULL RE-RENDER)
+  // ============================================
+  function appendQuestionToDOM(q, num) {
+    const container = document.getElementById('questionsContainer');
+    const isParent = q.type === 'parent';
+
+    const html = `
+      <div class="question-card" data-question-id="${q.id}">
+        <div class="question-card-header">
+          <div class="q-number">${num}</div>
+          <div class="q-meta">
+            <span class="q-type-badge ${isParent ? 'badge-parent' : 'badge-standalone'}">
+              ${isParent ? 'WITH PARTS' : 'SIMPLE'}
+            </span>
+            ${isParent ? `
+              <span style="color: var(--gray-500); font-size: 13px;">
+                Total: <strong id="parentMarks_${q.id}">0</strong> marks
+              </span>
+            ` : `
+              <input type="number" class="marks-input" value="${q.marks}" min="1"
+                     onchange="updateMarks(${q.id}, null, this.value)">
+              <span style="color: var(--gray-500); font-size: 12px;">marks</span>
+            `}
+          </div>
+          <div class="q-actions">
+            <button class="icon-btn" onclick="selectItem(${q.id}, null)" title="Edit Tags">🏷️</button>
+            <button class="icon-btn danger" onclick="removeQuestion(${q.id})" title="Delete">🗑️</button>
+          </div>
+        </div>
+
+        <div class="question-card-body">
+          <div class="editor-section">
+            <div class="editor-label">📝 Question ${isParent ? 'Stem' : 'Text'}</div>
+            <iframe class="editor-frame" id="qEditor_${q.id}"
+                    src="{% static 'editors/richtext_editor.html' %}"
+                    onload="initEditor(this, ${q.id}, null, 'content')"></iframe>
+          </div>
+
+          ${!isParent ? `
+          <div class="editor-section">
+            <div class="editor-label">✅ Answer / Mark Scheme</div>
+            <iframe class="editor-frame short" id="aEditor_${q.id}"
+                    src="{% static 'editors/richtext_editor.html' %}"
+                    onload="initEditor(this, ${q.id}, null, 'answer')"></iframe>
+          </div>
+          ` : `
+          <div class="sub-parts-area">
+            <div class="sub-parts-header">
+              <span class="sub-parts-title">📑 Parts</span>
+              <button class="btn btn-sm btn-primary" onclick="addSubPart(${q.id})">➕ Add Part</button>
+            </div>
+            <div id="subparts_${q.id}"></div>
+          </div>
+          `}
+        </div>
+      </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', html);
+  }
+
+  function appendSubPartToDOM(parent, part) {
+    const container = document.getElementById(`subparts_${parent.id}`);
+    if (!container) return;
+
+    const html = `
+      <div class="sub-part-card" data-part-id="${part.id}" data-parent-id="${parent.id}">
+        <div class="sub-part-header">
+          <span class="sub-part-letter">(${part.letter})</span>
+          <input type="number" class="marks-input" value="${part.marks}" min="1"
+                 onchange="updateMarks(${parent.id}, ${part.id}, this.value)">
+          <span style="color: var(--gray-500); font-size: 12px;">marks</span>
+          <div style="margin-left: auto; display: flex; gap: 4px;">
+            <button class="icon-btn" onclick="selectItem(${part.id}, ${parent.id})" title="Edit Tags">🏷️</button>
+            <button class="icon-btn danger" onclick="removeSubPart(${parent.id}, ${part.id})" title="Delete">🗑️</button>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-label">📝 Part (${part.letter})</div>
+          <iframe class="editor-frame short" id="qEditor_${parent.id}_${part.id}"
+                  src="{% static 'editors/richtext_editor.html' %}"
+                  onload="initEditor(this, ${part.id}, ${parent.id}, 'content')"></iframe>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-label">✅ Answer</div>
+          <iframe class="editor-frame short" id="aEditor_${parent.id}_${part.id}"
+                  src="{% static 'editors/richtext_editor.html' %}"
+                  onload="initEditor(this, ${part.id}, ${parent.id}, 'answer')"></iframe>
+        </div>
+      </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', html);
+  }
+
+  function initEditor(iframe, itemId, parentId, field) {
+    // Store reference for syncing
+    iframe.dataset.itemId = itemId;
+    iframe.dataset.parentId = parentId || '';
+    iframe.dataset.field = field;
+
+    // Load existing content if any
+    const item = getItem(itemId, parentId);
+    if (item && item[field]) {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.setEditorHTML(item[field]);
+        } catch(e) {}
+      }, 100);
+    }
+
+    // Sync on blur
+    iframe.contentWindow.addEventListener('blur', () => syncEditor(iframe));
+  }
+
+  function syncEditor(iframe) {
+    try {
+      const content = iframe.contentWindow.getEditorHTML();
+      const itemId = parseInt(iframe.dataset.itemId);
+      const parentId = iframe.dataset.parentId ? parseInt(iframe.dataset.parentId) : null;
+      const field = iframe.dataset.field;
+
+      const item = getItem(itemId, parentId);
+      if (item) {
+        item[field] = content;
+        updateStructureTree(); // Update previews
+      }
+    } catch(e) {}
+  }
+
+  function syncAllEditors() {
+    document.querySelectorAll('iframe.editor-frame').forEach(iframe => {
+      syncEditor(iframe);
+    });
+  }
+
+  function getItem(itemId, parentId) {
+    if (parentId) {
+      const parent = questions.find(q => q.id === parentId);
+      return parent?.children?.find(p => p.id === itemId);
+    }
+    return questions.find(q => q.id === itemId);
+  }
+
+  // ============================================
+  // STRUCTURE TREE
+  // ============================================
+  function updateStructureTree() {
+    const tree = document.getElementById('structureTree');
+    let html = '';
+
+    questions.forEach((q, idx) => {
+      const preview = stripHtml(q.content).substring(0, 30) || 'Empty...';
+      const isParent = q.type === 'parent';
+      const marks = isParent ? calculateParentMarks(q) : q.marks;
+      const isActive = activeItemId === q.id && !activeParentId;
+
+      html += `
+        <div class="tree-item">
+          <div class="tree-node ${isActive ? 'active' : ''}" onclick="selectItem(${q.id}, null)">
+            <span class="tree-number">${idx + 1}.</span>
+            <span class="tree-preview">${preview}</span>
+            <span class="tree-marks">${marks}m</span>
+          </div>
+          ${isParent && q.children.length > 0 ? `
+            <div class="tree-children">
+              ${q.children.map(part => {
+                const partPreview = stripHtml(part.content).substring(0, 25) || 'Empty...';
+                const partActive = activeItemId === part.id && activeParentId === q.id;
+                return `
+                  <div class="tree-node ${partActive ? 'active' : ''}" onclick="selectItem(${part.id}, ${q.id})">
+                    <span class="tree-number">(${part.letter})</span>
+                    <span class="tree-preview">${partPreview}</span>
+                    <span class="tree-marks">${part.marks}m</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+
+    tree.innerHTML = html;
+  }
+
+  // ============================================
+  // SELECTION & TAGGING
+  // ============================================
+  function selectItem(itemId, parentId) {
+    activeItemId = itemId;
+    activeParentId = parentId;
+
+    // Update visual selection in tree
+    updateStructureTree();
+
+    // Highlight card
+    document.querySelectorAll('.question-card').forEach(card => card.classList.remove('active'));
+    document.querySelectorAll('.sub-part-card').forEach(card => card.classList.remove('active'));
+
+    if (parentId) {
+      const partCard = document.querySelector(`[data-part-id="${itemId}"]`);
+      if (partCard) partCard.classList.add('active');
+    } else {
+      const qCard = document.querySelector(`[data-question-id="${itemId}"]`);
+      if (qCard) qCard.classList.add('active');
+    }
+
+    // Show tagging form
+    showTaggingForm(itemId, parentId);
+  }
+
+  function showTaggingForm(itemId, parentId) {
+    document.getElementById('noSelectionMsg').style.display = 'none';
+    document.getElementById('taggingForm').style.display = 'block';
+
+    const item = getItem(itemId, parentId);
+    if (!item) return;
+
+    // Update badge
+    const badge = document.getElementById('currentItemBadge');
+    if (parentId) {
+      const parent = questions.find(q => q.id === parentId);
+      const parentIdx = questions.indexOf(parent) + 1;
+      badge.textContent = `Question ${parentIdx} (${item.letter})`;
+    } else {
+      const idx = questions.indexOf(item) + 1;
+      badge.textContent = `Question ${idx}`;
+    }
+
+    // Set topic
+    const topicSelect = document.getElementById('itemTopic');
+    topicSelect.value = item.topic_id || '';
+    loadItemLOs();
+
+    // Set type
+    document.getElementById('itemType').value = item.question_type || 'structured';
+  }
+
+  function showNoSelection() {
+    document.getElementById('noSelectionMsg').style.display = 'block';
+    document.getElementById('taggingForm').style.display = 'none';
+  }
+
+  // ============================================
+  // TOPICS & LOs
+  // ============================================
+  async function loadGlobalTopics() {
+    const grade = document.getElementById('globalGrade').value;
+    const subject = document.getElementById('globalSubject').value;
+
+    if (!grade || !subject) {
+      globalTopics = [];
+      updateTopicSelects();
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/ajax/topics/?grade_id=${grade}&subject_id=${subject}`);
+      const data = await resp.json();
+      globalTopics = data.topics || [];
+      updateTopicSelects();
+    } catch(e) {
+      console.error('Failed to load topics:', e);
+    }
+  }
+
+  function updateTopicSelects() {
+    const select = document.getElementById('itemTopic');
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Select Topic</option>';
+    globalTopics.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.name;
+      if (t.id == currentValue) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  async function loadItemLOs() {
+    const topicId = document.getElementById('itemTopic').value;
+    const loBox = document.getElementById('itemLOBox');
+
+    // Save topic to item
+    if (activeItemId) {
+      const item = getItem(activeItemId, activeParentId);
+      if (item) item.topic_id = topicId ? parseInt(topicId) : null;
+    }
+
+    if (!topicId) {
+      loBox.innerHTML = '<em style="color: var(--gray-400);">Select a topic first</em>';
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/ajax/los/?topic_id=${topicId}`);
+      const data = await resp.json();
+
+      if (!data.los || data.los.length === 0) {
+        loBox.innerHTML = '<em style="color: var(--gray-400);">No LOs for this topic</em>';
+        return;
+      }
+
+      const item = getItem(activeItemId, activeParentId);
+      const selectedLOs = item?.los || [];
+
+      let html = '';
+      data.los.forEach(lo => {
+        const checked = selectedLOs.includes(lo.id) ? 'checked' : '';
+        html += `
+          <label class="lo-item">
+            <input type="checkbox" value="${lo.id}" ${checked} onchange="toggleLO(${lo.id}, this.checked)">
+            <span class="lo-code">${lo.code}</span>
+            <span class="lo-desc">${lo.description}</span>
+          </label>
+        `;
+      });
+      loBox.innerHTML = html;
+    } catch(e) {
+      loBox.innerHTML = '<em style="color: var(--danger);">Failed to load LOs</em>';
+    }
+  }
+
+  function toggleLO(loId, checked) {
+    const item = getItem(activeItemId, activeParentId);
+    if (!item) return;
+
+    if (checked) {
+      if (!item.los.includes(loId)) item.los.push(loId);
+    } else {
+      item.los = item.los.filter(id => id !== loId);
+    }
+  }
+
+  // Save type when changed
+  document.getElementById('itemType')?.addEventListener('change', function() {
+    const item = getItem(activeItemId, activeParentId);
+    if (item) item.question_type = this.value;
+  });
+
+  // ============================================
+  // MARKS
+  // ============================================
+  function updateMarks(qId, partId, value) {
+    const marks = parseInt(value) || 1;
+
+    if (partId) {
+      const parent = questions.find(q => q.id === qId);
+      const part = parent?.children?.find(p => p.id === partId);
+      if (part) {
+        part.marks = marks;
+        // Update parent total
+        const totalEl = document.getElementById(`parentMarks_${qId}`);
+        if (totalEl) totalEl.textContent = calculateParentMarks(parent);
+      }
+    } else {
+      const q = questions.find(q => q.id === qId);
+      if (q) q.marks = marks;
+    }
+
+    updateStats();
+    updateStructureTree();
+  }
+
+  function calculateParentMarks(parent) {
+    if (!parent.children) return 0;
+    return parent.children.reduce((sum, p) => sum + (parseInt(p.marks) || 0), 0);
+  }
+
+  function updateStats() {
+    let totalQ = 0;
+    let totalM = 0;
+
+    questions.forEach(q => {
+      if (q.type === 'parent') {
+        totalQ += q.children.length;
+        totalM += calculateParentMarks(q);
+      } else {
+        totalQ += 1;
+        totalM += parseInt(q.marks) || 0;
+      }
+    });
+
+    document.getElementById('statQuestions').textContent = totalQ;
+    document.getElementById('statMarks').textContent = totalM;
+  }
+
+  // ============================================
+  // EMPTY STATE
+  // ============================================
+  function hideEmptyState() {
+    document.getElementById('emptyState').style.display = 'none';
+  }
+
+  function showEmptyStateIfNeeded() {
+    if (questions.length === 0) {
+      document.getElementById('emptyState').style.display = 'flex';
+    }
+  }
+
+  // ============================================
+  // JSON IMPORT/EXPORT
+  // ============================================
+  function showImportModal() {
+    document.getElementById('importModal').classList.remove('hidden');
+  }
+
+  function hideImportModal() {
+    document.getElementById('importModal').classList.add('hidden');
+  }
+
+  function importJSON() {
+    const input = document.getElementById('jsonInput').value.trim();
+    if (!input) {
+      showToast('Please enter JSON data', 'error');
+      return;
+    }
+
+    try {
+      const data = JSON.parse(input);
+      if (!Array.isArray(data)) {
+        throw new Error('JSON must be an array of questions');
+      }
+
+      // Clear existing
+      questions = [];
+      document.getElementById('questionsContainer').innerHTML = '';
+
+      // Import each question
+      data.forEach((qData, idx) => {
+        const q = {
+          id: idCounter++,
+          type: qData.parts && qData.parts.length > 0 ? 'parent' : 'standalone',
+          content: qData.stem || qData.content || '',
+          answer: qData.answer || '',
+          marks: qData.marks || 0,
+          topic_id: qData.topic_id || null,
+          question_type: qData.question_type || 'structured',
+          los: qData.los || [],
+          children: []
+        };
+
+        if (qData.parts) {
+          qData.parts.forEach((pData, pIdx) => {
+            q.children.push({
+              id: idCounter++,
+              letter: pData.letter || String.fromCharCode(97 + pIdx),
+              content: pData.content || '',
+              answer: pData.answer || '',
+              marks: pData.marks || 1,
+              topic_id: pData.topic_id || null,
+              question_type: pData.question_type || 'structured',
+              los: pData.los || []
+            });
+          });
+        }
+
+        questions.push(q);
+        appendQuestionToDOM(q, questions.length);
+
+        // Append sub-parts
+        if (q.children.length > 0) {
+          q.children.forEach(part => appendSubPartToDOM(q, part));
+        }
+      });
+
+      updateStructureTree();
+      updateStats();
+      hideEmptyState();
+      hideImportModal();
+      showToast(`Imported ${data.length} questions`, 'success');
+
+    } catch(e) {
+      showToast('Invalid JSON: ' + e.message, 'error');
+    }
+  }
+
+  function exportJSON() {
+    syncAllEditors();
+
+    const exportData = questions.map((q, idx) => {
+      const base = {
+        number: idx + 1,
+        type: q.type,
+        stem: q.content,
+        marks: q.type === 'parent' ? calculateParentMarks(q) : q.marks,
+        topic_id: q.topic_id,
+        question_type: q.question_type,
+        los: q.los
+      };
+
+      if (q.type === 'standalone') {
+        base.answer = q.answer;
+      } else {
+        base.parts = q.children.map(p => ({
+          letter: p.letter,
+          content: p.content,
+          answer: p.answer,
+          marks: p.marks,
+          topic_id: p.topic_id,
+          question_type: p.question_type,
+          los: p.los
+        }));
+      }
+
+      return base;
+    });
+
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'questions_export.json';
+    a.click();
+
+    URL.revokeObjectURL(url);
+    showToast('Exported successfully', 'success');
+  }
+
+  // ============================================
+  // SAVE TO LIBRARY
+  // ============================================
+  async function saveAllQuestions() {
+    syncAllEditors();
+
+    const grade = document.getElementById('globalGrade').value;
+    const subject = document.getElementById('globalSubject').value;
+    const year = document.getElementById('globalYear').value;
+    const defaultType = document.getElementById('globalType').value;
+
+    if (!grade || !subject) {
+      showToast('Please select Grade and Subject', 'error');
+      return;
+    }
+
+    if (questions.length === 0) {
+      showToast('Add at least one question', 'error');
+      return;
+    }
+
+    try {
+      let saved = 0;
+      let errors = [];
+
+      for (const q of questions) {
+        if (q.type === 'parent') {
+          // Save each sub-part as independent question with stem
+          for (const part of q.children) {
+            const result = await saveQuestion({
+              question_text: q.content ? `${q.content}<br><strong>(${part.letter})</strong> ${part.content}` : `<strong>(${part.letter})</strong> ${part.content}`,
+              answer_text: part.answer,
+              marks: part.marks,
+              grade_id: grade,
+              subject_id: subject,
+              topic_id: part.topic_id || q.topic_id,
+              question_type: part.question_type || defaultType,
+              year: year || null,
+              los: part.los.length > 0 ? part.los : q.los
+            });
+
+            if (result.success) saved++;
+            else errors.push(result.error);
+          }
+        } else {
+          const result = await saveQuestion({
+            question_text: q.content,
+            answer_text: q.answer,
+            marks: q.marks,
+            grade_id: grade,
+            subject_id: subject,
+            topic_id: q.topic_id,
+            question_type: q.question_type || defaultType,
+            year: year || null,
+            los: q.los
+          });
+
+          if (result.success) saved++;
+          else errors.push(result.error);
+        }
+      }
+
+      if (errors.length > 0) {
+        showToast(`Saved ${saved}, ${errors.length} errors`, 'error');
+      } else {
+        showToast(`Saved ${saved} questions!`, 'success');
+        setTimeout(() => {
+          window.location.href = "{% url 'question_library' %}";
+        }, 1500);
+      }
+
+    } catch(e) {
+      showToast('Save failed: ' + e.message, 'error');
+    }
+  }
+
+  async function saveQuestion(data) {
+    try {
+      const resp = await fetch('/questions/api/create/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(data)
+      });
+      return await resp.json();
+    } catch(e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  // ============================================
+  // UTILITIES
+  // ============================================
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  }
+
+  function stripHtml(html) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    return tmp.textContent || tmp.innerText || '';
+  }
+
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  // ============================================
+  // INIT
+  // ============================================
+  document.addEventListener('DOMContentLoaded', () => {
+    updateStats();
+  });
+  </script>
+</body>
+</html>

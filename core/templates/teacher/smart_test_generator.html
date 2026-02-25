@@ -1,0 +1,682 @@
+{% extends "teacher/teacher_base.html" %}
+{% block title %}Smart Test Generator{% endblock %}
+
+{% block content %}
+<style>
+/* ── Layout ─────────────────────────────────────────────── */
+h1 { margin-top: 0; }
+.stg-wrap { max-width: 1100px; margin: 0 auto; }
+.stg-header { margin-bottom: 28px; }
+.stg-header h1 { font-size: 24px; font-weight: 700; }
+.stg-header p { color: #6b7280; font-size: 14px; margin-top: 4px; }
+
+/* ── Stepper ─────────────────────────────────────────────── */
+.stepper { display: flex; gap: 0; margin-bottom: 28px; position: relative; }
+.step-item { display: flex; align-items: center; gap: 10px; flex: 1; position: relative; }
+.step-circle {
+    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; flex-shrink: 0;
+    background: #f3f4f6; color: #9ca3af; border: 2px solid #e5e7eb; transition: all .3s;
+}
+.step-item.active .step-circle { background: #2563eb; color: white; border-color: #2563eb; }
+.step-item.done .step-circle { background: #10b981; color: white; border-color: #10b981; }
+.step-label { font-size: 13px; font-weight: 600; color: #9ca3af; transition: color .3s; }
+.step-item.active .step-label { color: #111827; }
+.step-item.done .step-label { color: #059669; }
+.step-line { flex: 1; height: 2px; background: #e5e7eb; margin: 0 8px; transition: background .3s; }
+.step-line.done { background: #10b981; }
+
+/* ── Cards ────────────────────────────────────────────── */
+.card { background: white; border-radius: 14px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.06); border: 1px solid #e5e7eb; }
+.card h3 { margin: 0 0 16px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.card h3 .emoji { font-size: 20px; }
+.card-subtitle { font-size: 13px; color: #6b7280; margin: -12px 0 16px; }
+.filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.field-group label { font-size: 12px; font-weight: 600; color: #5f6368; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+.field-group select, .field-group input {
+    width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 10px; font-size: 14px;
+    background: white; transition: border-color .2s;
+}
+.field-group select:focus, .field-group input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+
+/* ── Buttons ──────────────────────────────────────────── */
+.btn { border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-primary { background: #2563eb; color: white; }
+.btn-green { background: #10b981; color: white; }
+.btn-purple { background: #7c3aed; color: white; }
+.btn-outline { background: transparent; border: 1.5px solid #d1d5db; color: #374151; }
+.btn-outline:hover { border-color: #9ca3af; background: #f9fafb; }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+
+/* ── Grade-level badge ─────────────────────────────────── */
+.grade-level-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+    color: #3730a3; padding: 6px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 600; margin-left: 8px;
+}
+.grade-level-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: #4f46e5; }
+
+/* ── Stats bar ────────────────────────────────────────── */
+.stats-bar {
+    display: flex; gap: 16px; flex-wrap: wrap; padding: 14px 18px;
+    background: #f9fafb; border-radius: 10px; margin-bottom: 16px; font-size: 13px;
+}
+.stat-item { display: flex; align-items: center; gap: 6px; }
+.stat-dot { width: 10px; height: 10px; border-radius: 50%; }
+.stat-val { font-weight: 700; }
+
+/* ── Topic cards ──────────────────────────────────────── */
+.topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.topic-card {
+    background: #fafbfc; border: 2px solid #e5e7eb; border-radius: 12px; padding: 16px;
+    transition: all 0.15s; cursor: pointer; position: relative;
+}
+.topic-card:hover { border-color: #93c5fd; background: #f0f7ff; }
+.topic-card.selected { border-color: #2563eb; background: #eff6ff; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+.topic-card .tc-check {
+    position: absolute; top: 12px; right: 12px; width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid #d1d5db; background: white; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; transition: all .15s;
+}
+.topic-card.selected .tc-check { background: #2563eb; border-color: #2563eb; color: white; }
+.topic-card .tc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; padding-right: 30px; }
+.topic-card .tc-name { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.topic-card .tc-band { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+.band-Weak { background: #fee2e2; color: #dc2626; }
+.band-Developing { background: #fef3c7; color: #d97706; }
+.band-Good { background: #dbeafe; color: #2563eb; }
+.band-Mastered { background: #d1fae5; color: #059669; }
+.band-Untested { background: #f3f4f6; color: #6b7280; }
+.tc-meta { font-size: 12px; color: #6b7280; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.tc-meta strong { color: #374151; }
+.tc-bar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; }
+.tc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.tc-los { margin-top: 10px; }
+.tc-los .lo-item { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+.tc-los .lo-item:last-child { border-bottom: none; }
+.no-questions-warn { font-size: 11px; color: #ef4444; font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+
+/* ── Filter pills for bands ──────────────────────────── */
+.band-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.band-pill {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1.5px solid #e5e7eb; background: white; transition: all .15s;
+}
+.band-pill:hover { border-color: #9ca3af; }
+.band-pill.active { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+
+/* ── Students panel ───────────────────────────────────── */
+.students-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.students-panel { max-height: 280px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; }
+.student-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; cursor: pointer; transition: background .1s; }
+.student-item:hover { background: #f1f5f9; }
+.student-item input { width: 16px; height: 16px; accent-color: #2563eb; }
+.student-item label { cursor: pointer; font-size: 13px; flex: 1; }
+.student-item .roll { font-size: 11px; color: #9ca3af; }
+
+/* ── Config panel ─────────────────────────────────────── */
+.config-card { background: #f9fafb; border-radius: 10px; padding: 16px; }
+.config-card .config-field { margin-bottom: 14px; }
+.config-card .config-field:last-child { margin-bottom: 0; }
+.config-card label { font-size: 12px; font-weight: 600; color: #5f6368; display: block; margin-bottom: 6px; }
+.config-card input[type="text"], .config-card input[type="number"] {
+    width: 100%; padding: 10px 14px; border: 1.5px solid #d1d5db; border-radius: 10px; font-size: 14px;
+}
+
+/* ── Result panel ─────────────────────────────────────── */
+.result-panel {
+    display: none; background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    border: 2px solid #10b981; border-radius: 14px; padding: 32px; margin-top: 24px; text-align: center;
+}
+.result-panel.active { display: block; }
+.result-panel h3 { color: #059669; margin: 0 0 12px; font-size: 20px; }
+.result-panel p { font-size: 14px; color: #374151; }
+.result-actions { margin-top: 16px; display: flex; gap: 10px; justify-content: center; }
+
+.loading-spinner { display: none; text-align: center; padding: 48px; color: #6b7280; }
+.loading-spinner.active { display: block; }
+.loading-spinner .spinner-ring {
+    width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #2563eb;
+    border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Selection summary bar ────────────────────────────── */
+.selection-bar {
+    display: flex; align-items: center; justify-content: space-between; padding: 12px 18px;
+    background: #eff6ff; border-radius: 10px; margin-top: 16px;
+    font-size: 13px; color: #1e40af; font-weight: 600;
+}
+</style>
+
+<div class="stg-wrap">
+    <div class="stg-header">
+        <h1>Smart Test Generator</h1>
+        <p>Create targeted worksheets based on student performance data. Questions are drawn from the same curriculum level (e.g. IGCSE-1 & IGCSE-2 share questions).</p>
+    </div>
+
+    <!-- ── Stepper ─────────────────────────────────────── -->
+    <div class="stepper" id="stepper">
+        <div class="step-item active" id="step1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Select Target</div>
+        </div>
+        <div class="step-line" id="stepLine1"></div>
+        <div class="step-item" id="step2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Analyse & Select Topics</div>
+        </div>
+        <div class="step-line" id="stepLine2"></div>
+        <div class="step-item" id="step3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Configure & Create</div>
+        </div>
+    </div>
+
+    <!-- ── Step 1: Select Grade / Subject / Target ───── -->
+    <div class="card" id="card1">
+        <h3><span class="emoji">🎯</span> Select Target</h3>
+        <p class="card-subtitle">Choose the grade and subject to analyse. Questions will be pulled from the same curriculum level.</p>
+        <div class="filter-grid">
+            <div class="field-group">
+                <label>Grade *</label>
+                <select id="stgGrade" required>
+                    <option value="">Select Grade</option>
+                    {% for g in grades %}
+                    <option value="{{ g.id }}" data-level="{{ g.grade_level|default:g.name }}">{{ g.name }}{% if g.grade_level %} ({{ g.grade_level }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Subject *</label>
+                <select id="stgSubject" required>
+                    <option value="">Select Subject</option>
+                    {% for s in subjects %}
+                    <option value="{{ s.id }}">{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Cohort (optional)</label>
+                <select id="stgCohort">
+                    <option value="">All Students in Grade</option>
+                    {% for c in cohorts %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="analysePerformance()" id="analyseBtn">
+                <span>📊</span> Analyse Performance
+            </button>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: #374151;">
+                <input type="checkbox" id="stgUntestedLOs" checked style="accent-color: #2563eb; width: 16px; height: 16px;">
+                Prefer untested learning objectives
+            </label>
+        </div>
+    </div>
+
+    <!-- ── Loading ─────────────────────────────────────── -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-ring"></div>
+        <div style="font-size: 15px; font-weight: 600;">Analysing student performance data...</div>
+        <div style="font-size: 13px; color: #9ca3af; margin-top: 4px;">This may take a moment for large classes</div>
+    </div>
+
+    <!-- ── Step 2: Topic Analysis ──────────────────────── -->
+    <div class="card" id="topicAnalysis" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+            <div>
+                <h3 style="margin-bottom: 4px;"><span class="emoji">📋</span> Topic Analysis</h3>
+                <p id="analysisSummary" style="font-size: 13px; color: #6b7280; margin: 0;"></p>
+            </div>
+            <div id="gradeLevelBadge" style="display: none;"></div>
+        </div>
+
+        <!-- Stats bar -->
+        <div class="stats-bar" id="statsBar"></div>
+
+        <!-- Band filter pills -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+            <div class="band-filters" id="bandFilters">
+                <span class="band-pill active" data-band="all" onclick="filterByBand('all', this)">All</span>
+                <span class="band-pill" data-band="Weak" onclick="filterByBand('Weak', this)">🔴 Weak</span>
+                <span class="band-pill" data-band="Developing" onclick="filterByBand('Developing', this)">🟡 Developing</span>
+                <span class="band-pill" data-band="Good" onclick="filterByBand('Good', this)">🔵 Good</span>
+                <span class="band-pill" data-band="Mastered" onclick="filterByBand('Mastered', this)">🟢 Mastered</span>
+                <span class="band-pill" data-band="Untested" onclick="filterByBand('Untested', this)">⚪ Untested</span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <button class="btn btn-outline btn-sm" onclick="selectByBand('Weak')">Select Weak</button>
+                <button class="btn btn-outline btn-sm" onclick="selectByBand('Developing')">+ Developing</button>
+                <button class="btn btn-outline btn-sm" onclick="selectByBand('Untested')">+ Untested</button>
+                <button class="btn btn-outline btn-sm" onclick="selectAll()">All</button>
+                <button class="btn btn-outline btn-sm" onclick="deselectAll()">Clear</button>
+            </div>
+        </div>
+
+        <div class="topic-grid" id="topicGrid"></div>
+
+        <!-- Selection summary -->
+        <div class="selection-bar" id="selectionBar" style="display: none;">
+            <span id="selectionSummary"></span>
+            <button class="btn btn-primary btn-sm" onclick="goToStep3()">Continue → Configure & Create</button>
+        </div>
+    </div>
+
+    <!-- ── Step 3: Configure & Create ──────────────────── -->
+    <div class="card" id="studentPanel" style="display: none;">
+        <h3><span class="emoji">⚙️</span> Configure & Create</h3>
+        <p class="card-subtitle">Set the test title, question count, and choose which students to assign.</p>
+        <div class="students-grid">
+            <div class="config-card">
+                <div class="config-field">
+                    <label>Test Title *</label>
+                    <input type="text" id="stgTitle" placeholder="e.g. Remedial Worksheet - Kinematics">
+                </div>
+                <div class="config-field">
+                    <label>Questions Per Topic</label>
+                    <input type="number" id="stgQPerTopic" value="5" min="1" max="20">
+                </div>
+                <div class="config-field" style="margin-top: 12px;">
+                    <div id="configSummary" style="font-size: 13px; color: #6b7280; padding: 10px; background: #f0f7ff; border-radius: 8px;"></div>
+                </div>
+            </div>
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 12px; font-weight: 600; color: #5f6368; text-transform: uppercase; letter-spacing: 0.3px;">Assign to Students</label>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="btn btn-outline btn-sm" onclick="selectAllStudents()">All</button>
+                        <button class="btn btn-outline btn-sm" onclick="deselectAllStudents()">None</button>
+                    </div>
+                </div>
+                <div class="students-panel" id="studentsList"></div>
+            </div>
+        </div>
+        <div style="margin-top: 20px; display: flex; gap: 12px; align-items: center;">
+            <button class="btn btn-outline" onclick="backToStep2()">← Back to Topics</button>
+            <button class="btn btn-green" onclick="createSmartTest()" id="createBtn" style="padding: 12px 28px; font-size: 14px;">
+                ✨ Create & Assign Test
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Result ──────────────────────────────────────── -->
+    <div class="result-panel" id="resultPanel">
+        <div style="font-size: 48px; margin-bottom: 8px;">🎉</div>
+        <h3 id="resultTitle"></h3>
+        <p id="resultMsg"></p>
+        <div class="result-actions">
+            <a id="resultEditLink" href="#" class="btn btn-primary" style="text-decoration: none;">📝 Edit Test</a>
+            <button class="btn btn-outline" onclick="resetGenerator()">➕ Create Another</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var analysisData = null;
+var selectedTopicIds = new Set();
+var activeBandFilter = 'all';
+
+/* ── Stepper control ─────────────────────────────────── */
+function updateStepper(step) {
+    ['step1','step2','step3'].forEach(function(id, i) {
+        var el = document.getElementById(id);
+        el.classList.remove('active','done');
+        if (i + 1 < step) el.classList.add('done');
+        else if (i + 1 === step) el.classList.add('active');
+    });
+    ['stepLine1','stepLine2'].forEach(function(id, i) {
+        var el = document.getElementById(id);
+        el.classList.toggle('done', i + 1 < step);
+    });
+}
+
+/* ── Step 1 → 2: Analyse Performance ────────────────── */
+async function analysePerformance() {
+    var grade = document.getElementById('stgGrade').value;
+    var subject = document.getElementById('stgSubject').value;
+    if (!grade || !subject) { alert('Please select both grade and subject.'); return; }
+
+    var btn = document.getElementById('analyseBtn');
+    btn.disabled = true;
+    document.getElementById('loadingSpinner').classList.add('active');
+    document.getElementById('topicAnalysis').style.display = 'none';
+    document.getElementById('studentPanel').style.display = 'none';
+    document.getElementById('resultPanel').classList.remove('active');
+
+    var cohort = document.getElementById('stgCohort').value;
+    var url = '/teacher/smart-test/analyse/?grade=' + grade + '&subject=' + subject;
+    if (cohort) url += '&cohort_id=' + cohort;
+
+    try {
+        var res = await fetch(url);
+        analysisData = await res.json();
+
+        renderTopics(analysisData.topics);
+        renderStudents(analysisData.students);
+        renderStatsBar(analysisData.topics);
+
+        // Grade level badge
+        var badge = document.getElementById('gradeLevelBadge');
+        if (analysisData.same_level_grades && analysisData.same_level_grades.length > 1) {
+            badge.innerHTML = '<span class="grade-level-badge"><span class="dot"></span>Curriculum Level: <strong>' +
+                analysisData.grade_level + '</strong> (' + analysisData.same_level_grades.join(', ') + ')</span>';
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+
+        // Summary text
+        document.getElementById('analysisSummary').textContent =
+            analysisData.student_count + ' students analysed across ' +
+            analysisData.topics.length + ' topics in ' +
+            analysisData.grade + ' ' + analysisData.subject;
+
+        document.getElementById('topicAnalysis').style.display = 'block';
+
+        // Auto-suggest title
+        document.getElementById('stgTitle').value =
+            'Remedial Worksheet - ' + analysisData.grade + ' ' + analysisData.subject;
+
+        // Auto-select weak + developing topics
+        selectedTopicIds.clear();
+        selectByBand('Weak');
+        selectByBand('Developing');
+
+        updateStepper(2);
+        document.getElementById('topicAnalysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (e) {
+        alert('Error analysing: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        document.getElementById('loadingSpinner').classList.remove('active');
+    }
+}
+
+/* ── Stats bar ───────────────────────────────────────── */
+function renderStatsBar(topics) {
+    var counts = { Weak: 0, Developing: 0, Good: 0, Mastered: 0, Untested: 0 };
+    var totalQ = 0;
+    topics.forEach(function(t) {
+        counts[t.band] = (counts[t.band] || 0) + 1;
+        totalQ += t.question_count;
+    });
+    var colors = { Weak: '#dc2626', Developing: '#d97706', Good: '#2563eb', Mastered: '#059669', Untested: '#9ca3af' };
+    var html = '';
+    Object.keys(counts).forEach(function(band) {
+        if (counts[band] > 0) {
+            html += '<div class="stat-item"><div class="stat-dot" style="background:' + colors[band] + '"></div>' +
+                '<span class="stat-val">' + counts[band] + '</span> ' + band + '</div>';
+        }
+    });
+    html += '<div class="stat-item" style="margin-left: auto;"><span class="stat-val">' + totalQ + '</span> total questions available</div>';
+    document.getElementById('statsBar').innerHTML = html;
+}
+
+/* ── Render Topics ───────────────────────────────────── */
+function renderTopics(topics) {
+    var grid = document.getElementById('topicGrid');
+    grid.innerHTML = '';
+
+    if (topics.length === 0) {
+        grid.innerHTML = '<div style="text-align: center; padding: 32px; color: #9ca3af; grid-column: 1/-1;">' +
+            '<div style="font-size: 36px; margin-bottom: 8px;">📭</div>' +
+            '<p>No topics found for this grade and subject combination.</p></div>';
+        return;
+    }
+
+    topics.forEach(function(t) {
+        var card = document.createElement('div');
+        card.className = 'topic-card';
+        card.dataset.topicId = t.id;
+        card.dataset.band = t.band;
+        card.onclick = function() { toggleTopic(t.id, card); };
+
+        var barColor = { Weak: '#dc2626', Developing: '#d97706', Good: '#2563eb', Mastered: '#059669', Untested: '#9ca3af' }[t.band] || '#9ca3af';
+        var masteryText = t.mastery !== null ? t.mastery + '%' : 'Not tested';
+
+        var losHtml = '';
+        if (t.los && t.los.length > 0) {
+            losHtml = '<div class="tc-los">';
+            t.los.slice(0, 4).forEach(function(lo) {
+                var loMastery = lo.mastery !== null ? lo.mastery + '%' : 'N/A';
+                losHtml += '<div class="lo-item"><span style="opacity:.7">' + lo.code + '</span>' +
+                    '<span class="tc-band band-' + lo.band + '" style="padding: 1px 6px; border-radius: 4px; font-size: 10px;">' + loMastery + '</span></div>';
+            });
+            if (t.los.length > 4) losHtml += '<div style="color: #9ca3af; font-style: italic; font-size: 11px; margin-top: 2px;">+' + (t.los.length - 4) + ' more LOs</div>';
+            losHtml += '</div>';
+        }
+
+        var noQWarn = '';
+        if (t.question_count === 0) {
+            noQWarn = '<div class="no-questions-warn">⚠️ No questions available — cannot include</div>';
+        }
+
+        card.innerHTML =
+            '<div class="tc-check">' + (selectedTopicIds.has(t.id) ? '✓' : '') + '</div>' +
+            '<div class="tc-header">' +
+              '<span class="tc-name">' + t.name + '</span>' +
+              '<span class="tc-band band-' + t.band + '">' + t.band + '</span>' +
+            '</div>' +
+            '<div class="tc-meta">' +
+              '<span>Mastery: <strong>' + masteryText + '</strong></span>' +
+              '<span>📚 ' + t.question_count + ' questions</span>' +
+              '<span>✏️ ' + t.questions_tested + ' tested</span>' +
+            '</div>' +
+            '<div class="tc-bar"><div class="tc-bar-fill" style="width: ' + (t.mastery || 0) + '%; background: ' + barColor + ';"></div></div>' +
+            losHtml + noQWarn;
+
+        grid.appendChild(card);
+    });
+    updateSelectionSummary();
+}
+
+/* ── Band filter view ────────────────────────────────── */
+function filterByBand(band, pill) {
+    activeBandFilter = band;
+    document.querySelectorAll('.band-pill').forEach(function(p) { p.classList.remove('active'); });
+    if (pill) pill.classList.add('active');
+
+    document.querySelectorAll('.topic-card').forEach(function(card) {
+        if (band === 'all' || card.dataset.band === band) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+/* ── Render Students ─────────────────────────────────── */
+function renderStudents(students) {
+    var list = document.getElementById('studentsList');
+    list.innerHTML = '';
+    if (students.length === 0) {
+        list.innerHTML = '<div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 13px;">No students found.</div>';
+        return;
+    }
+    students.forEach(function(s) {
+        var item = document.createElement('div');
+        item.className = 'student-item';
+        item.innerHTML =
+            '<input type="checkbox" id="stu_' + s.id + '" value="' + s.id + '" class="stu-cb" checked onchange="updateSelectionSummary()">' +
+            '<label for="stu_' + s.id + '">' + s.name + '</label>' +
+            '<span class="roll">' + (s.roll || '') + '</span>';
+        list.appendChild(item);
+    });
+}
+
+/* ── Topic selection ─────────────────────────────────── */
+function toggleTopic(id, card) {
+    // Don't allow selecting topics with 0 questions
+    var topic = analysisData.topics.find(function(t) { return t.id === id; });
+    if (topic && topic.question_count === 0) {
+        return; // skip
+    }
+
+    if (selectedTopicIds.has(id)) {
+        selectedTopicIds.delete(id);
+        card.classList.remove('selected');
+        card.querySelector('.tc-check').textContent = '';
+    } else {
+        selectedTopicIds.add(id);
+        card.classList.add('selected');
+        card.querySelector('.tc-check').textContent = '✓';
+    }
+    updateSelectionSummary();
+}
+
+function selectByBand(band) {
+    document.querySelectorAll('.topic-card').forEach(function(card) {
+        if (card.dataset.band === band) {
+            var topicId = parseInt(card.dataset.topicId);
+            var topic = analysisData.topics.find(function(t) { return t.id === topicId; });
+            if (topic && topic.question_count > 0) {
+                selectedTopicIds.add(topicId);
+                card.classList.add('selected');
+                card.querySelector('.tc-check').textContent = '✓';
+            }
+        }
+    });
+    updateSelectionSummary();
+}
+
+function selectAll() {
+    document.querySelectorAll('.topic-card').forEach(function(card) {
+        var topicId = parseInt(card.dataset.topicId);
+        var topic = analysisData.topics.find(function(t) { return t.id === topicId; });
+        if (topic && topic.question_count > 0) {
+            selectedTopicIds.add(topicId);
+            card.classList.add('selected');
+            card.querySelector('.tc-check').textContent = '✓';
+        }
+    });
+    updateSelectionSummary();
+}
+
+function deselectAll() {
+    selectedTopicIds.clear();
+    document.querySelectorAll('.topic-card').forEach(function(card) {
+        card.classList.remove('selected');
+        card.querySelector('.tc-check').textContent = '';
+    });
+    updateSelectionSummary();
+}
+
+function selectAllStudents() { document.querySelectorAll('.stu-cb').forEach(function(cb) { cb.checked = true; }); updateSelectionSummary(); }
+function deselectAllStudents() { document.querySelectorAll('.stu-cb').forEach(function(cb) { cb.checked = false; }); updateSelectionSummary(); }
+
+function updateSelectionSummary() {
+    var qPerTopic = parseInt(document.getElementById('stgQPerTopic').value) || 5;
+    var estQuestions = selectedTopicIds.size * qPerTopic;
+    var stuCount = document.querySelectorAll('.stu-cb:checked').length;
+
+    var bar = document.getElementById('selectionBar');
+    var summary = document.getElementById('selectionSummary');
+    if (selectedTopicIds.size > 0) {
+        bar.style.display = 'flex';
+        summary.textContent = '📝 ' + selectedTopicIds.size + ' topics selected → ~' + estQuestions + ' questions | 👥 ' + stuCount + ' students';
+    } else {
+        bar.style.display = 'none';
+    }
+
+    // Also update config summary if step 3 is visible
+    var configSummary = document.getElementById('configSummary');
+    configSummary.innerHTML = '<strong>' + selectedTopicIds.size + '</strong> topics × <strong>' + qPerTopic + '</strong> questions = ~<strong>' + estQuestions + '</strong> questions total<br>' +
+        '<strong>' + stuCount + '</strong> students will be assigned';
+}
+
+/* ── Navigation between steps ────────────────────────── */
+function goToStep3() {
+    if (selectedTopicIds.size === 0) { alert('Select at least one topic.'); return; }
+    document.getElementById('studentPanel').style.display = 'block';
+    updateStepper(3);
+    updateSelectionSummary();
+    document.getElementById('studentPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function backToStep2() {
+    document.getElementById('studentPanel').style.display = 'none';
+    updateStepper(2);
+    document.getElementById('topicAnalysis').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ── Step 3: Create the test ─────────────────────────── */
+async function createSmartTest() {
+    if (selectedTopicIds.size === 0) { alert('Select at least one topic.'); return; }
+
+    var title = document.getElementById('stgTitle').value.trim();
+    if (!title) { alert('Enter a test title.'); return; }
+
+    var studentIds = [];
+    document.querySelectorAll('.stu-cb:checked').forEach(function(cb) { studentIds.push(parseInt(cb.value)); });
+
+    var btn = document.getElementById('createBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-ring" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Creating...';
+
+    try {
+        var res = await fetch('/teacher/smart-test/create/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({
+                title: title,
+                grade_id: parseInt(document.getElementById('stgGrade').value),
+                subject_id: parseInt(document.getElementById('stgSubject').value),
+                topic_ids: Array.from(selectedTopicIds),
+                questions_per_topic: parseInt(document.getElementById('stgQPerTopic').value) || 5,
+                student_ids: studentIds,
+                include_untested_los: document.getElementById('stgUntestedLOs').checked,
+            })
+        });
+        var data = await res.json();
+        if (data.success) {
+            document.getElementById('resultTitle').textContent = 'Test Created Successfully!';
+            document.getElementById('resultMsg').innerHTML =
+                '<strong>"' + data.title + '"</strong> created with <strong>' + data.questions_added + '</strong> questions, assigned to <strong>' + data.students_assigned + '</strong> students.';
+            document.getElementById('resultEditLink').href = data.edit_url;
+            document.getElementById('resultPanel').classList.add('active');
+
+            // Hide step 3
+            document.getElementById('studentPanel').style.display = 'none';
+            document.getElementById('topicAnalysis').style.display = 'none';
+
+            // Mark all steps done
+            ['step1','step2','step3'].forEach(function(id) {
+                document.getElementById(id).classList.remove('active');
+                document.getElementById(id).classList.add('done');
+            });
+            ['stepLine1','stepLine2'].forEach(function(id) {
+                document.getElementById(id).classList.add('done');
+            });
+
+            document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            alert('Error: ' + (data.error || 'Unknown'));
+        }
+    } catch (e) {
+        alert('Network error: ' + e.message);
+    } finally {
+        btn.disabled = false; btn.innerHTML = '✨ Create & Assign Test';
+    }
+}
+
+function resetGenerator() {
+    document.getElementById('topicAnalysis').style.display = 'none';
+    document.getElementById('studentPanel').style.display = 'none';
+    document.getElementById('resultPanel').classList.remove('active');
+    selectedTopicIds.clear();
+    analysisData = null;
+    activeBandFilter = 'all';
+    updateStepper(1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Live update on questions-per-topic change
+document.getElementById('stgQPerTopic').addEventListener('input', updateSelectionSummary);
+</script>
+{% endblock %}

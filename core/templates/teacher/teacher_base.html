@@ -115,9 +115,9 @@ body {
   <!-- ================= SIDEBAR ================= -->
   <aside class="sidebar">
     <div style="margin-bottom: 24px;">
-      <div style="font-size: 24px; font-weight: 700; margin-bottom: 4px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+      <a href="{% url 'teacher_dashboard' %}" style="text-decoration: none; font-size: 24px; font-weight: 700; margin-bottom: 4px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: block;">
         ✨ Lumen
-      </div>
+      </a>
       <div style="font-size: 13px; color: #9ca3af;">
         Teacher
         {% if request.user.profile.role == 'school_admin' %}
@@ -142,10 +142,6 @@ body {
        class="{% if '/questions/' in request.path %}active{% endif %}">
       📚 Question Library
     </a>
-    <a href="{% url 'pdf_tasks_list' %}"
-       class="{% if '/pdf-tasks/' in request.path %}active{% endif %}">
-      📋 PDF Import Tasks
-    </a>
 
 	<!-- Analytics Section -->
 	<div class="section-title">Analytics</div>
@@ -160,17 +156,46 @@ body {
 	  📋 Report Cards
 	</a>
 
+	<a href="{% url 'reissue_dashboard' %}"
+	   class="{% if '/reissue-dashboard/' in request.path %}active{% endif %}">
+	  🔄 Re-issue Suggestions
+	</a>
+
+	<a href="{% url 'smart_test_generator' %}"
+	   class="{% if '/smart-test/' in request.path %}active{% endif %}">
+	  🧠 Smart Test Generator
+	</a>
+
+    <!-- Resources Section -->
+    <div class="section-title">Classroom</div>
+    <a href="{% url 'resource_list' %}"
+       class="{% if '/resources/' in request.path %}active{% endif %}">
+      📁 Resources
+    </a>
 
     <!-- User Management Section -->
     <div class="section-title">User Management</div>
-    <a href="{% url 'add_user' %}" 
-       class="{% if '/users/add/' in request.path %}active{% endif %}">
+    <a href="{% url 'add_user' %}"
+       class="{% if '/users/add/' in request.path and '/bulk-import/' not in request.path %}active{% endif %}">
       ➕ Create Profile
     </a>
-    <a href="{% url 'manage_users' %}" 
+    <a href="{% url 'bulk_import_users' %}"
+       class="{% if '/users/bulk-import/' in request.path %}active{% endif %}">
+      📥 Bulk Import Users
+    </a>
+    <a href="{% url 'manage_users' %}"
        class="{% if '/users/manage/' in request.path %}active{% endif %}">
       👥 View & Manage Profiles
     </a>
+
+    <!-- Settings Section (Admin Only) -->
+    {% if request.user.profile.role == 'school_admin' %}
+    <div class="section-title">Settings</div>
+    <a href="{% url 'edit_school_settings' %}"
+       class="{% if '/school-settings/' in request.path %}active{% endif %}">
+      🏫 School Settings
+    </a>
+    {% endif %}
 
     <div class="spacer"></div>
 

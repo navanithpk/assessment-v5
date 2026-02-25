@@ -77,14 +77,14 @@ def answer_space_designer(request, question_id):
         'parts_config_obj': parts_config,  # Python object for template
     }
 
-    return render(request, 'teacher/answer_space_designer.html', context)
+    return render(request, 'teacher/answer_space_designer_v3.html', context)
 
 
 @login_required
 @require_http_methods(["POST"])
 def save_answer_spaces(request, question_id):
     """
-    Save the parts configuration for a question
+    Save the answer spaces configuration for a question
     """
     if not request.user.is_staff:
         return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
@@ -92,38 +92,38 @@ def save_answer_spaces(request, question_id):
     question = get_object_or_404(Question, id=question_id, created_by=request.user)
 
     try:
-        # Parse the JSON configuration from request
-        parts_config = json.loads(request.POST.get('parts_config', '{}'))
+        # Parse the JSON configuration from request body
+        config = json.loads(request.body)
 
         # Validate structure
-        if 'parts' not in parts_config or not isinstance(parts_config['parts'], list):
+        if 'spaces' not in config or not isinstance(config['spaces'], list):
             return JsonResponse({'success': False, 'error': 'Invalid configuration structure'})
 
-        if len(parts_config['parts']) == 0:
-            return JsonResponse({'success': False, 'error': 'At least one part is required'})
+        if len(config['spaces']) == 0:
+            return JsonResponse({'success': False, 'error': 'At least one answer space is required'})
 
-        # Validate each part
-        for part in parts_config['parts']:
-            if 'part_id' not in part or 'marks' not in part or 'answer_type' not in part:
-                return JsonResponse({'success': False, 'error': 'Missing required fields in part configuration'})
+        # Validate each space
+        for space in config['spaces']:
+            if 'type' not in space or 'marks' not in space:
+                return JsonResponse({'success': False, 'error': 'Missing required fields in space configuration'})
 
             # Ensure marks is a number
             try:
-                part['marks'] = int(part['marks'])
+                space['marks'] = float(space['marks'])
             except (ValueError, TypeError):
-                return JsonResponse({'success': False, 'error': f'Invalid marks value for part {part["part_id"]}'})
+                return JsonResponse({'success': False, 'error': f'Invalid marks value'})
 
         # Calculate total marks
-        total_marks = sum(part['marks'] for part in parts_config['parts'])
+        total_marks = sum(space['marks'] for space in config['spaces'])
 
-        # Save configuration
-        question.parts_config = parts_config
+        # Save configuration to parts_config field
+        question.parts_config = config
         question.marks = total_marks  # Update total marks
         question.save()
 
         return JsonResponse({
             'success': True,
-            'message': f'Configuration saved for {len(parts_config["parts"])} part(s)',
+            'message': f'Configuration saved for {len(config["spaces"])} answer space(s)',
             'total_marks': total_marks
         })
 

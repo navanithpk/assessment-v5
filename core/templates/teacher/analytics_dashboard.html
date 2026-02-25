@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Lumen Visionary Analytics | {{ test.title }}</title>
+    <title>Lumen Analytics | {{ test.title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Google+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -13,7 +13,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        /* Universal Box Sizing Fix */
         * { box-sizing: border-box; }
 
         :root {
@@ -37,7 +36,6 @@
             overflow: hidden;
         }
 
-        /* Sidebar */
         aside {
             width: 280px;
             min-width: 280px;
@@ -50,39 +48,39 @@
 
         .nav-group { margin-bottom: 24px; }
         .nav-header { font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 12px; }
-        .nav-item { 
-            display: flex; align-items: center; gap: 12px; padding: 10px; 
+        .nav-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px;
             border-radius: 8px; cursor: pointer; font-size: 14px; transition: 0.2s;
         }
         .nav-item:hover { background: #334155; }
         .nav-item.active { background: var(--md-primary); }
 
-        /* Main Viewport Fixes */
-        main { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 32px; 
-            min-width: 0; /* Critical for flex child overflow */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+            min-width: 0;
         }
-        
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(12, 1fr); 
-            gap: 24px; 
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
             width: 100%;
         }
-        
-        .card { 
-            background: white; 
-            border-radius: 16px; 
-            border: 1px solid var(--md-outline); 
-            padding: 24px; 
-            position: relative; 
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--md-outline);
+            padding: 24px;
+            position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
         }
-        
+
+        .span-3 { grid-column: span 3; }
         .span-4 { grid-column: span 4; }
         .span-6 { grid-column: span 6; }
         .span-8 { grid-column: span 8; }
@@ -92,7 +90,7 @@
         table.matrix { width: 100%; border-collapse: separate; border-spacing: 2px; }
         .matrix th { font-size: 10px; padding: 8px; background: #f1f3f4; text-align: left; }
         .matrix td { width: 32px; height: 32px; border-radius: 4px; }
-        
+
         .m-mastery { background: #ceead6; }
         .m-developing { background: #feefc3; }
         .m-critical { background: #fad2cf; }
@@ -108,140 +106,67 @@
             white-space: nowrap;
         }
 
-        /* ========================================
-           PROFESSIONAL PDF EXPORT STYLES
-           ======================================== */
+        /* Time flag badges */
+        .time-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .time-badge.rushed { background: #fce8e6; color: #c5221f; }
+        .time-badge.overthought { background: #fef7e0; color: #b06000; }
+        .time-badge.challenging { background: #e8f0fe; color: #1967d2; }
+        .time-badge.normal { background: #e6f4ea; color: #137333; }
+
+        /* Question table */
+        .q-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .q-table th { font-size: 11px; padding: 10px 8px; background: #f1f3f4; text-align: left; font-weight: 600; color: #5f6368; }
+        .q-table td { font-size: 13px; padding: 10px 8px; border-bottom: 1px solid #eee; }
+        .q-table tr:hover td { background: #f8f9fa; }
+
+        /* Difficulty badges */
+        .diff-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .diff-badge.easy { background: #e6f4ea; color: #137333; }
+        .diff-badge.medium { background: #fef7e0; color: #b06000; }
+        .diff-badge.hard { background: #fce8e6; color: #c5221f; }
+
+        /* Insight pill */
+        .insight-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            background: #f1f3f4;
+            margin: 4px;
+        }
+
         @media print {
-            /* Reset page layout */
-            @page {
-                size: A4;
-                margin: 2cm 1.5cm;
-            }
-
-            /* Hide sidebar and export button */
+            @page { size: A4; margin: 2cm 1.5cm; }
             aside, .btn-fab { display: none !important; }
-
-            /* Full width for main content */
-            main {
-                width: 100% !important;
-                max-width: none !important;
-                overflow: visible !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
-            body {
-                background: white !important;
-                overflow: visible !important;
-            }
-
-            /* Page headers */
-            header {
-                page-break-after: avoid;
-                border-bottom: 2px solid var(--md-primary);
-                padding-bottom: 16px !important;
-                margin-bottom: 24px !important;
-            }
-
-            h1 {
-                font-size: 24pt !important;
-                color: var(--md-primary) !important;
-            }
-
-            h3 {
-                font-size: 14pt !important;
-                page-break-after: avoid;
-            }
-
-            /* Card styling for print */
-            .card {
-                page-break-inside: avoid;
-                border: 1px solid #ddd !important;
-                box-shadow: none !important;
-                margin-bottom: 20px !important;
-                padding: 16px !important;
-            }
-
-            /* Grid adjustments */
-            .grid {
-                display: block !important;
-            }
-
-            .card.span-4, .card.span-6, .card.span-8, .card.span-12 {
-                width: 100% !important;
-                grid-column: auto !important;
-            }
-
-            /* Charts - ensure they print */
-            canvas {
-                max-width: 100% !important;
-                height: auto !important;
-                page-break-inside: avoid;
-            }
-
-            /* Matrix table */
-            .matrix-container {
-                overflow: visible !important;
-                page-break-inside: avoid;
-            }
-
-            table.matrix {
-                font-size: 9pt !important;
-            }
-
-            table.matrix th,
-            table.matrix td {
-                padding: 4px !important;
-            }
-
-            /* Statistics */
-            .stat-value {
-                font-size: 20pt !important;
-            }
-
-            .stat-label {
-                font-size: 10pt !important;
-            }
-
-            /* Differentiated groups */
-            .card small {
-                font-size: 8pt !important;
-            }
-
-            /* Page breaks for better pagination */
-            .card.span-12 {
-                page-break-before: auto;
-            }
-
-            /* Ensure colors print correctly */
-            .m-mastery, .m-developing, .m-critical {
-                print-color-adjust: exact;
-                -webkit-print-color-adjust: exact;
-            }
-
-            /* Footer on each page */
-            @page {
-                @bottom-right {
-                    content: "Page " counter(page) " of " counter(pages);
-                    font-size: 10pt;
-                    color: #5f6368;
-                }
-                @bottom-left {
-                    content: "Generated by Lumen Analytics";
-                    font-size: 10pt;
-                    color: #5f6368;
-                }
-            }
-
-            /* Add professional header to first page */
-            header::before {
-                content: "✨ LUMEN ANALYTICS REPORT";
-                display: block;
-                font-size: 11pt;
-                color: #5f6368;
-                margin-bottom: 8px;
-                letter-spacing: 1px;
-            }
+            main { width: 100% !important; max-width: none !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; }
+            body { background: white !important; overflow: visible !important; }
+            header { page-break-after: avoid; border-bottom: 2px solid var(--md-primary); padding-bottom: 16px !important; margin-bottom: 24px !important; }
+            h1 { font-size: 24pt !important; color: var(--md-primary) !important; }
+            h3 { font-size: 14pt !important; page-break-after: avoid; }
+            .card { page-break-inside: avoid; border: 1px solid #ddd !important; box-shadow: none !important; margin-bottom: 20px !important; padding: 16px !important; }
+            .grid { display: block !important; }
+            .card.span-3, .card.span-4, .card.span-6, .card.span-8, .card.span-12 { width: 100% !important; grid-column: auto !important; }
+            canvas { max-width: 100% !important; height: auto !important; page-break-inside: avoid; }
+            .matrix-container { overflow: visible !important; page-break-inside: avoid; }
+            table.matrix { font-size: 9pt !important; }
+            .m-mastery, .m-developing, .m-critical, .time-badge, .diff-badge { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            header::before { content: "LUMEN ANALYTICS REPORT"; display: block; font-size: 11pt; color: #5f6368; margin-bottom: 8px; letter-spacing: 1px; }
         }
     </style>
 </head>
@@ -258,8 +183,9 @@
             <div class="nav-item"><span class="material-symbols-rounded">menu_book</span> {{ test.subject.name }}</div>
         </div>
         <div class="nav-group">
-            <div class="nav-header">Test History</div>
-            <div class="nav-item"><span class="material-symbols-rounded">history</span> View Past Papers</div>
+            <div class="nav-header">Quick Links</div>
+            <div class="nav-item" onclick="window.location='{% url 'tests_list' %}'"><span class="material-symbols-rounded">assignment</span> All Tests</div>
+            <div class="nav-item" onclick="window.location='{% url 'teacher_dashboard' %}'"><span class="material-symbols-rounded">dashboard</span> Dashboard</div>
         </div>
     </aside>
 
@@ -267,49 +193,185 @@
         <header style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; gap: 20px;">
             <div>
                 <h1>{{ test.title }}</h1>
-                <p style="color: #5f6368; margin-top: 4px;">Examiner Analysis • {{ analytics.students|length }} Candidates • Grade {{ test.subject.topics.all.0.grade }}</p>
+                <p style="color: #5f6368; margin-top: 4px;">Examiner Analysis &bull; {{ analytics.students|length }} Candidates &bull; {{ test.subject.name }}</p>
             </div>
             <button class="btn-fab" onclick="window.print()">
                 <span class="material-symbols-rounded">download</span> Export PDF Report
             </button>
         </header>
 
+        {% if error %}
+        <div class="card span-12" style="text-align: center; padding: 60px;">
+            <span class="material-symbols-rounded" style="font-size: 48px; color: #dadce0;">analytics</span>
+            <h3 style="margin-top: 16px;">{{ error }}</h3>
+        </div>
+        {% else %}
+
         <div class="grid">
+            <!-- ═══════════════════════════════════════════
+                 ROW 1: Summary Stats + Quality Radar
+                 ═══════════════════════════════════════════ -->
             <div class="card span-8">
-                <h3>Instructional Efficacy Summary</h3>
-                <div style="display: flex; justify-content: space-between; margin-top: 24px; gap: 10px;">
+                <h3>Performance Summary</h3>
+                <div style="display: flex; justify-content: space-between; margin-top: 24px; gap: 10px; flex-wrap: wrap;">
                     <div>
-                        <div class="stat-label">Mean Mastery</div>
+                        <div class="stat-label">Mean Score</div>
                         <div class="stat-value">{{ analytics.distribution.mean }}%</div>
                     </div>
                     <div>
-                        <div class="stat-label">Reliability (α)</div>
-                        <div class="stat-value">0.82</div>
+                        <div class="stat-label">Median Score</div>
+                        <div class="stat-value">{{ analytics.distribution.median }}%</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">Std Deviation</div>
+                        <div class="stat-value">{{ analytics.distribution.std_dev }}</div>
                     </div>
                     <div>
                         <div class="stat-label">Discrimination Index</div>
-                        <div class="stat-value">0.41</div>
+                        <div class="stat-value">{{ analytics.summary.discrimination_index }}</div>
                     </div>
                     <div>
-                        <div class="stat-label">Velocity</div>
-                        <div class="stat-value" style="color: var(--risk-low);">+5.4%</div>
+                        <div class="stat-label">Completion Rate</div>
+                        <div class="stat-value" style="color: var(--risk-low);">{{ analytics.summary.completion_rate }}%</div>
                     </div>
                 </div>
             </div>
 
             <div class="card span-4">
                 <h3>Assessment Quality Radar</h3>
-                <p style="font-size: 11px; color: #5f6368; margin-top: -8px;">Six key metrics for test effectiveness</p>
+                <p style="font-size: 11px; color: #5f6368; margin-top: -8px;">Six data-driven quality metrics</p>
                 <div style="flex: 1; min-height: 180px;"><canvas id="qualityRadar"></canvas></div>
             </div>
 
+            <!-- ═══════════════════════════════════════════
+                 ROW 2: Time Intelligence (if available)
+                 ═══════════════════════════════════════════ -->
+            {% if analytics.time_analytics.has_data %}
+            <div class="card span-6">
+                <h3>Time Intelligence</h3>
+                <p style="font-size: 11px; color: #5f6368; margin-top: 4px;">Per-question timing analysis</p>
+                <div style="flex: 1; min-height: 220px; margin-top: 8px;"><canvas id="timePerQuestionChart"></canvas></div>
+            </div>
+
+            <div class="card span-6">
+                <h3>Time vs Performance</h3>
+                <p style="font-size: 11px; color: #5f6368; margin-top: 4px;">
+                    Correlation: <strong>{{ analytics.time_analytics.time_accuracy_correlation }}</strong>
+                    {% if analytics.time_analytics.time_accuracy_correlation > 0.3 %}
+                    <span style="color: var(--risk-low);">(More time = higher scores)</span>
+                    {% elif analytics.time_analytics.time_accuracy_correlation < -0.3 %}
+                    <span style="color: var(--risk-high);">(More time = lower scores)</span>
+                    {% else %}
+                    <span style="color: #5f6368;">(Weak relationship)</span>
+                    {% endif %}
+                </p>
+                <div style="flex: 1; min-height: 220px; margin-top: 8px;"><canvas id="timeVsScoreChart"></canvas></div>
+            </div>
+
+            <div class="card span-12">
+                <h3>Time-Derived Insights</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;">
+                    <div class="insight-pill">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--md-primary);">timer</span>
+                        Avg time per question: <strong>{{ analytics.time_analytics.avg_time_per_question }}s</strong>
+                    </div>
+                    <div class="insight-pill">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--md-primary);">schedule</span>
+                        Avg total time per student: <strong>{{ analytics.time_analytics.avg_total_time_minutes }} min</strong>
+                    </div>
+                    <div class="insight-pill">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--md-primary);">speed</span>
+                        Time per mark: <strong>{{ analytics.time_analytics.time_per_mark }}s</strong>
+                    </div>
+                    {% if analytics.time_analytics.time_accuracy_correlation > 0.3 %}
+                    <div class="insight-pill" style="background: #e6f4ea;">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--risk-low);">trending_up</span>
+                        Students who spent more time tended to score higher
+                    </div>
+                    {% elif analytics.time_analytics.time_accuracy_correlation < -0.3 %}
+                    <div class="insight-pill" style="background: #fce8e6;">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--risk-high);">trending_down</span>
+                        Spending more time was associated with lower scores &mdash; possible confusion
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ═══════════════════════════════════════════
+                 ROW 3: Question Performance Table
+                 ═══════════════════════════════════════════ -->
             <div class="card span-12">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <h3>LO Competency Matrix (Candidate vs. Objective)</h3>
+                    <h3>Question Performance Breakdown</h3>
+                    <div style="display: flex; gap: 8px; font-size: 11px;">
+                        <span class="time-badge rushed">Rushed</span>
+                        <span class="time-badge overthought">Overthought</span>
+                        <span class="time-badge challenging">Challenging</span>
+                        <span class="time-badge normal">Normal</span>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="q-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Topic</th>
+                                <th>Type</th>
+                                <th>Marks</th>
+                                <th>Success Rate</th>
+                                <th>Difficulty</th>
+                                {% if analytics.time_analytics.has_data %}
+                                <th>Avg Time</th>
+                                <th>Min / Max</th>
+                                <th>Time Flag</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for q in analytics.questions %}
+                            <tr>
+                                <td style="font-weight: 600;">Q{{ q.number }}</td>
+                                <td>{{ q.topic }}</td>
+                                <td><span style="text-transform: uppercase; font-size: 11px; color: #5f6368;">{{ q.type }}</span></td>
+                                <td>{{ q.marks }}</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="flex: 1; height: 6px; background: #eee; border-radius: 3px; max-width: 100px;">
+                                            <div style="height: 100%; width: {{ q.success_rate }}%; background: {% if q.success_rate >= 75 %}var(--risk-low){% elif q.success_rate >= 50 %}var(--risk-medium){% else %}var(--risk-high){% endif %}; border-radius: 3px;"></div>
+                                        </div>
+                                        <span style="font-weight: 500;">{{ q.success_rate }}%</span>
+                                    </div>
+                                </td>
+                                <td><span class="diff-badge {{ q.difficulty }}">{{ q.difficulty }}</span></td>
+                                {% if analytics.time_analytics.has_data %}
+                                <td>{% if q.avg_time != None %}{{ q.avg_time }}s{% else %}&mdash;{% endif %}</td>
+                                <td style="font-size: 12px; color: #5f6368;">{% if q.min_time != None %}{{ q.min_time }}s / {{ q.max_time }}s{% else %}&mdash;{% endif %}</td>
+                                <td>
+                                    {% if q.time_flag != "no_data" %}
+                                    <span class="time-badge {{ q.time_flag }}">{{ q.time_flag }}</span>
+                                    {% else %}
+                                    &mdash;
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════
+                 ROW 4: LO Competency Matrix
+                 ═══════════════════════════════════════════ -->
+            <div class="card span-12">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <h3>Topic Competency Matrix (Candidate vs. Objective)</h3>
                     <div style="display: flex; gap: 16px; font-size: 12px;">
-                        <span style="display:flex; align-items:center; gap:4px;"><div class="m-mastery" style="width:12px; height:12px;"></div> Mastery</span>
-                        <span style="display:flex; align-items:center; gap:4px;"><div class="m-developing" style="width:12px; height:12px;"></div> Developing</span>
-                        <span style="display:flex; align-items:center; gap:4px;"><div class="m-critical" style="width:12px; height:12px;"></div> Critical</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><div class="m-mastery" style="width:12px; height:12px;"></div> Mastery (&ge;80%)</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><div class="m-developing" style="width:12px; height:12px;"></div> Developing (&ge;50%)</span>
+                        <span style="display:flex; align-items:center; gap:4px;"><div class="m-critical" style="width:12px; height:12px;"></div> Critical (&lt;50%)</span>
                     </div>
                 </div>
                 <div class="matrix-container">
@@ -318,7 +380,7 @@
                             <tr>
                                 <th style="min-width: 150px;">Student Name</th>
                                 {% for lo in analytics.learning_objectives %}
-                                <th title="{{ lo.description }}">{{ lo.name }}</th>
+                                <th title="{{ lo.name }} ({{ lo.avg_mastery }}% avg)">{{ lo.name }}</th>
                                 {% endfor %}
                             </tr>
                         </thead>
@@ -346,34 +408,66 @@
                 </div>
             </div>
 
+            <!-- ═══════════════════════════════════════════
+                 ROW 5: Distribution Curve + Hardest Questions
+                 ═══════════════════════════════════════════ -->
             <div class="card span-6">
                 <h3>Cohort Performance Curve</h3>
                 <div style="flex: 1; min-height: 200px;"><canvas id="distributionChart"></canvas></div>
             </div>
 
             <div class="card span-6">
-                <h3>Top Misconceptions (Distractor Analysis)</h3>
-                <div style="margin-top: 16px;">
-                    {% for q in analytics.questions|slice:":3" %}
-                    <div style="padding: 12px 0; border-bottom: 1px solid #eee;">
-                        <div style="font-size: 13px; font-weight: 600;">Question {{ q.number }}: {{ q.topic }}</div>
-                        <div style="display: flex; justify-content: space-between; font-size: 12px; color: #5f6368; margin-top: 4px;">
-                            <span>Correct: {{ q.success_rate }}%</span>
-                            <span style="color: var(--risk-high);">Seductive Decoy (Option B): 34%</span>
+                <h3>Hardest Questions</h3>
+                <p style="font-size: 11px; color: #5f6368; margin-top: 4px;">Questions with lowest success rates</p>
+                <div style="margin-top: 12px;">
+                    {% for q in analytics.questions|dictsortreversed:"success_rate" reversed %}
+                    {% if forloop.counter <= 5 %}
+                    <div style="padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 13px; font-weight: 600;">Q{{ q.number }}: {{ q.topic }}</div>
+                            <div style="font-size: 11px; color: #5f6368; margin-top: 2px;">
+                                {{ q.marks }} marks &bull; {{ q.type|upper }}
+                                {% if q.avg_time != None %} &bull; Avg {{ q.avg_time }}s{% endif %}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 600; color: {% if q.success_rate < 50 %}var(--risk-high){% else %}var(--risk-medium){% endif %};">{{ q.success_rate }}%</div>
+                            {% if q.time_flag != "no_data" and q.time_flag != "normal" %}
+                            <span class="time-badge {{ q.time_flag }}" style="margin-top: 4px;">{{ q.time_flag }}</span>
+                            {% endif %}
                         </div>
                     </div>
+                    {% endif %}
                     {% endfor %}
                 </div>
             </div>
 
+            <!-- ═══════════════════════════════════════════
+                 ROW 6: Examiner Narrative + Groups
+                 ═══════════════════════════════════════════ -->
             <div class="card span-12">
-                <h3>Examiner's AI Narrative & Recommendations</h3>
+                <h3>Examiner Narrative &amp; Recommendations</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-top: 16px;">
                     <div style="font-size: 15px; line-height: 1.6; color: #3c4043;">
                         {{ analytics.examiner_report.overview }}
-                        <h4 style="margin-top:20px;">Common Pathologies Identified</h4>
+
+                        {% if analytics.examiner_report.strengths %}
+                        <h4 style="margin-top: 20px; color: var(--risk-low);">Strengths</h4>
+                        <ul style="padding-left: 20px;">
+                            {% for s in analytics.examiner_report.strengths %}<li>{{ s }}</li>{% endfor %}
+                        </ul>
+                        {% endif %}
+
+                        {% if analytics.examiner_report.weaknesses %}
+                        <h4 style="margin-top: 16px; color: var(--risk-high);">Areas for Improvement</h4>
                         <ul style="padding-left: 20px;">
                             {% for w in analytics.examiner_report.weaknesses %}<li>{{ w }}</li>{% endfor %}
+                        </ul>
+                        {% endif %}
+
+                        <h4 style="margin-top: 16px;">Recommendations</h4>
+                        <ul style="padding-left: 20px;">
+                            {% for r in analytics.examiner_report.recommendations %}<li>{{ r }}</li>{% endfor %}
                         </ul>
                     </div>
                     <div style="background: #f1f3f4; padding: 20px; border-radius: 12px; align-self: start;">
@@ -381,34 +475,38 @@
                         <div style="font-size: 13px;">
                             {% if analytics.differentiated_groups.extension.count > 0 %}
                             <p>
-                                <strong>Extension Group:</strong>
+                                <strong style="color: var(--risk-low);">Extension Group:</strong>
                                 {{ analytics.differentiated_groups.extension.count }} Candidate{{ analytics.differentiated_groups.extension.count|pluralize }} ready for enrichment tasks.
                                 <br><small style="color: #666; font-size: 11px;">{{ analytics.differentiated_groups.extension.students|join:", " }}</small>
                             </p>
                             {% else %}
-                            <p><strong>Extension Group:</strong> No candidates currently qualify (≥80%).</p>
+                            <p><strong>Extension Group:</strong> No candidates currently qualify (&ge;80%).</p>
                             {% endif %}
 
                             {% if analytics.differentiated_groups.intervention.count > 0 %}
                             <p style="margin-top: 12px;">
-                                <strong>Intervention Group:</strong>
+                                <strong style="color: var(--risk-high);">Intervention Group:</strong>
                                 {{ analytics.differentiated_groups.intervention.count }} Candidate{{ analytics.differentiated_groups.intervention.count|pluralize }} require re-teaching on
                                 <strong>{{ analytics.differentiated_groups.intervention.focus_area }}</strong>.
                                 <br><small style="color: #666; font-size: 11px;">{{ analytics.differentiated_groups.intervention.students|join:", " }}</small>
                             </p>
                             {% else %}
-                            <p style="margin-top: 12px;"><strong>Intervention Group:</strong> All candidates performing adequately (≥50%).</p>
+                            <p style="margin-top: 12px;"><strong>Intervention Group:</strong> All candidates performing adequately (&ge;50%).</p>
                             {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        {% endif %}
     </main>
 
     <script>
         window.onload = function() {
-            // Assessment Quality Radar - REAL DATA
+            {% if not error %}
+
+            // ── Assessment Quality Radar ──
             new Chart(document.getElementById('qualityRadar'), {
                 type: 'radar',
                 data: {
@@ -430,13 +528,13 @@
                         tooltip: {
                             callbacks: {
                                 title: function(context) {
-                                    const labels = {
+                                    var labels = {
                                         'Variety': 'Question Type Variety',
-                                        'Balance': 'Difficulty Balance',
-                                        'Discrimination': 'Discrimination Power',
-                                        'Coverage': 'Topic Coverage',
-                                        'Reliability': 'Consistency Indicator',
-                                        'Performance': 'Overall Performance'
+                                        'Balance': 'Difficulty Balance (ideal: 20/60/20)',
+                                        'Discrimination': 'Top 27% vs Bottom 27%',
+                                        'Coverage': 'Topic Diversity',
+                                        'Reliability': 'Score Consistency',
+                                        'Performance': 'Mean Cohort Score'
                                     };
                                     return labels[context[0].label] || context[0].label;
                                 },
@@ -455,7 +553,7 @@
                 }
             });
 
-            // Distribution Curve
+            // ── Distribution Curve ──
             new Chart(document.getElementById('distributionChart'), {
                 type: 'line',
                 data: {
@@ -469,12 +567,126 @@
                         pointRadius: 0
                     }]
                 },
-                options: { 
+                options: {
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } }, 
-                    scales: { y: { display: false }, x: { grid: { display: false } } } 
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { display: false },
+                        x: {
+                            grid: { display: false },
+                            title: { display: true, text: 'Score (%)', font: { size: 11 } }
+                        }
+                    }
                 }
             });
+
+            {% if analytics.time_analytics.has_data %}
+            // ── Time Per Question Bar Chart ──
+            var qLabels = [];
+            var qTimes = [];
+            var qColors = [];
+            var qData = {{ analytics.questions|safe }};
+
+            for (var i = 0; i < qData.length; i++) {
+                qLabels.push('Q' + qData[i].number);
+                qTimes.push(qData[i].avg_time || 0);
+                var flag = qData[i].time_flag || 'normal';
+                if (flag === 'rushed') qColors.push('#d93025');
+                else if (flag === 'overthought') qColors.push('#f9ab00');
+                else if (flag === 'challenging') qColors.push('#1a73e8');
+                else qColors.push('#1e8e3e');
+            }
+
+            new Chart(document.getElementById('timePerQuestionChart'), {
+                type: 'bar',
+                data: {
+                    labels: qLabels,
+                    datasets: [{
+                        label: 'Avg Time (seconds)',
+                        data: qTimes,
+                        backgroundColor: qColors,
+                        borderRadius: 4,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    var q = qData[context.dataIndex];
+                                    var lines = ['Success: ' + q.success_rate + '%'];
+                                    if (q.time_flag && q.time_flag !== 'no_data') {
+                                        lines.push('Flag: ' + q.time_flag);
+                                    }
+                                    return lines;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Seconds', font: { size: 11 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+
+            // ── Time vs Score Scatter ──
+            var scatterData = {{ analytics.time_analytics.student_time_score|safe }};
+            var scatterPoints = [];
+            for (var j = 0; j < scatterData.length; j++) {
+                scatterPoints.push({ x: scatterData[j].time, y: scatterData[j].score });
+            }
+
+            new Chart(document.getElementById('timeVsScoreChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Students',
+                        data: scatterPoints,
+                        backgroundColor: 'rgba(26, 115, 232, 0.6)',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    var sd = scatterData[context.dataIndex];
+                                    return sd.name + ': ' + sd.time + ' min, ' + sd.score + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Total Time (minutes)', font: { size: 11 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Score (%)', font: { size: 11 } },
+                            min: 0,
+                            max: 100,
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        }
+                    }
+                }
+            });
+            {% endif %}
+
+            {% endif %}
         };
     </script>
 </body>

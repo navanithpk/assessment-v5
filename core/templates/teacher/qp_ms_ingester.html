@@ -1,0 +1,1393 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>QP-MS Ingester — Lumen</title>
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- Fabric.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  CSS                                                               */
+/* ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --primary: #3b82f6;
+  --accent: #40bfd0;
+  --green: #10b981;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --orange: #f59e0b;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; overflow: hidden; background: var(--gray-100); }
+
+/* ─── Top Bar ──────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; height: 48px;
+  background: white; border-bottom: 1px solid var(--gray-200);
+  padding: 0 16px; gap: 16px; z-index: 100;
+}
+.topbar-brand {
+  font-size: 15px; font-weight: 700; color: var(--gray-900);
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.topbar-phase {
+  display: flex; gap: 0; margin-left: 16px;
+}
+.phase-tab {
+  padding: 0 14px; height: 48px; display: flex; align-items: center;
+  font-size: 13px; font-weight: 600; color: var(--gray-500);
+  border: none; background: none; cursor: pointer;
+  border-bottom: 3px solid transparent; transition: all 0.2s;
+}
+.phase-tab:hover { color: var(--gray-700); background: var(--gray-50); }
+.phase-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.phase-tab.disabled { opacity: 0.35; pointer-events: none; }
+.topbar-spacer { flex: 1; }
+.topbar-meta { display: flex; gap: 6px; align-items: center; }
+.meta-pill {
+  padding: 4px 10px; border: 1px solid var(--gray-300); border-radius: 20px;
+  font-size: 12px; font-weight: 500; color: var(--gray-700);
+  background: white; cursor: pointer; outline: none; max-width: 120px;
+}
+.meta-pill:focus { border-color: var(--accent); }
+.meta-year { width: 65px; text-align: center; }
+.btn {
+  padding: 6px 14px; border: none; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s; display: flex; align-items: center; gap: 5px;
+}
+.btn-accent { background: var(--accent); color: white; }
+.btn-accent:hover { filter: brightness(0.9); }
+.btn-accent:disabled { opacity: 0.45; pointer-events: none; }
+.btn-success { background: var(--green); color: white; }
+.btn-success:hover { filter: brightness(0.9); }
+.btn-ghost { background: none; color: var(--gray-600); border: 1px solid var(--gray-300); }
+.btn-ghost:hover { background: var(--gray-50); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* ─── Main Layout ──────────────────────────────── */
+.main-layout {
+  display: flex; height: calc(100vh - 48px);
+}
+
+/* ─── Sidebar (Phase 1 - PDF pages & Phase 2 - Questions) ─── */
+.sidebar {
+  width: 260px; background: white; border-right: 1px solid var(--gray-200);
+  display: flex; flex-direction: column; flex-shrink: 0;
+}
+.sidebar-header {
+  padding: 12px 14px; border-bottom: 1px solid var(--gray-200);
+  font-size: 11px; font-weight: 700; color: var(--gray-500);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-body { flex: 1; overflow-y: auto; }
+
+/* Upload Section */
+.upload-section { padding: 14px; }
+.upload-section label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 5px; }
+.upload-section input[type="file"] { width: 100%; font-size: 11px; padding: 6px; border: 1px solid var(--gray-300); border-radius: 4px; }
+.upload-section .hint { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+
+/* Line Guide */
+.line-guide {
+  margin: 0 14px 14px; padding: 10px 12px; background: #ecfdf5;
+  border-radius: 6px; font-size: 11px; color: #065f46; line-height: 1.8;
+}
+.line-guide b { font-weight: 700; }
+
+/* Page List */
+.page-item {
+  padding: 8px 14px; cursor: pointer; font-size: 13px;
+  border-bottom: 1px solid var(--gray-100); transition: all 0.15s;
+}
+.page-item:hover { background: var(--gray-50); }
+.page-item.active { background: #dbeafe; font-weight: 600; border-left: 3px solid var(--primary); }
+.page-item .badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 10px;
+  font-weight: 600; margin-left: 6px;
+}
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+
+/* Question tree items */
+.q-tree-item {
+  padding: 8px 12px; cursor: pointer; font-size: 13px;
+  border-left: 3px solid transparent; transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.q-tree-item:hover { background: var(--gray-50); }
+.q-tree-item.active { background: rgba(64,191,208,0.08); border-left-color: var(--accent); }
+.q-tree-label { flex: 1; font-weight: 600; color: var(--gray-800); }
+.q-tree-marks { font-size: 11px; color: var(--gray-500); }
+.q-tree-child { padding-left: 28px; }
+.q-tree-grandchild { padding-left: 44px; }
+.q-tree-actions { display: none; gap: 3px; }
+.q-tree-item:hover .q-tree-actions { display: flex; }
+.q-tree-act {
+  padding: 1px 4px; border: none; background: none;
+  cursor: pointer; font-size: 11px; color: var(--gray-400);
+  border-radius: 3px;
+}
+.q-tree-act:hover { background: var(--gray-200); color: var(--gray-700); }
+
+/* ─── Center Viewer ────────────────────────────── */
+.center { flex: 1; display: flex; flex-direction: column; background: var(--gray-100); min-width: 0; }
+
+/* Legend */
+.legend-bar {
+  padding: 8px 16px; background: #f0f4f8; border-bottom: 1px solid var(--gray-200);
+  display: flex; gap: 16px; font-size: 12px; flex-wrap: wrap; flex-shrink: 0;
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-swatch { width: 20px; height: 4px; border-radius: 2px; }
+.swatch-green { background: var(--green); }
+.swatch-red { background: var(--red); }
+.swatch-purple { background: var(--purple); }
+.swatch-white { background: white; border: 1px solid #ccc; }
+
+/* Toolbar */
+.toolbar {
+  padding: 10px 16px; background: white; border-bottom: 1px solid var(--gray-200);
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex-shrink: 0;
+}
+.toolbar .help-tag {
+  margin-left: auto; font-size: 11px; color: var(--gray-500);
+  background: #fef3c7; padding: 5px 10px; border-radius: 4px; border: 1px solid #fcd34d;
+}
+
+/* Canvas viewer */
+.viewer {
+  flex: 1; overflow: auto; padding: 20px;
+  display: flex; justify-content: center; align-items: flex-start;
+  background: #e5e7eb;
+}
+#canvasContainer { position: relative; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+
+/* ─── Question thumbnails panel (Phase 2 sidebar) ─── */
+.qs-panel { overflow-y: auto; }
+.qs-thumb {
+  padding: 10px; border-bottom: 1px solid var(--gray-100);
+  cursor: pointer; transition: all 0.15s;
+}
+.qs-thumb:hover { background: var(--gray-50); }
+.qs-thumb.active { background: #dbeafe; border-left: 3px solid var(--primary); }
+.qs-thumb-hdr { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+.qs-thumb-title { font-weight: 600; }
+.qs-thumb-badge { font-size: 10px; background: var(--orange); color: white; padding: 1px 7px; border-radius: 10px; }
+.qs-thumb img { width: 100%; border-radius: 4px; border: 1px solid var(--gray-200); }
+.qs-thumb-meta { font-size: 11px; color: var(--gray-500); margin-top: 4px; }
+
+/* Answer space overlays on question image */
+.ans-space {
+  position: absolute; border: 2px dashed var(--accent);
+  background: rgba(64,191,208,0.06); cursor: move;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  z-index: 10; transition: border-color 0.15s;
+}
+.ans-space:hover { border-color: var(--primary); background: rgba(59,130,246,0.06); }
+.ans-space.selected { border: 2px solid var(--green); background: rgba(16,185,129,0.06); box-shadow: 0 0 0 2px rgba(16,185,129,0.15); z-index: 11; }
+.ans-space-label {
+  position: absolute; top: -20px; left: 0;
+  background: rgba(255,255,255,0.95); padding: 2px 8px; border-radius: 3px;
+  font-size: 10px; font-weight: 700; color: var(--gray-700);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1); white-space: nowrap;
+  pointer-events: none;
+}
+.ans-space-marks { color: var(--gray-400); font-weight: 500; margin-left: 4px; }
+.resize-h {
+  position: absolute; width: 8px; height: 8px;
+  background: white; border: 2px solid var(--accent); border-radius: 50%;
+}
+.ans-space.selected .resize-h { border-color: var(--green); }
+.resize-h.se { bottom: -4px; right: -4px; cursor: se-resize; }
+.resize-h.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+.resize-h.ne { top: -4px; right: -4px; cursor: ne-resize; }
+.resize-h.nw { top: -4px; left: -4px; cursor: nw-resize; }
+
+/* Right properties panel */
+.props-panel {
+  width: 280px; border-left: 1px solid var(--gray-200);
+  padding: 16px; overflow-y: auto; flex-shrink: 0; background: white;
+}
+.props-panel h3 { font-size: 13px; font-weight: 700; color: var(--gray-700); margin: 0 0 14px 0; }
+.prop-group { margin-bottom: 14px; }
+.prop-group label { display: block; font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
+.prop-group input, .prop-group select, .prop-group textarea {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--gray-300);
+  border-radius: 6px; font-size: 13px; color: var(--gray-800); outline: none;
+  font-family: inherit;
+}
+.prop-group input:focus, .prop-group select:focus, .prop-group textarea:focus { border-color: var(--accent); }
+.prop-group textarea { resize: vertical; min-height: 60px; }
+
+.tree-section { margin-top: 16px; border-top: 1px solid var(--gray-200); padding-top: 14px; }
+.tree-section h4 { font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 10px; }
+.subpart-item {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  background: var(--gray-50); border-radius: 6px; margin-bottom: 4px; font-size: 13px;
+}
+.subpart-item .sp-label { font-weight: 600; color: var(--accent); min-width: 30px; }
+.subpart-item .sp-marks { font-size: 12px; color: var(--gray-500); }
+.subpart-item .sp-ms { flex: 1; font-size: 11px; color: var(--gray-600); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subpart-item .sp-del { color: var(--red); cursor: pointer; font-size: 14px; flex-shrink: 0; }
+.subpart-item .sp-del:hover { color: #b91c1c; }
+
+/* Space properties (when an answer space is selected) */
+.space-props { margin-top: 16px; border-top: 1px solid var(--gray-200); padding-top: 14px; }
+.space-props h4 { font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 10px; }
+
+
+/* Notifications */
+.toast {
+  position: fixed; top: 14px; right: 14px; padding: 10px 18px;
+  border-radius: 8px; font-size: 13px; font-weight: 600; color: white;
+  z-index: 9999; transform: translateX(120%); transition: transform 0.3s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.toast.show { transform: translateX(0); }
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
+.toast.info { background: var(--accent); }
+</style>
+</head>
+
+<body>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ─── TOP BAR ──────────────────────────────────────── -->
+<div class="topbar">
+  <span class="topbar-brand">✨ Lumen</span>
+  <span style="font-size:14px;font-weight:700;color:var(--gray-800);margin-left:12px;">QP-MS Ingester</span>
+
+  <div class="topbar-phase">
+    <button class="phase-tab active" data-phase="slice" onclick="showPhase1()">1 · Slice</button>
+    <button class="phase-tab disabled" data-phase="configure" onclick="slicedQuestions.length ? showPhase2() : toast('Slice a PDF first','error')">2 · Configure & Assign</button>
+  </div>
+
+  <div class="topbar-spacer"></div>
+  <a href="{% url 'teacher_dashboard' %}" style="font-size:12px;color:var(--gray-500);text-decoration:none;">← Back to Dashboard</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  PHASE 1 — SLICE (PDF.js + Fabric.js)                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="main-layout" id="phaseSlice">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">Pages</div>
+    <div class="sidebar-body">
+      <div class="upload-section">
+        <label>Question Paper (PDF)</label>
+        <input type="file" id="qpInput" accept="application/pdf">
+        <div class="hint">Upload to start annotating</div>
+      </div>
+      <div class="line-guide">
+        <b>Keyboard Shortcuts:</b><br>
+        <span style="color:var(--green);">■</span> <b>Z</b> = Question Start (green)<br>
+        <span style="color:var(--red);">■</span> <b>X</b> = Question End (red)<br>
+        <span style="color:var(--purple);">■</span> <b>W</b> = Skip Area (purple)<br>
+        <span style="color:#999;">□</span> <b>A</b> = White Mask<br>
+        <b>C</b> = Red + Green (end old, start new)<br>
+        <b>Del</b> = Remove selected object<br>
+        <b>← →</b> = Prev/Next page
+      </div>
+      <div id="pageList"></div>
+    </div>
+  </div>
+
+  <!-- Center -->
+  <div class="center">
+    <div class="legend-bar">
+      <div class="legend-item"><div class="legend-swatch swatch-green"></div><span><b>Z</b> Start</span></div>
+      <div class="legend-item"><div class="legend-swatch swatch-red"></div><span><b>X</b> End</span></div>
+      <div class="legend-item"><div class="legend-swatch swatch-purple"></div><span><b>W</b> Skip</span></div>
+      <div class="legend-item"><div class="legend-swatch swatch-white"></div><span><b>A</b> Mask</span></div>
+      <div class="legend-item" style="margin-left:8px;color:var(--gray-500);"><b>C</b> = End + Start combo</div>
+    </div>
+    <div class="toolbar">
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="prevPage()">◀</button>
+        <input id="pageBox" type="number" min="1" value="1" style="width:55px;padding:5px;border:1px solid var(--gray-300);border-radius:4px;text-align:center;font-size:13px;">
+        <button class="btn btn-ghost btn-sm" onclick="nextPage()">▶</button>
+      </div>
+      <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;">
+        <input type="checkbox" id="includeFirst"> Include page 1
+      </label>
+      <button class="btn btn-success" onclick="sliceDocument()">Slice & Configure</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearLines()">Clear Lines</button>
+      <span class="help-tag"><b>Keys:</b> Z=start · X=end · W=skip · A=mask · C=combo · Del=remove</span>
+    </div>
+    <div class="viewer">
+      <div id="canvasContainer">
+        <canvas id="fabricCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  PHASE 2 — Configure Questions + Answer Spaces         -->
+<!--  (Full-page layout, replaces Phase 1 when active)      -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="main-layout" id="phaseConfig" style="display:none;">
+
+  <!-- Left: Question thumbnails -->
+  <div class="sidebar" style="width:220px;">
+    <div class="sidebar-header">
+      Questions (<span id="qCount">0</span>)
+      <button class="btn btn-ghost btn-sm" onclick="showPhase1()" title="Back to slice">← Back</button>
+    </div>
+    <div class="sidebar-body" id="qsPanel"></div>
+  </div>
+
+  <!-- Center: Question image + answer space drawing -->
+  <div class="center">
+    <!-- Top toolbar: drawing controls + metadata + save -->
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px;">
+      <!-- Drawing controls -->
+      <button class="btn btn-sm" id="addSpaceBtn" onclick="toggleSpaceMode()" style="background:var(--orange);color:white;">+ Add Answer Space</button>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px;">Label:
+        <input type="text" id="spaceLabel" value="(a)" style="width:58px;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;">
+      </label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px;">Marks:
+        <input type="number" id="spaceMark" value="3" min="0" style="width:50px;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;">
+      </label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:4px;">Type:
+        <select id="spaceType" style="padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;">
+          <option value="text_line">Text</option>
+          <option value="calc_space">Calc</option>
+          <option value="canvas">Draw</option>
+        </select>
+      </label>
+      <span style="font-size:11px;color:var(--gray-400);align-self:center;">Click+drag on image to draw answer spaces</span>
+
+      <!-- Spacer -->
+      <div style="flex:1;"></div>
+
+      <!-- Metadata fields -->
+      <label style="font-size:11px;font-weight:600;display:flex;flex-direction:column;gap:2px;">Grade
+        <select id="gradeSelect" required style="padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;min-width:90px;">
+          <option value="">Select</option>
+          {% for g in grades %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label style="font-size:11px;font-weight:600;display:flex;flex-direction:column;gap:2px;">Subject
+        <select id="subjectSelect" required style="padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;min-width:110px;">
+          <option value="">Select</option>
+          {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label style="font-size:11px;font-weight:600;display:flex;flex-direction:column;gap:2px;">Topic
+        <select id="topicSelect" style="padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;min-width:90px;">
+          <option value="">Auto</option>
+          {% for t in topics %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label style="font-size:11px;font-weight:600;display:flex;flex-direction:column;gap:2px;">Year
+        <input type="number" id="yearInput" placeholder="2023" min="2000" max="2099" style="padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px;width:68px;">
+      </label>
+
+      <button class="btn btn-success" id="saveBtn" onclick="saveAllQuestions()" style="align-self:flex-end;">Save All</button>
+    </div>
+
+    <!-- Question image with draggable answer space overlays -->
+    <div class="viewer" style="background:#e5e7eb;">
+      <div style="position:relative;background:white;box-shadow:0 4px 20px rgba(0,0,0,0.15);display:inline-block;" id="editorWrap">
+        <img id="editorImg" src="" alt="Question" style="display:block;max-width:800px;width:100%;">
+        <!-- spacesLayer sits exactly on top of the image -->
+        <div id="spacesLayer" style="position:absolute;top:0;left:0;overflow:visible;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Properties panel -->
+  <div class="props-panel">
+    <h3>Question Properties</h3>
+    <div class="prop-group">
+      <label>Total Marks</label>
+      <input type="number" id="qMarks" value="5" min="0" max="200">
+    </div>
+    <div class="prop-group">
+      <label>Question Number</label>
+      <input type="text" id="qNumber" value="1" placeholder="e.g. 1, 2, 3...">
+    </div>
+
+    <!-- Sub-parts / answer spaces list -->
+    <div class="tree-section">
+      <h4>Answer Spaces / Sub-parts</h4>
+      <div id="subpartsList"></div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:6px;" onclick="toggleSpaceMode()">+ Add Answer Space</button>
+    </div>
+
+    <!-- Selected space properties -->
+    <div class="space-props" id="spacePropsSection" style="display:none;">
+      <h4>Selected Space</h4>
+      <div class="prop-group">
+        <label>Label</label>
+        <input type="text" id="selSpaceLabel" oninput="updateSelectedSpace('label', this.value)">
+      </div>
+      <div class="prop-group">
+        <label>Marks</label>
+        <input type="number" id="selSpaceMarks" min="0" oninput="updateSelectedSpace('marks', parseFloat(this.value)||0)">
+      </div>
+      <div class="prop-group">
+        <label>Type</label>
+        <select id="selSpaceType" onchange="updateSelectedSpace('type', this.value)">
+          <option value="text_line">Text Line</option>
+          <option value="calc_space">Calculation</option>
+          <option value="canvas">Drawing Canvas</option>
+        </select>
+      </div>
+      <div class="prop-group">
+        <label>Mark Scheme (teacher only)</label>
+        <textarea id="selSpaceMs" rows="3" placeholder="Type mark scheme here..." oninput="updateSelectedSpace('answer_text', this.value)"></textarea>
+      </div>
+      <button class="btn btn-sm" style="width:100%;background:var(--red);color:white;margin-top:6px;" onclick="deleteSelectedSpace()">Delete Space</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  JAVASCRIPT                                             -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script>
+const CSRF = '{{ csrf_token }}';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ──────────────────────────────────────── STATE ──────────── */
+let qpDoc = null;
+let pageNum = 1;
+let fabricCanvas = new fabric.Canvas('fabricCanvas');
+let pdfScale = 1.5;
+let objectsByPage = {};   // page# → [fabric objects]
+let activeRect = null;    // blue crop rectangle
+
+// Sliced questions
+let slicedQuestions = [];  // [{dataUrl, pageStart, pageEnd, marks, qNumber, spaces: [{id,label,marks,type,x,y,w,h,answer_text}], children: []}]
+let currentQI = 0;        // current question index
+
+// Space drawing
+let spaceMode = false;
+let drawingSpace = false;
+let drawStart = {x:0, y:0};
+let selectedSpaceId = null;
+let spaceIdCounter = 0;
+
+// Pointer tracking on Fabric canvas
+let pointerX = 0, pointerY = 0;
+
+/* ──────────────────────────────────────── PHASE SWITCH ──── */
+function switchPhase(phase) {
+  if (phase === 'configure') showPhase2();
+  else showPhase1();
+}
+
+/* ──────────────────────────────────────── TOAST ─────────── */
+function toast(msg, type='info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* ──────────────────────────────────────── FILE UPLOAD ───── */
+document.getElementById('qpInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const buf = await file.arrayBuffer();
+  qpDoc = await pdfjsLib.getDocument(buf).promise;
+  pageNum = 1;
+  objectsByPage = {};
+  slicedQuestions = [];
+  renderPageList();
+  renderPage();
+  autoFillYear(file.name);
+  toast(`Loaded ${qpDoc.numPages} pages`, 'success');
+});
+
+function autoFillYear(name) {
+  const m = name.match(/[_\s]([msw])(\d{2})[_\s]/i);
+  if (m) document.getElementById('yearInput').value = 2000 + parseInt(m[2]);
+}
+
+/* ──────────────────────────────────────── PAGE LIST ─────── */
+function renderPageList() {
+  const el = document.getElementById('pageList');
+  el.innerHTML = '';
+  for (let i = 1; i <= qpDoc.numPages; i++) {
+    const div = document.createElement('div');
+    div.className = 'page-item' + (i === pageNum ? ' active' : '');
+    div.textContent = `Page ${i}`;
+    // Count lines on this page
+    const objs = objectsByPage[i] || [];
+    const greens = objs.filter(o => o.type === 'line' && o.stroke === 'green').length;
+    const reds = objs.filter(o => o.type === 'line' && o.stroke === 'red').length;
+    if (greens) { const b = document.createElement('span'); b.className='badge badge-green'; b.textContent=`${greens}Z`; div.appendChild(b); }
+    if (reds) { const b = document.createElement('span'); b.className='badge badge-red'; b.textContent=`${reds}X`; div.appendChild(b); }
+    div.onclick = () => goToPage(i);
+    el.appendChild(div);
+  }
+}
+
+/* ──────────────────────────────────────── RENDER PAGE ───── */
+async function renderPage() {
+  if (!qpDoc) return;
+  const page = await qpDoc.getPage(pageNum);
+  const vp = page.getViewport({ scale: pdfScale });
+  const tmp = document.createElement('canvas');
+  tmp.width = vp.width; tmp.height = vp.height;
+  await page.render({ canvasContext: tmp.getContext('2d'), viewport: vp }).promise;
+
+  fabricCanvas.clear();
+  fabricCanvas.setWidth(vp.width);
+  fabricCanvas.setHeight(vp.height);
+  fabricCanvas.setBackgroundImage(new fabric.Image(tmp, { selectable: false }), fabricCanvas.renderAll.bind(fabricCanvas));
+  fabricCanvas.calcOffset();
+
+  // Blue crop rectangle
+  if (!activeRect) {
+    activeRect = new fabric.Rect({
+      left: 40, top: 40, width: fabricCanvas.width - 80, height: fabricCanvas.height - 80,
+      fill: 'rgba(0,0,255,0.03)', stroke: 'blue', strokeWidth: 2, strokeDashArray: [5, 5]
+    });
+  }
+  fabricCanvas.add(activeRect);
+
+  // Restore page objects
+  if (objectsByPage[pageNum]) {
+    objectsByPage[pageNum].forEach(obj => fabricCanvas.add(obj));
+  }
+
+  document.getElementById('pageBox').value = pageNum;
+  document.getElementById('pageBox').max = qpDoc.numPages;
+  renderPageList();
+}
+
+function goToPage(p) { pageNum = p; renderPage(); }
+function nextPage() { if (qpDoc && pageNum < qpDoc.numPages) { pageNum++; renderPage(); } }
+function prevPage() { if (pageNum > 1) { pageNum--; renderPage(); } }
+document.getElementById('pageBox').addEventListener('change', e => {
+  const p = parseInt(e.target.value);
+  if (p >= 1 && qpDoc && p <= qpDoc.numPages) { pageNum = p; renderPage(); }
+});
+
+/* ──────────────────────────────────────── LINES & MASKS ── */
+function makeLine(y, color) {
+  return new fabric.Line([0, y, fabricCanvas.width, y], {
+    stroke: color, strokeWidth: 3, selectable: true,
+    lockScalingY: true, hasControls: false, lineColor: color
+  });
+}
+function addLine(y, color) {
+  const line = makeLine(y, color);
+  fabricCanvas.add(line);
+  if (!objectsByPage[pageNum]) objectsByPage[pageNum] = [];
+  objectsByPage[pageNum].push(line);
+  renderPageList();
+}
+function addMask(x, y) {
+  const mask = new fabric.Rect({
+    left: x - 20, top: y - 15, width: 40, height: 30,
+    fill: 'white', stroke: '#ccc', strokeWidth: 1,
+    selectable: true, hasControls: true, isMask: true
+  });
+  fabricCanvas.add(mask);
+  if (!objectsByPage[pageNum]) objectsByPage[pageNum] = [];
+  objectsByPage[pageNum].push(mask);
+}
+function clearLines() {
+  if (objectsByPage[pageNum]) {
+    objectsByPage[pageNum].forEach(obj => fabricCanvas.remove(obj));
+    objectsByPage[pageNum] = [];
+  }
+  renderPageList();
+}
+
+/* ──────────────────────────────────────── KEYBOARD ─────── */
+fabricCanvas.on('mouse:move', e => { pointerX = e.pointer.x; pointerY = e.pointer.y; });
+
+document.addEventListener('keydown', e => {
+  // Skip if typing in inputs
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  // Skip if Phase 2 is active (handled separately)
+  if (document.getElementById('phaseConfig').style.display !== 'none') {
+    if (e.key === 'Escape') showPhase1();
+    if (e.key === 'Delete' && selectedSpaceId) { deleteSelectedSpace(); e.preventDefault(); }
+    return;
+  }
+
+  // Page navigation
+  if (e.key === 'ArrowRight' && !e.shiftKey) { nextPage(); return; }
+  if (e.key === 'ArrowLeft' && !e.shiftKey) { prevPage(); return; }
+
+  // Line shortcuts
+  if (e.key === 'z' || e.key === 'Z') { addLine(pointerY, 'green'); return; }
+  if (e.key === 'x' || e.key === 'X') { addLine(pointerY, 'red'); return; }
+  if (e.key === 'w' || e.key === 'W') { addLine(pointerY, '#8b5cf6'); return; }
+  if (e.key === 'a' || e.key === 'A') { addMask(pointerX, pointerY); return; }
+
+  // C = combo: red + green at same Y (end current question, start next)
+  if (e.key === 'c' || e.key === 'C') {
+    addLine(pointerY, 'red');
+    addLine(pointerY + 4, 'green');
+    return;
+  }
+
+  // Delete selected Fabric object
+  const obj = fabricCanvas.getActiveObject();
+  if (obj && (e.key === 'Delete' || e.key === 'Backspace')) {
+    fabricCanvas.remove(obj);
+    if (objectsByPage[pageNum]) {
+      objectsByPage[pageNum] = objectsByPage[pageNum].filter(o => o !== obj);
+    }
+    renderPageList();
+    e.preventDefault();
+  }
+
+  // Arrow keys to nudge selected object
+  if (obj) {
+    if (e.key === 'ArrowUp') { obj.top -= 2; fabricCanvas.renderAll(); }
+    if (e.key === 'ArrowDown') { obj.top += 2; fabricCanvas.renderAll(); }
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  SLICING LOGIC — Two-pass approach                         */
+/*                                                            */
+/*  Pass 1: Walk ALL purple lines in order (across all pages) */
+/*  and build a list of skip intervals. Purple lines pair up  */
+/*  in sequence: purple[0]→purple[1] = skip zone 1,          */
+/*  purple[2]→purple[3] = skip zone 2, etc.                  */
+/*  This means: the LAST purple on page N pairs with the      */
+/*  FIRST purple on page N+1 to skip the footer/header gap.  */
+/*                                                            */
+/*  Pass 2: Walk green/red pairs. For each green→red segment, */
+/*  render all pixels in that range while cutting out any     */
+/*  skip intervals that overlap it.                           */
+/*                                                            */
+/*  Rules:                                                    */
+/*  - A slice always starts at a GREEN line.                  */
+/*  - A slice always ends at a RED line.                      */
+/*  - Content between skip zone start and end is omitted.     */
+/* ═══════════════════════════════════════════════════════════ */
+async function sliceDocument() {
+  if (!qpDoc) { alert('Upload a question paper PDF first'); return; }
+
+  slicedQuestions = [];
+  const startPage = document.getElementById('includeFirst').checked ? 1 : 2;
+
+  // ── Collect all events, sorted page then Y ─────────────────
+  const allEvents = [];
+  for (let p = startPage; p <= qpDoc.numPages; p++) {
+    (objectsByPage[p] || []).filter(o => o.type === 'line').forEach(line => {
+      let type = null;
+      if (line.stroke === 'green')   type = 'green';
+      else if (line.stroke === 'red')     type = 'red';
+      else if (line.stroke === '#8b5cf6') type = 'purple';
+      if (type) allEvents.push({ page: p, y: line.top, type });
+    });
+  }
+  allEvents.sort((a, b) => a.page !== b.page ? a.page - b.page : a.y - b.y);
+
+  if (!allEvents.some(e => e.type === 'green')) {
+    alert('No GREEN start lines found!\nPress Z to draw green lines where each question STARTS.');
+    return;
+  }
+
+  // ── Pass 1: Build skip intervals from purple pairs ─────────
+  // A "position" is a comparable scalar: page * 1e6 + y
+  const pos = ev => ev.page * 1e6 + ev.y;
+
+  const purples = allEvents.filter(e => e.type === 'purple');
+  const skipIntervals = [];  // [{startPos, endPos}]
+  for (let i = 0; i + 1 < purples.length; i += 2) {
+    skipIntervals.push({ startPos: pos(purples[i]), endPos: pos(purples[i + 1]) });
+  }
+
+  // ── Pass 2: Build question segments from green/red pairs ───
+  const greens = allEvents.filter(e => e.type === 'green');
+  const reds   = allEvents.filter(e => e.type === 'red');
+
+  // Each green must be paired with the next red that comes after it
+  // (and before the next green)
+  const segments = [];
+  for (let gi = 0; gi < greens.length; gi++) {
+    const gPos = pos(greens[gi]);
+    const nextGPos = gi + 1 < greens.length ? pos(greens[gi + 1]) : Infinity;
+    // Find the first red that is after this green and before the next green
+    const matchRed = reds.find(r => pos(r) > gPos && pos(r) <= nextGPos);
+    if (matchRed) {
+      segments.push({ green: greens[gi], red: matchRed });
+    } else {
+      // No closing red: open-ended segment (shouldn't happen in well-annotated docs)
+      console.warn(`Green on p${greens[gi].page} y${greens[gi].y} has no matching Red`);
+    }
+  }
+
+  if (segments.length === 0) {
+    alert('No complete question segments found.\nEach GREEN start line needs a matching RED end line.');
+    return;
+  }
+
+  // ── Pre-render all pages that are needed ───────────────────
+  const neededPages = new Set();
+  segments.forEach(s => {
+    for (let p = s.green.page; p <= s.red.page; p++) neededPages.add(p);
+  });
+  // Also need pages that contain skip interval endpoints
+  skipIntervals.forEach(si => {
+    // figure out which page each endpoint is on
+    const sPg = purples.find(pu => pos(pu) === si.startPos);
+    const ePg = purples.find(pu => pos(pu) === si.endPos);
+    if (sPg) neededPages.add(sPg.page);
+    if (ePg) neededPages.add(ePg.page);
+  });
+
+  const renderedPages = {};   // page# → {canvas, left, width, top, bottom}
+  for (const p of [...neededPages].sort((a,b) => a-b)) {
+    const page = await qpDoc.getPage(p);
+    const vp = page.getViewport({ scale: pdfScale });
+    const tmp = document.createElement('canvas');
+    tmp.width = vp.width; tmp.height = vp.height;
+    const ctx = tmp.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    // Apply white masks
+    (objectsByPage[p] || []).forEach(obj => {
+      if (obj.isMask && obj.fill === 'white') {
+        ctx.fillStyle = 'white';
+        ctx.fillRect(obj.left, obj.top, obj.width * (obj.scaleX||1), obj.height * (obj.scaleY||1));
+      }
+    });
+    const left   = activeRect ? activeRect.left : 40;
+    const width  = activeRect ? activeRect.getScaledWidth()  : fabricCanvas.width - 80;
+    const top    = activeRect ? activeRect.top  : 40;
+    const bottom = activeRect ? activeRect.top + activeRect.getScaledHeight() : fabricCanvas.height - 40;
+    renderedPages[p] = { canvas: tmp, left, width, top, bottom };
+  }
+
+  // ── Helper: is a given {page,y} inside any skip interval? ──
+  function inSkip(page, y) {
+    const p = page * 1e6 + y;
+    return skipIntervals.some(si => p > si.startPos && p < si.endPos);
+  }
+
+  // ── For each segment, stitch visible strips ────────────────
+  let questionNum = 0;
+  for (const seg of segments) {
+    const { green, red } = seg;
+    let composed = null;
+
+    for (let p = green.page; p <= red.page; p++) {
+      const pg = renderedPages[p];
+      if (!pg) continue;
+
+      // The raw content range on this page for this segment:
+      const rawStart = (p === green.page) ? green.y  : pg.top;
+      const rawEnd   = (p === red.page)   ? red.y    : pg.bottom;
+
+      if (rawEnd <= rawStart) continue;
+
+      // Break the range [rawStart, rawEnd] into visible sub-strips
+      // by subtracting skip intervals that overlap this page range.
+      // Build a sorted list of skip boundaries that fall in this page's portion.
+
+      // Collect all purple line positions ON THIS PAGE that bound skip zones
+      // and lie within [rawStart, rawEnd].
+      // Strategy: walk through skip intervals; for each one that overlaps
+      // this page, clamp its endpoints to this page's coordinates.
+
+      // Build list of "cut points" that split [rawStart,rawEnd] into keep/skip bands.
+      // A cut point is the Y on this page where a skip starts or ends.
+      const cuts = [];  // [{y, action: 'skip_start'|'skip_end'}]
+
+      for (const si of skipIntervals) {
+        // Does this skip interval overlap [page=p, rawStart..rawEnd]?
+        const segStartPos = p * 1e6 + rawStart;
+        const segEndPos   = p * 1e6 + rawEnd;
+
+        if (si.endPos <= segStartPos || si.startPos >= segEndPos) continue;
+
+        // Skip starts on this page within this range
+        if (si.startPos >= segStartPos && si.startPos < segEndPos) {
+          const skipY = si.startPos - p * 1e6;
+          cuts.push({ y: skipY, action: 'skip_start' });
+        }
+        // Skip ends on this page within this range
+        if (si.endPos > segStartPos && si.endPos <= segEndPos) {
+          const skipY = si.endPos - p * 1e6;
+          cuts.push({ y: skipY, action: 'skip_end' });
+        }
+        // Skip entirely contains this range (started before, ends after)
+        if (si.startPos < segStartPos && si.endPos > segEndPos) {
+          // Entire strip is skipped — mark with sentinel
+          cuts.push({ y: rawStart, action: 'skip_start' });
+          cuts.push({ y: rawEnd,   action: 'skip_end'   });
+        }
+      }
+      cuts.sort((a, b) => a.y - b.y);
+
+      // Walk cuts to build keep-strips
+      let cursor = rawStart;
+      let skipping = inSkip(p, rawStart + 0.5);  // are we starting inside a skip?
+
+      for (const cut of cuts) {
+        if (cut.y <= cursor) { skipping = (cut.action === 'skip_start'); continue; }
+        if (!skipping && cut.y > cursor) {
+          // Keep strip from cursor → cut.y
+          const strip = crop(pg.canvas, pg.left, cursor, pg.width, cut.y - cursor);
+          if (strip) composed = stitch(composed, strip);
+        }
+        cursor = cut.y;
+        skipping = (cut.action === 'skip_start');
+      }
+      // Remainder after last cut
+      if (!skipping && rawEnd > cursor) {
+        const strip = crop(pg.canvas, pg.left, cursor, pg.width, rawEnd - cursor);
+        if (strip) composed = stitch(composed, strip);
+      }
+    }
+
+    if (composed) {
+      slicedQuestions.push({
+        dataUrl: composed.toDataURL(),
+        pageStart: green.page,
+        pageEnd: red.page,
+        marks: 5,
+        qNumber: String(++questionNum),
+        spaces: [],
+        children: []
+      });
+    }
+  }
+
+  if (slicedQuestions.length === 0) {
+    alert('No questions sliced. Ensure GREEN lines mark starts and RED lines mark ends.');
+    return;
+  }
+
+  // Switch to Phase 2
+  currentQI = 0;
+  renderQsPanel();
+  loadQuestionInEditor(0);
+  showPhase2();
+  toast(`Sliced ${slicedQuestions.length} questions`, 'success');
+}
+
+
+function crop(src, x, y, w, h) {
+  if (h <= 0 || w <= 0) return null;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(src, x, y, w, h, 0, 0, w, h);
+  return c;
+}
+function stitch(a, b) {
+  if (!b) return a; if (!a) return b;
+  const c = document.createElement('canvas');
+  c.width = Math.max(a.width, b.width); c.height = a.height + b.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(a, 0, 0); ctx.drawImage(b, 0, a.height);
+  return c;
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  PHASE 2 — Full-page configure                            */
+/* ═══════════════════════════════════════════════════════════ */
+function showPhase2() {
+  document.getElementById('phaseSlice').style.display = 'none';
+  document.getElementById('phaseConfig').style.display = 'flex';
+  document.getElementById('qCount').textContent = slicedQuestions.length;
+  // Update tab state
+  document.querySelectorAll('.phase-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.phase === 'configure');
+    t.classList.remove('disabled');
+  });
+}
+function showPhase1() {
+  document.getElementById('phaseConfig').style.display = 'none';
+  document.getElementById('phaseSlice').style.display = 'flex';
+  spaceMode = false;
+  document.querySelectorAll('.phase-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.phase === 'slice');
+  });
+}
+// Legacy aliases (phase-tab onclick uses switchPhase)
+function showModal() { showPhase2(); }
+function closeModal() { showPhase1(); }
+
+function renderQsPanel() {
+  const panel = document.getElementById('qsPanel');
+  panel.innerHTML = '';
+  slicedQuestions.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'qs-thumb' + (i === currentQI ? ' active' : '');
+    div.onclick = () => loadQuestionInEditor(i);
+    div.innerHTML = `
+      <div class="qs-thumb-hdr">
+        <span class="qs-thumb-title">Q${q.qNumber}</span>
+        <span class="qs-thumb-badge">${q.spaces.length} spaces</span>
+      </div>
+      <img src="${q.dataUrl}" alt="Q${q.qNumber}">
+      <div class="qs-thumb-meta">Pp ${q.pageStart}-${q.pageEnd} · ${q.marks}m</div>
+    `;
+    panel.appendChild(div);
+  });
+}
+
+function loadQuestionInEditor(idx) {
+  currentQI = idx;
+  selectedSpaceId = null;
+  const q = slicedQuestions[idx];
+
+  // Update sidebar
+  document.querySelectorAll('.qs-thumb').forEach((el, i) => el.classList.toggle('active', i === idx));
+
+  // Load image
+  const img = document.getElementById('editorImg');
+  img.src = q.dataUrl;
+  img.onload = () => renderSpaces();
+
+  // Properties
+  document.getElementById('qMarks').value = q.marks;
+  document.getElementById('qNumber').value = q.qNumber;
+
+  renderSubpartsList();
+  document.getElementById('spacePropsSection').style.display = 'none';
+
+  // Reset space label
+  document.getElementById('spaceLabel').value = '(a)';
+}
+
+/* ──────────────────────────── ANSWER SPACES ON IMAGE ────── */
+function toggleSpaceMode() {
+  spaceMode = !spaceMode;
+  document.getElementById('addSpaceBtn').style.background = spaceMode ? '#d97706' : 'var(--orange)';
+  document.getElementById('addSpaceBtn').textContent = spaceMode ? '✓ Drawing Mode ON' : '+ Add Answer Space';
+  document.getElementById('editorWrap').style.cursor = spaceMode ? 'crosshair' : 'default';
+}
+
+/* ── Scale factor: natural image px → display px ─────────── */
+function imgScale() {
+  const img = document.getElementById('editorImg');
+  if (!img || !img.naturalWidth) return 1;
+  return img.clientWidth / img.naturalWidth;
+}
+
+function renderSpaces() {
+  const layer = document.getElementById('spacesLayer');
+  layer.innerHTML = '';
+  const q = slicedQuestions[currentQI];
+  if (!q) return;
+
+  const sc = imgScale();
+
+  // Size the overlay layer to match the displayed image exactly
+  const img = document.getElementById('editorImg');
+  layer.style.width  = img.clientWidth  + 'px';
+  layer.style.height = img.clientHeight + 'px';
+
+  q.spaces.forEach(sp => {
+    const div = document.createElement('div');
+    div.className = 'ans-space' + (sp.id === selectedSpaceId ? ' selected' : '');
+    div.dataset.id = sp.id;
+    // sp coords are in natural-image pixels; scale to display pixels
+    div.style.left   = (sp.x * sc) + 'px';
+    div.style.top    = (sp.y * sc) + 'px';
+    div.style.width  = (sp.w * sc) + 'px';
+    div.style.height = (sp.h * sc) + 'px';
+    div.innerHTML = `
+      <span class="ans-space-label">${sp.label}<span class="ans-space-marks"> ${sp.marks}m</span></span>
+      ${sp.id === selectedSpaceId ? '<div class="resize-h nw"></div><div class="resize-h ne"></div><div class="resize-h sw"></div><div class="resize-h se"></div>' : ''}
+    `;
+    div.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      const handle = e.target.closest('.resize-h');
+      if (handle) {
+        startResizeSpace(e, sp, handle.className.replace('resize-h ','').trim());
+      } else {
+        selectSpace(sp.id);
+        startDragSpace(e, sp);
+      }
+    });
+    layer.appendChild(div);
+  });
+}
+
+function renderSubpartsList() {
+  const el = document.getElementById('subpartsList');
+  const q = slicedQuestions[currentQI];
+  if (!q || q.spaces.length === 0) {
+    el.innerHTML = '<p style="font-size:11px;color:var(--gray-400);">No answer spaces yet. Click "+ Add Answer Space" then draw on the image.</p>';
+    return;
+  }
+  el.innerHTML = q.spaces.map((sp, i) => `
+    <div class="subpart-item" style="cursor:pointer;" onclick="selectSpace('${sp.id}')">
+      <span class="sp-label">${sp.label}</span>
+      <span class="sp-marks">${sp.marks}m</span>
+      <span class="sp-ms">${sp.answer_text ? '✓ MS' : ''}</span>
+      <span class="sp-del" onclick="event.stopPropagation();deleteSpaceByIndex(${i})">×</span>
+    </div>
+  `).join('');
+}
+
+function selectSpace(id) {
+  selectedSpaceId = id;
+  renderSpaces();
+  const q = slicedQuestions[currentQI];
+  const sp = q.spaces.find(s => s.id === id);
+  if (sp) {
+    document.getElementById('spacePropsSection').style.display = 'block';
+    document.getElementById('selSpaceLabel').value = sp.label;
+    document.getElementById('selSpaceMarks').value = sp.marks;
+    document.getElementById('selSpaceType').value = sp.type;
+    document.getElementById('selSpaceMs').value = sp.answer_text || '';
+  }
+}
+
+function updateSelectedSpace(prop, val) {
+  const q = slicedQuestions[currentQI];
+  const sp = q.spaces.find(s => s.id === selectedSpaceId);
+  if (sp) { sp[prop] = val; renderSpaces(); renderSubpartsList(); }
+}
+
+function deleteSelectedSpace() {
+  const q = slicedQuestions[currentQI];
+  q.spaces = q.spaces.filter(s => s.id !== selectedSpaceId);
+  selectedSpaceId = null;
+  document.getElementById('spacePropsSection').style.display = 'none';
+  renderSpaces(); renderSubpartsList(); renderQsPanel();
+}
+
+function deleteSpaceByIndex(idx) {
+  const q = slicedQuestions[currentQI];
+  if (q.spaces[idx]) {
+    if (q.spaces[idx].id === selectedSpaceId) {
+      selectedSpaceId = null;
+      document.getElementById('spacePropsSection').style.display = 'none';
+    }
+    q.spaces.splice(idx, 1);
+    renderSpaces(); renderSubpartsList(); renderQsPanel();
+  }
+}
+
+/* ── Draw answer spaces by click+drag on editor image ─── */
+/*    All stored coordinates are in NATURAL image pixels.     */
+/*    Display pixels = natural * imgScale().                  */
+const editorArea = document.getElementById('editorWrap');
+if (editorArea) {
+  const wrap = editorArea;
+
+  wrap.addEventListener('mousedown', e => {
+    if (!spaceMode) {
+      if (!e.target.closest('.ans-space')) {
+        selectedSpaceId = null;
+        document.getElementById('spacePropsSection').style.display = 'none';
+        renderSpaces();
+      }
+      return;
+    }
+    e.preventDefault();
+    const rect = wrap.getBoundingClientRect();
+    drawingSpace = true;
+    // drawStart in DISPLAY px (relative to wrap)
+    drawStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    let preview = document.getElementById('drawPreview');
+    if (!preview) {
+      preview = document.createElement('div');
+      preview.id = 'drawPreview';
+      preview.style.cssText = 'position:absolute;border:2px dashed var(--accent);background:rgba(64,191,208,0.08);pointer-events:none;z-index:50;';
+      wrap.appendChild(preview);
+    }
+    preview.style.left = drawStart.x + 'px';
+    preview.style.top  = drawStart.y + 'px';
+    preview.style.width  = '0px';
+    preview.style.height = '0px';
+    preview.style.display = 'block';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!drawingSpace) return;
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const preview = document.getElementById('drawPreview');
+    if (preview) {
+      preview.style.left   = Math.min(drawStart.x, mx) + 'px';
+      preview.style.top    = Math.min(drawStart.y, my) + 'px';
+      preview.style.width  = Math.abs(mx - drawStart.x) + 'px';
+      preview.style.height = Math.abs(my - drawStart.y) + 'px';
+    }
+  });
+
+  document.addEventListener('mouseup', e => {
+    if (!drawingSpace) return;
+    drawingSpace = false;
+    const preview = document.getElementById('drawPreview');
+    if (preview) preview.style.display = 'none';
+
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    // Display-pixel bounds
+    const dx = Math.min(drawStart.x, mx);
+    const dy = Math.min(drawStart.y, my);
+    const dw = Math.abs(mx - drawStart.x);
+    const dh = Math.abs(my - drawStart.y);
+
+    if (dw > 10 && dh > 5) {
+      // Convert display px → natural image px
+      const sc = imgScale();
+      const label = document.getElementById('spaceLabel').value || '(a)';
+      const marks = parseFloat(document.getElementById('spaceMark').value) || 1;
+      const type  = document.getElementById('spaceType').value;
+
+      const newSpace = {
+        id: 'sp_' + (++spaceIdCounter),
+        label, marks, type,
+        x: Math.round(dx / sc),
+        y: Math.round(dy / sc),
+        w: Math.round(dw / sc),
+        h: Math.round(dh / sc),
+        answer_text: '',
+        config: {}
+      };
+
+      slicedQuestions[currentQI].spaces.push(newSpace);
+      selectSpace(newSpace.id);
+      renderSpaces();
+      renderSubpartsList();
+      renderQsPanel();
+      autoIncrementLabel();
+    }
+  });
+}
+
+/* ── Drag & Resize answer spaces ────────────────────── */
+/*    sp coords are in natural-image px; mouse deltas are     */
+/*    in display px → divide by imgScale() before storing.   */
+let dragState = null;
+
+function startDragSpace(e, sp) {
+  const sc = imgScale();
+  const wrap = document.getElementById('editorWrap');
+  const rect = wrap.getBoundingClientRect();
+  dragState = {
+    mode: 'drag', spaceId: sp.id,
+    // offset in display px
+    offX: e.clientX - rect.left - sp.x * sc,
+    offY: e.clientY - rect.top  - sp.y * sc
+  };
+  e.preventDefault();
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+}
+
+function startResizeSpace(e, sp, corner) {
+  // Store start values in NATURAL px; mouse anchor in screen px
+  dragState = {
+    mode: 'resize', spaceId: sp.id, corner,
+    startX: sp.x, startY: sp.y, startW: sp.w, startH: sp.h,
+    mouseX: e.clientX, mouseY: e.clientY
+  };
+  e.preventDefault();
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  const q = slicedQuestions[currentQI];
+  const sp = q.spaces.find(s => s.id === dragState.spaceId);
+  if (!sp) return;
+  const sc = imgScale();
+
+  if (dragState.mode === 'drag') {
+    const wrap = document.getElementById('editorWrap');
+    const rect = wrap.getBoundingClientRect();
+    // Convert display-px position to natural px
+    sp.x = Math.max(0, Math.round((e.clientX - rect.left - dragState.offX) / sc));
+    sp.y = Math.max(0, Math.round((e.clientY - rect.top  - dragState.offY) / sc));
+  } else if (dragState.mode === 'resize') {
+    // Mouse delta in display px → convert to natural px
+    const dx = (e.clientX - dragState.mouseX) / sc;
+    const dy = (e.clientY - dragState.mouseY) / sc;
+    const c = dragState.corner;
+    if (c.includes('e')) sp.w = Math.max(20, Math.round(dragState.startW + dx));
+    if (c.includes('s')) sp.h = Math.max(10, Math.round(dragState.startH + dy));
+    if (c.includes('w')) { sp.x = Math.round(dragState.startX + dx); sp.w = Math.max(20, Math.round(dragState.startW - dx)); }
+    if (c.includes('n')) { sp.y = Math.round(dragState.startY + dy); sp.h = Math.max(10, Math.round(dragState.startH - dy)); }
+  }
+  renderSpaces();
+}
+
+function onDragEnd() {
+  dragState = null;
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+  renderSubpartsList();
+}
+
+/* ── Auto-increment answer label ────────────────────── */
+function autoIncrementLabel() {
+  const input = document.getElementById('spaceLabel');
+  const cur = input.value;
+  const m = cur.match(/\(([a-z]|[ivx]+|\d+)\)/i);
+  if (m) {
+    const inner = m[1];
+    let next;
+    if (/^[a-z]$/i.test(inner)) {
+      next = String.fromCharCode(inner.charCodeAt(0) + 1);
+    } else if (/^[ivx]+$/i.test(inner)) {
+      const romans = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
+      const idx = romans.indexOf(inner.toLowerCase());
+      next = idx >= 0 && idx < romans.length - 1 ? romans[idx+1] : inner;
+    } else if (/^\d+$/.test(inner)) {
+      next = String(parseInt(inner) + 1);
+    } else { next = inner; }
+    input.value = `(${next})`;
+  }
+}
+
+/* ── Re-render spaces on window resize (scale may change) ─ */
+window.addEventListener('resize', () => {
+  if (document.getElementById('phaseConfig').style.display !== 'none') {
+    renderSpaces();
+  }
+});
+
+/* ── Update question properties ─────────────────────── */
+document.getElementById('qMarks').addEventListener('change', e => {
+  slicedQuestions[currentQI].marks = parseInt(e.target.value) || 5;
+  renderQsPanel();
+});
+document.getElementById('qNumber').addEventListener('change', e => {
+  slicedQuestions[currentQI].qNumber = e.target.value;
+  renderQsPanel();
+});
+
+/* ── Cascading topic dropdown ───────────────────────── */
+document.getElementById('subjectSelect').addEventListener('change', async function() {
+  const sid = this.value;
+  const topicSel = document.getElementById('topicSelect');
+  topicSel.innerHTML = '<option value="">Auto</option>';
+  if (!sid) return;
+  try {
+    const r = await fetch(`/ajax/topics/?subject_id=${sid}`, { headers: { 'X-CSRFToken': CSRF } });
+    const d = await r.json();
+    (d.topics || []).forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id; o.textContent = t.name;
+      topicSel.appendChild(o);
+    });
+  } catch(e) {}
+});
+
+/* ═══════════════════════════════════════════════════════════ */
+/*  SAVE ALL — Build hierarchy & POST to backend              */
+/* ═══════════════════════════════════════════════════════════ */
+async function saveAllQuestions() {
+  const gradeId = document.getElementById('gradeSelect').value;
+  const subjectId = document.getElementById('subjectSelect').value;
+  const topicId = document.getElementById('topicSelect').value;
+  const year = document.getElementById('yearInput').value;
+
+  if (!gradeId || !subjectId) {
+    toast('Please select Grade and Subject', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  // Build hierarchical question data
+  const questions = slicedQuestions.map((q, idx) => {
+    // Each sliced question is a root question.
+    // Its answer spaces become children (sub-parts).
+    const children = q.spaces.map((sp, si) => ({
+      question_number: sp.label.replace(/[()]/g, ''),  // "(a)" -> "a"
+      marks: sp.marks || 1,
+      answer_text: sp.answer_text || '',
+      order: si,
+      answer_spaces: [{
+        type: sp.type || 'text_line',
+        x: sp.x, y: sp.y,
+        width: sp.w, height: sp.h,
+        marks: sp.marks || 1,
+        config: sp.config || {}
+      }],
+      children: []
+    }));
+
+    // Calculate total marks from children if they exist
+    const totalMarks = children.length > 0
+      ? children.reduce((sum, c) => sum + (c.marks || 0), 0)
+      : (q.marks || 5);
+
+    return {
+      question_number: q.qNumber,
+      image: q.dataUrl,
+      marks: totalMarks,
+      answer_text: '',
+      order: idx,
+      children: children,
+      answer_spaces: []  // Root questions don't have answer spaces directly
+    };
+  });
+
+  try {
+    const resp = await fetch('{% url "qp_ms_ingester_save" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({
+        grade_id: parseInt(gradeId),
+        subject_id: parseInt(subjectId),
+        topic_id: topicId ? parseInt(topicId) : null,
+        year: year || null,
+        questions: questions
+      })
+    });
+
+    const data = await resp.json();
+    if (data.error) {
+      toast('Error: ' + data.error, 'error');
+    } else {
+      toast(`Saved ${data.count} questions with full hierarchy!`, 'success');
+      btn.textContent = '✓ Saved!';
+      btn.style.background = 'var(--green)';
+    }
+  } catch (err) {
+    toast('Save failed: ' + err.message, 'error');
+  } finally {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = 'Save All Questions';
+      btn.style.background = '';
+    }, 3000);
+  }
+}
+
+</script>
+</body>
+</html>

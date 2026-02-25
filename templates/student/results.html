@@ -144,23 +144,35 @@
   {% if results %}
     <div class="results-grid">
       {% for result in results %}
-      <div class="result-card">
+      <div class="result-card{% if result.pending_release %}" style="border-color: #e5e7eb; opacity: 0.85;{% endif %}">
         <div class="result-header">
           <div>
             <h3 class="result-title">{{ result.test.title }}</h3>
             <p class="result-date">
               {% if result.submitted_at %}
-                Submitted: {{ result.submitted_at|date:"M d, Y - g:i A" }}
+                Submitted: {{ result.submitted_at|date:"d-m-Y - g:i A" }}
               {% else %}
                 Submitted
               {% endif %}
             </p>
           </div>
+          {% if result.pending_release %}
+          <div class="score-badge" style="background: #f3f4f6; color: #6b7280; font-size: 13px; padding: 10px 16px; min-width: auto;">
+            ⏳ Awaiting Results
+          </div>
+          {% else %}
           <div class="score-badge {% if result.percentage >= 80 %}excellent{% elif result.percentage >= 60 %}good{% elif result.percentage >= 40 %}average{% else %}poor{% endif %}">
             {{ result.percentage }}%
           </div>
+          {% endif %}
         </div>
 
+        {% if result.pending_release %}
+        <div style="text-align: center; padding: 20px 0; color: #6b7280; font-size: 14px;">
+          <div style="font-size: 32px; margin-bottom: 8px;">🔒</div>
+          Your work has been graded. Results will be visible once your teacher publishes them.
+        </div>
+        {% else %}
         <div class="result-stats">
           <div class="stat-box">
             <span class="stat-value">{{ result.scored_marks|floatformat:1 }}</span>
@@ -179,6 +191,7 @@
         <a href="{% url 'student_test_review' result.test.id %}" class="view-btn">
           View Detailed Results
         </a>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

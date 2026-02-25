@@ -1,0 +1,574 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}AI Tagging Export{% endblock %}
+
+{% block content %}
+<style>
+    h1 { margin-top: 0; }
+    .export-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .btn {
+        border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer;
+        font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;
+        transition: all 0.2s; text-decoration: none;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .btn.blue { background: #2563eb; color: white; }
+    .btn.green { background: #10b981; color: white; }
+    .btn.purple { background: #7c3aed; color: white; }
+    .btn.gray { background: #6b7280; color: white; }
+    .btn.outline { background: transparent; border: 1.5px solid #d1d5db; color: #374151; }
+    .btn.outline:hover { background: #f9fafb; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .filter-card {
+        background: white; border-radius: 12px; padding: 20px;
+        margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+    .filter-row {
+        display: flex; gap: 16px; align-items: end; flex-wrap: wrap;
+    }
+    .filter-row label { font-size: 12px; font-weight: 600; color: #5f6368; display: block; margin-bottom: 4px; }
+    .filter-row select, .filter-row input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+
+    .stats-bar { display: flex; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+    .stat-chip {
+        background: white; padding: 12px 20px; border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.06); display: flex; align-items: center; gap: 10px;
+    }
+    .stat-chip .num { font-size: 22px; font-weight: 700; color: #2563eb; }
+    .stat-chip .lbl { font-size: 12px; color: #5f6368; }
+
+    .ref-section {
+        background: white; border-radius: 12px; padding: 20px;
+        margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+    .ref-section h3 { margin: 0 0 12px 0; font-size: 16px; }
+    .ref-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ref-table th { background: #f1f3f4; padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 600; color: #5f6368; }
+    .ref-table td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+
+    /* Questions table */
+    .q-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .q-table th {
+        background: #1e293b; color: white; padding: 10px 12px;
+        text-align: left; font-size: 11px; font-weight: 600;
+        position: sticky; top: 0; z-index: 2;
+    }
+    .q-table td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    .q-table tbody tr:hover { background: #f8fafc; }
+    .q-table .q-id-cell { font-weight: 700; color: #2563eb; white-space: nowrap; text-align: center; }
+    .q-table .q-img-cell { max-width: 400px; }
+    .q-table .q-img-cell img { max-width: 100%; max-height: 180px; height: auto; border-radius: 4px; display: block; }
+    .q-table .q-type-cell { text-transform: uppercase; font-size: 11px; font-weight: 600; color: #6b7280; white-space: nowrap; }
+    .q-table .q-marks-cell { font-weight: 600; text-align: center; white-space: nowrap; }
+    .q-table .q-year-cell { text-align: center; color: #6b7280; white-space: nowrap; }
+    .q-table .q-topic-cell { font-size: 12px; }
+    .q-table .q-topic-cell .tagged { color: #059669; font-weight: 500; }
+    .q-table .q-topic-cell .untagged { color: #d97706; font-style: italic; }
+    .q-table .q-lo-cell { font-size: 11px; color: #6b7280; }
+
+    /* Pagination */
+    .pagination-bar {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 16px 0; flex-wrap: wrap; gap: 12px;
+    }
+    .pagination-info { font-size: 13px; color: #6b7280; }
+    .pagination-links { display: flex; gap: 4px; align-items: center; }
+    .pagination-links a, .pagination-links span {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 36px; height: 36px; padding: 0 10px;
+        border-radius: 8px; font-size: 13px; font-weight: 500;
+        text-decoration: none; transition: all 0.15s;
+    }
+    .pagination-links a { background: white; color: #374151; border: 1px solid #d1d5db; }
+    .pagination-links a:hover { background: #f1f5f9; border-color: #2563eb; color: #2563eb; }
+    .pagination-links .current {
+        background: #2563eb; color: white; border: 1px solid #2563eb; font-weight: 700;
+    }
+    .pagination-links .ellipsis { border: none; background: none; color: #9ca3af; min-width: 24px; }
+
+    /* Copy-friendly text block */
+    .copy-block {
+        background: #1e293b; color: #e2e8f0; padding: 20px;
+        border-radius: 12px; font-family: 'Courier New', monospace;
+        font-size: 12px; line-height: 1.6; white-space: pre-wrap;
+        max-height: 300px; overflow-y: auto; margin-top: 16px;
+        position: relative;
+    }
+    .copy-btn {
+        position: absolute; top: 8px; right: 8px;
+        background: #334155; color: white; border: none; padding: 6px 12px;
+        border-radius: 6px; cursor: pointer; font-size: 11px;
+    }
+    .copy-btn:hover { background: #475569; }
+
+    @media print {
+        .filter-card, .export-header .btn, .stats-bar, .copy-btn, .no-print, .pagination-bar { display: none !important; }
+        .q-table td, .q-table th { padding: 6px 8px; font-size: 11px; }
+        .q-table .q-img-cell img { max-height: 120px; }
+        .ref-section { box-shadow: none; border: 1px solid #ddd; }
+    }
+</style>
+
+<div class="export-header">
+    <div>
+        <h1>AI Tagging Export</h1>
+        <p style="color: #5f6368; font-size: 14px;">Generate question data for AI-assisted topic/LO tagging</p>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        {% if selected_grade and selected_subject %}
+        <button class="btn green" onclick="generatePDFForChatGPT()" id="pdfBtn">📄 Generate PDF for ChatGPT</button>
+        <button class="btn purple" onclick="copyPromptToClipboard()">Copy AI Prompt</button>
+        <button class="btn gray" onclick="window.print()">🖨️ Print</button>
+        {% endif %}
+        <a href="{% url 'ai_tagging_import' %}" class="btn blue">Import CSV Results</a>
+    </div>
+</div>
+
+<!-- Filter Panel -->
+<div class="filter-card no-print">
+    <form method="GET" id="exportFilterForm">
+        <div class="filter-row">
+            <div>
+                <label>Grade</label>
+                <select name="grade" id="gradeSelect" required>
+                    <option value="">Select Grade</option>
+                    {% for g in grades %}
+                    <option value="{{ g.id }}" {% if filters.grade == g.id|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Subject</label>
+                <select name="subject" id="subjectSelect" required>
+                    <option value="">Select Subject</option>
+                    {% for s in subjects %}
+                    <option value="{{ s.id }}" {% if filters.subject == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display: flex; align-items: center; gap: 6px; margin-bottom: 0; margin-top: 20px;">
+                    <input type="checkbox" name="include_tagged" value="1" {% if filters.include_tagged %}checked{% endif %}>
+                    Include already-tagged
+                </label>
+            </div>
+            <div>
+                <button class="btn blue" type="submit">Load Questions</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% if selected_grade and selected_subject %}
+
+<!-- Stats -->
+<div class="stats-bar">
+    <div class="stat-chip"><div class="num">{{ question_count }}</div><div class="lbl">Questions Total</div></div>
+    <div class="stat-chip"><div class="num">{{ topic_count }}</div><div class="lbl">Topics Available</div></div>
+    <div class="stat-chip"><div class="num">{{ lo_count }}</div><div class="lbl">Learning Objectives</div></div>
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="stat-chip"><div class="num">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</div><div class="lbl">Current Page</div></div>
+    {% endif %}
+</div>
+
+<!-- AI Prompt -->
+<div class="ref-section no-print">
+    <h3>AI Prompt (copy this to ChatGPT along with the PDF)</h3>
+    <div class="copy-block" id="aiPrompt"><button class="copy-btn" onclick="copyPromptToClipboard()">Copy</button>I have a set of {{ question_count }} questions for {{ selected_grade.name }} {{ selected_subject.name }}.
+
+For each question, assign the most appropriate TOPIC from the topic list and the most relevant LEARNING OBJECTIVE codes from the LO list.
+
+Return your answer as CSV with these columns (no header row):
+question_id,topic_name,lo_codes
+
+Where lo_codes are semicolon-separated if multiple. Example:
+142,Kinematics,1.1.1;1.1.2
+
+IMPORTANT:
+- Use EXACT topic names from the topic list
+- Use EXACT LO codes from the LO list
+- Each question must have exactly one topic
+- Each question can have one or more LO codes
+- If unsure, pick the closest match</div>
+</div>
+
+<!-- Topic Reference -->
+<div class="ref-section">
+    <h3>Available Topics ({{ topic_count }})</h3>
+    <table class="ref-table" id="topicRefTable">
+        <thead><tr><th>Topic Name</th></tr></thead>
+        <tbody>
+            {% for t in topics %}
+            <tr><td>{{ t.name }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- LO Reference -->
+<div class="ref-section">
+    <h3>Available Learning Objectives ({{ lo_count }})</h3>
+    <table class="ref-table" id="loRefTable">
+        <thead><tr><th>Code</th><th>Description</th><th>Topic</th></tr></thead>
+        <tbody>
+            {% for lo in los %}
+            <tr>
+                <td><strong>{{ lo.code }}</strong></td>
+                <td>{{ lo.description }}</td>
+                <td style="color: #5f6368;">{{ lo.topic__name }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination (top) -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pagination-bar no-print">
+    <div class="pagination-info">
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ question_count }} questions
+    </div>
+    <div class="pagination-links">
+        {% if page_obj.has_previous %}
+        <a href="?grade={{ filters.grade }}&subject={{ filters.subject }}{% if filters.include_tagged %}&include_tagged=1{% endif %}&page={{ page_obj.previous_page_number }}">&#8592; Prev</a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+                <span class="current">{{ num }}</span>
+            {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                <a href="?grade={{ filters.grade }}&subject={{ filters.subject }}{% if filters.include_tagged %}&include_tagged=1{% endif %}&page={{ num }}">{{ num }}</a>
+            {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+                <span class="ellipsis">...</span>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a href="?grade={{ filters.grade }}&subject={{ filters.subject }}{% if filters.include_tagged %}&include_tagged=1{% endif %}&page={{ page_obj.next_page_number }}">Next &#8594;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Questions Table -->
+<div class="ref-section" style="padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px 0;">
+        <h3 style="margin-bottom: 0;">
+            Questions — Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            <span style="font-weight: 400; font-size: 13px; color: #6b7280;">
+                ({{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ question_count }})
+            </span>
+        </h3>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="q-table" id="questionsTable">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">#</th>
+                    <th style="width: 60px;">ID</th>
+                    <th>Question</th>
+                    <th style="width: 60px;">Type</th>
+                    <th style="width: 50px;">Marks</th>
+                    <th style="width: 50px;">Year</th>
+                    <th style="width: 130px;">Current Topic</th>
+                    <th style="width: 100px;">Current LOs</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in questions %}
+                <tr data-qid="{{ q.id }}">
+                    <td style="text-align: center; color: #9ca3af; font-size: 12px;">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td class="q-id-cell">{{ q.id }}</td>
+                    <td class="q-img-cell">
+                        <div class="q-content-wrap">{{ q.question_text|safe }}</div>
+                    </td>
+                    <td class="q-type-cell">{{ q.question_type }}</td>
+                    <td class="q-marks-cell">{{ q.marks }}</td>
+                    <td class="q-year-cell">{{ q.year|default:"-" }}</td>
+                    <td class="q-topic-cell">
+                        {% if q.current_topic %}
+                            <span class="tagged">{{ q.current_topic }}</span>
+                        {% else %}
+                            <span class="untagged">Untagged</span>
+                        {% endif %}
+                    </td>
+                    <td class="q-lo-cell">{{ q.current_los|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #9ca3af;">
+                        No questions found. Try changing filters or check "Include already-tagged".
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pagination (bottom) -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="pagination-bar no-print">
+    <div class="pagination-info">
+        Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ question_count }} questions
+    </div>
+    <div class="pagination-links">
+        {% if page_obj.has_previous %}
+        <a href="?grade={{ filters.grade }}&subject={{ filters.subject }}{% if filters.include_tagged %}&include_tagged=1{% endif %}&page={{ page_obj.previous_page_number }}">&#8592; Prev</a>
+        {% endif %}
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+                <span class="current">{{ num }}</span>
+            {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                <a href="?grade={{ filters.grade }}&subject={{ filters.subject }}{% if filters.include_tagged %}&include_tagged=1{% endif %}&page={{ num }}">{{ num }}</a>
+            {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+                <span class="ellipsis">...</span>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <a href="?grade={{ filters.grade }}&subject={{ filters.subject }}{% if filters.include_tagged %}&include_tagged=1{% endif %}&page={{ page_obj.next_page_number }}">Next &#8594;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="ref-section" style="text-align: center; padding: 60px; color: #9ca3af;">
+    <p style="font-size: 48px;">🏷️</p>
+    <h3>Select Grade and Subject to Begin</h3>
+    <p style="font-size: 14px; margin-top: 8px;">Choose a grade and subject above, then click "Load Questions" to generate the export.</p>
+</div>
+{% endif %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script>
+function copyPromptToClipboard() {
+    var el = document.getElementById('aiPrompt');
+    if (!el) return;
+    var text = el.textContent.replace('Copy', '').trim();
+    navigator.clipboard.writeText(text).then(function() {
+        alert('AI prompt copied to clipboard!');
+    }).catch(function() {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        alert('AI prompt copied to clipboard!');
+    });
+}
+
+{% if selected_grade and selected_subject %}
+async function generatePDFForChatGPT() {
+    var btn = document.getElementById('pdfBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Generating PDF…';
+
+    try {
+        var { jsPDF } = window.jspdf;
+        var doc = new jsPDF('p', 'mm', 'a4');
+        var pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var margin = 12;
+        var cw = pageW - margin * 2;
+        var y = margin;
+
+        function checkPage(needed) {
+            if (y + needed > pageH - 15) { doc.addPage(); y = margin; }
+        }
+
+        // ── Title ──
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('AI Tagging Export', pageW / 2, y + 10, { align: 'center' });
+        y += 18;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'normal');
+        doc.text('{{ selected_grade.name }} — {{ selected_subject.name }}', pageW / 2, y, { align: 'center' });
+        y += 8;
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text('Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} | Questions {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ question_count }} | Generated: ' + new Date().toLocaleDateString('en-GB'), pageW / 2, y, { align: 'center' });
+        doc.setTextColor(0);
+        y += 12;
+
+        // ── Instructions ──
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('INSTRUCTIONS FOR AI:', margin, y); y += 5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        [
+            'For each question image below, assign the most appropriate TOPIC and LEARNING OBJECTIVE codes.',
+            'Return as CSV: question_id,topic_name,lo_codes  (lo_codes semicolon-separated if multiple)',
+            'Example: 142,Kinematics,1.1.1;1.1.2',
+            'Use EXACT topic names and LO codes from the reference tables below.',
+        ].forEach(function(line) { doc.text(line, margin, y); y += 4; });
+        y += 4;
+
+        // ── Topic reference ──
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Available Topics ({{ topic_count }})', margin, y); y += 2;
+
+        var topicRows = [];
+        {% for t in topics %}
+        topicRows.push(['{{ t.name|escapejs }}']);
+        {% endfor %}
+
+        doc.autoTable({
+            startY: y,
+            head: [['Topic Name']],
+            body: topicRows,
+            theme: 'grid',
+            headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+            bodyStyles: { fontSize: 7 },
+            margin: { left: margin, right: margin },
+            tableWidth: cw / 2,
+        });
+        y = doc.lastAutoTable.finalY + 6;
+
+        // ── LO reference ──
+        checkPage(30);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Available Learning Objectives ({{ lo_count }})', margin, y); y += 2;
+
+        var loRows = [];
+        {% for lo in los %}
+        loRows.push(['{{ lo.code|escapejs }}', '{{ lo.description|escapejs|truncatechars:55 }}', '{{ lo.topic__name|escapejs }}']);
+        {% endfor %}
+
+        doc.autoTable({
+            startY: y,
+            head: [['Code', 'Description', 'Topic']],
+            body: loRows,
+            theme: 'grid',
+            headStyles: { fillColor: [37, 99, 235], fontSize: 8 },
+            bodyStyles: { fontSize: 7 },
+            margin: { left: margin, right: margin },
+            tableWidth: cw,
+            columnStyles: { 0: { cellWidth: 18 }, 2: { cellWidth: 35 } },
+        });
+        y = doc.lastAutoTable.finalY + 8;
+
+        // ── Questions table with images ──
+        doc.addPage();
+        y = margin;
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Questions ({{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ question_count }})', margin, y);
+        y += 8;
+
+        // Build rows from the HTML table
+        var rows = document.querySelectorAll('#questionsTable tbody tr[data-qid]');
+        var processed = 0;
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var qid = row.getAttribute('data-qid');
+            var cells = row.querySelectorAll('td');
+            var rowNum = cells[0].textContent.trim();
+            var qType = cells[3].textContent.trim();
+            var qMarks = cells[4].textContent.trim();
+            var qYear = cells[5].textContent.trim();
+            var qTopic = cells[6].textContent.trim();
+            var qLOs = cells[7].textContent.trim();
+
+            // Header bar for this question
+            checkPage(60);
+            doc.setFillColor(30, 41, 59);
+            doc.roundedRect(margin, y, cw, 7, 1, 1, 'F');
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(255);
+            doc.text('#' + rowNum + '  |  ID: ' + qid + '  |  ' + qType + '  |  ' + qMarks + ' marks' + (qYear !== '-' ? '  |  ' + qYear : ''), margin + 3, y + 5);
+            doc.setTextColor(0);
+            y += 9;
+
+            // Try to embed the question image
+            var imgEl = cells[2].querySelector('img');
+            if (imgEl && imgEl.src && imgEl.src.startsWith('data:image')) {
+                try {
+                    var imgFormat = imgEl.src.includes('image/png') ? 'PNG' : 'JPEG';
+                    var natW = imgEl.naturalWidth || 600;
+                    var natH = imgEl.naturalHeight || 400;
+                    var maxH = pageH - y - 25;
+                    var imgW = Math.min(cw, natW * 0.264583);
+                    var imgH = imgW * (natH / natW);
+                    if (imgH > maxH) {
+                        var scale = maxH / imgH;
+                        imgW *= scale;
+                        imgH *= scale;
+                    }
+                    if (y + imgH > pageH - 15) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                    doc.addImage(imgEl.src, imgFormat, margin, y, imgW, imgH);
+                    y += imgH + 2;
+                } catch (e) {
+                    doc.setFontSize(7);
+                    doc.setTextColor(200, 0, 0);
+                    doc.text('[Image could not be embedded]', margin, y);
+                    doc.setTextColor(0);
+                    y += 5;
+                }
+            } else {
+                // Text-only question
+                var bodyText = cells[2].textContent.trim();
+                if (bodyText) {
+                    doc.setFontSize(8);
+                    doc.setFont('helvetica', 'normal');
+                    var lines = doc.splitTextToSize(bodyText, cw - 4);
+                    var blockH = lines.length * 3.5;
+                    checkPage(blockH + 5);
+                    lines.forEach(function(l) { doc.text(l, margin + 2, y); y += 3.5; });
+                }
+            }
+
+            // Current tagging info
+            if (qTopic !== 'Untagged' || qLOs !== '-') {
+                doc.setFontSize(6.5);
+                doc.setTextColor(120);
+                doc.text('Current: Topic=' + qTopic + '  LOs=' + qLOs, margin + 2, y + 1);
+                doc.setTextColor(0);
+                y += 4;
+            }
+
+            y += 4;
+            processed++;
+            if (processed % 10 === 0) {
+                btn.textContent = '⏳ ' + processed + '/' + rows.length + '…';
+            }
+        }
+
+        // ── Footer on all pages ──
+        var totalPages = doc.internal.getNumberOfPages();
+        for (var p = 1; p <= totalPages; p++) {
+            doc.setPage(p);
+            doc.setFontSize(7);
+            doc.setTextColor(150);
+            doc.text('Page ' + p + ' / ' + totalPages, pageW / 2, pageH - 5, { align: 'center' });
+            doc.text('AI Tagging — {{ selected_grade.name }} {{ selected_subject.name }} — Page {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}', margin, pageH - 5);
+        }
+
+        doc.save('AI_Tagging_{{ selected_grade.name }}_{{ selected_subject.name }}_pg{{ page_obj.number }}.pdf');
+        btn.textContent = '✓ PDF Downloaded';
+        setTimeout(function() { btn.textContent = '📄 Generate PDF for ChatGPT'; btn.disabled = false; }, 3000);
+
+    } catch (err) {
+        console.error('PDF generation error:', err);
+        alert('PDF generation failed: ' + err.message);
+        btn.textContent = '📄 Generate PDF for ChatGPT';
+        btn.disabled = false;
+    }
+}
+{% endif %}
+</script>
+
+{% endblock %}

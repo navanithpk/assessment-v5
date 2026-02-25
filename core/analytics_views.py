@@ -16,7 +16,9 @@ from .views import get_user_school, staff_member_required
 @login_required
 def student_analytics_dashboard(request):
     """
-    Simplified analytics dashboard for students
+    Comprehensive yet concise analytics dashboard for students.
+    Shows: key metrics, competence level, subject performance,
+    top strengths/weaknesses, and recent test timeline.
     """
     try:
         student = Student.objects.get(user=request.user)
@@ -24,68 +26,186 @@ def student_analytics_dashboard(request):
         messages.error(request, "Student profile not found")
         return redirect("student_dashboard")
 
-    # Get time range from request (default: last 6 months)
+    # Time range
     time_range = request.GET.get('range', '6m')
-
-    if time_range == '1m':
-        start_date = timezone.now() - timedelta(days=30)
-    elif time_range == '3m':
-        start_date = timezone.now() - timedelta(days=90)
-    elif time_range == '6m':
-        start_date = timezone.now() - timedelta(days=180)
-    elif time_range == '1y':
-        start_date = timezone.now() - timedelta(days=365)
-    else:
-        start_date = timezone.now() - timedelta(days=180)
-
+    range_map = {'1m': 30, '3m': 90, '6m': 180, '1y': 365}
+    start_date = timezone.now() - timedelta(days=range_map.get(time_range, 180))
     end_date = timezone.now()
 
-    # Get student's test data
-    from .models import StudentAnswer, Test
+    from .models import StudentAnswer, Test, Topic
+    import math
+    from collections import defaultdict
 
+    # Only include graded answers (marks_awarded is not null)
+    # This prevents unattended/ungraded tests from appearing as 0%
     answers = StudentAnswer.objects.filter(
         student=student,
         test__created_at__gte=start_date,
-        test__created_at__lte=end_date
-    ).select_related('test', 'test__subject', 'question')
+        test__created_at__lte=end_date,
+        marks_awarded__isnull=False,
+    ).select_related('test', 'test__subject', 'question', 'question__topic')
 
-    # Calculate basic metrics
-    total_tests = answers.values('test').distinct().count()
+    # ── Basic metrics ──
+    test_ids = answers.values_list('test_id', flat=True).distinct()
+    total_tests = len(set(test_ids))
     total_questions = answers.count()
 
-    # Calculate average score
     total_marks = sum(float(a.question.marks or 0) for a in answers)
     earned_marks = sum(float(a.marks_awarded or 0) for a in answers)
     average_score = (earned_marks / total_marks * 100) if total_marks > 0 else 0
 
-    # Subject performance
-    subject_performance = []
-    subjects = answers.values_list('test__subject', flat=True).distinct()
-    for subject_id in subjects:
-        if not subject_id:
-            continue
-        subject_answers = answers.filter(test__subject_id=subject_id)
-        subject = Subject.objects.get(id=subject_id)
+    # ── Per-test results (for timeline) ──
+    test_data = defaultdict(lambda: {'total': 0, 'earned': 0, 'subject': '', 'date': None, 'title': ''})
+    for a in answers:
+        tid = a.test_id
+        test_data[tid]['total'] += float(a.question.marks or 0)
+        test_data[tid]['earned'] += float(a.marks_awarded or 0)
+        test_data[tid]['subject'] = a.test.subject.name if a.test.subject else 'General'
+        test_data[tid]['date'] = a.test.created_at
+        test_data[tid]['title'] = a.test.title
 
-        subj_total = sum(float(a.question.marks or 0) for a in subject_answers)
-        subj_earned = sum(float(a.marks_awarded or 0) for a in subject_answers)
-        subj_score = (subj_earned / subj_total * 100) if subj_total > 0 else 0
-
-        subject_performance.append({
-            'name': subject.name,
-            'score': round(subj_score, 1),
-            'tests': subject_answers.values('test').distinct().count()
+    recent_tests = []
+    for tid, d in test_data.items():
+        pct = (d['earned'] / d['total'] * 100) if d['total'] > 0 else 0
+        recent_tests.append({
+            'title': d['title'],
+            'subject': d['subject'],
+            'percentage': round(pct, 1),
+            'date': d['date'].strftime('%d-%m-%Y') if d['date'] else '',
+            'earned': round(d['earned'], 1),
+            'total': round(d['total'], 1),
         })
+    recent_tests.sort(key=lambda x: x['date'], reverse=True)
+
+    # ── Subject performance ──
+    subject_performance = []
+    subject_map = defaultdict(lambda: {'total': 0, 'earned': 0, 'tests': set()})
+    for a in answers:
+        sid = a.test.subject_id if a.test.subject else None
+        if not sid:
+            continue
+        subject_map[sid]['total'] += float(a.question.marks or 0)
+        subject_map[sid]['earned'] += float(a.marks_awarded or 0)
+        subject_map[sid]['tests'].add(a.test_id)
+
+    for sid, d in subject_map.items():
+        subj = Subject.objects.get(id=sid)
+        pct = (d['earned'] / d['total'] * 100) if d['total'] > 0 else 0
+        subject_performance.append({
+            'name': subj.name,
+            'score': round(pct, 1),
+            'tests': len(d['tests']),
+        })
+    subject_performance.sort(key=lambda x: x['score'], reverse=True)
+
+    # ── Topic mastery ──
+    topic_map = defaultdict(lambda: {'total': 0, 'earned': 0, 'count': 0})
+    for a in answers:
+        t = a.question.topic
+        if not t:
+            continue
+        topic_map[t.id]['total'] += float(a.question.marks or 0)
+        topic_map[t.id]['earned'] += float(a.marks_awarded or 0)
+        topic_map[t.id]['count'] += 1
+        topic_map[t.id]['name'] = t.name
+        topic_map[t.id]['subject'] = a.test.subject.name if a.test.subject else ''
+
+    topic_mastery = []
+    for tid, d in topic_map.items():
+        pct = (d['earned'] / d['total'] * 100) if d['total'] > 0 else 0
+        if pct >= 80:
+            band = 'Mastered'
+        elif pct >= 60:
+            band = 'Good'
+        elif pct >= 40:
+            band = 'Developing'
+        else:
+            band = 'Weak'
+        topic_mastery.append({
+            'name': d['name'],
+            'subject': d['subject'],
+            'score': round(pct, 1),
+            'band': band,
+            'questions': d['count'],
+        })
+    topic_mastery.sort(key=lambda x: x['score'])
+
+    # Strengths = top 3 mastered, Weaknesses = bottom 3
+    strengths = [t for t in reversed(topic_mastery) if t['band'] in ('Mastered', 'Good')][:3]
+    weaknesses = [t for t in topic_mastery if t['band'] in ('Weak', 'Developing')][:3]
+
+    # ── Competence assessment ──
+    competence = {'level': 'Not Assessed', 'score': 0}
+    if recent_tests:
+        avg_score = min(average_score / 100, 1.0)
+
+        # Consistency
+        percentages = [t['percentage'] for t in recent_tests]
+        if len(percentages) > 1:
+            mean_p = sum(percentages) / len(percentages)
+            variance = sum((p - mean_p) ** 2 for p in percentages) / len(percentages)
+            std_dev = math.sqrt(variance)
+            consistency_score = max(0, 1.0 - (std_dev / 30.0))
+        else:
+            consistency_score = 0.5
+
+        # Trend
+        sorted_by_date = sorted(recent_tests, key=lambda t: t['date'])
+        if len(sorted_by_date) >= 2:
+            recent_half = sorted_by_date[len(sorted_by_date)//2:]
+            older_half = sorted_by_date[:len(sorted_by_date)//2]
+            recent_avg = sum(t['percentage'] for t in recent_half) / len(recent_half)
+            older_avg = sum(t['percentage'] for t in older_half) / len(older_half)
+            trend_diff = recent_avg - older_avg
+            trend_score = max(0, min(1.0, 0.5 + (trend_diff / 20.0)))
+        else:
+            trend_score = 0.5
+            trend_diff = 0
+
+        # Mastery breadth
+        if topic_mastery:
+            mastered_ratio = len([t for t in topic_mastery if t['band'] in ('Mastered', 'Good')]) / len(topic_mastery)
+        else:
+            mastered_ratio = 0
+
+        composite = (avg_score * 0.40 + consistency_score * 0.15 + trend_score * 0.20 + mastered_ratio * 0.25)
+        composite_pct = round(composite * 100, 1)
+
+        if composite_pct >= 80:
+            level = 'Excellent'
+        elif composite_pct >= 65:
+            level = 'Good'
+        elif composite_pct >= 50:
+            level = 'Moderate'
+        elif composite_pct >= 35:
+            level = 'Needs Improvement'
+        else:
+            level = 'At Risk'
+
+        trend_dir = 'Improving' if trend_diff > 2 else 'Declining' if trend_diff < -2 else 'Stable'
+        competence = {
+            'level': level,
+            'score': composite_pct,
+            'trend': trend_dir,
+            'trend_diff': round(trend_diff, 1),
+        }
+
+    # ── Score timeline for chart (chronological) ──
+    timeline = sorted(recent_tests, key=lambda t: t['date'])
 
     context = {
         'student': student,
         'time_range': time_range,
-        'start_date': start_date,
-        'end_date': end_date,
         'total_tests': total_tests,
         'total_questions': total_questions,
         'average_score': round(average_score, 1),
         'subject_performance': subject_performance,
+        'recent_tests': recent_tests[:10],
+        'strengths': strengths,
+        'weaknesses': weaknesses,
+        'competence': competence,
+        'timeline': timeline,
+        'topic_mastery': topic_mastery,
     }
 
     return render(request, 'student/analytics_dashboard_simple.html', context)

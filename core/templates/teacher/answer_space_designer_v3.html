@@ -1,0 +1,1369 @@
+{% extends 'teacher/teacher_base.html' %}
+
+{% block title %}Answer Space Designer - Q{{ question.id }}{% endblock %}
+
+{% block content %}
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --success: #10b981;
+  --success-hover: #059669;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --warning: #f59e0b;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  background: var(--gray-50);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Top Toolbar */
+.top-toolbar {
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--shadow-sm);
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-title h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.toolbar-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-right {
+  display: flex;
+  gap: 12px;
+}
+
+/* Tool Palette */
+.tool-palette {
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.palette-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 16px;
+  border-right: 1px solid var(--gray-200);
+}
+
+.palette-section:last-child {
+  border-right: none;
+}
+
+.palette-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--gray-50);
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 80px;
+}
+
+.tool-btn:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-300);
+  transform: translateY(-1px);
+}
+
+.tool-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.tool-icon {
+  font-size: 20px;
+}
+
+.tool-name {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Main Layout */
+.designer-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  height: calc(100vh - 130px);
+  gap: 0;
+}
+
+/* Canvas Area */
+.canvas-container {
+  background: var(--gray-100);
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-toolbar {
+  background: white;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.canvas-info {
+  font-size: 13px;
+  color: var(--gray-600);
+  display: flex;
+  gap: 16px;
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  background: var(--gray-100);
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.zoom-controls button {
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  transition: all 0.2s;
+}
+
+.zoom-controls button:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+}
+
+.zoom-level {
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.canvas-wrapper {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+}
+
+#questionCanvas {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  cursor: crosshair;
+  user-select: none;
+  transition: transform 0.2s;
+}
+
+#questionImage {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* Answer Placeholders */
+.answer-placeholder {
+  position: absolute;
+  border: 3px dashed var(--primary);
+  background: rgba(59, 130, 246, 0.08);
+  cursor: move;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.answer-placeholder:hover {
+  border-color: var(--primary-hover);
+  background: rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+  z-index: 100;
+}
+
+.answer-placeholder.selected {
+  border-color: var(--success);
+  border-style: solid;
+  background: rgba(16, 185, 129, 0.08);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+  z-index: 101;
+}
+
+.placeholder-label {
+  background: rgba(255, 255, 255, 0.98);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.label-marks {
+  background: var(--gray-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--gray-600);
+}
+
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+}
+
+.answer-placeholder.selected .resize-handle {
+  border-color: var(--success);
+}
+
+.resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+.resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+.resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+.resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+
+/* Right Sidebar */
+.right-sidebar {
+  background: white;
+  border-left: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.sidebar-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-900);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count-badge {
+  background: var(--primary);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Space Details Panel */
+.space-details {
+  display: none;
+}
+
+.space-details.active {
+  display: block;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--gray-200);
+}
+
+.detail-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.detail-type {
+  background: var(--primary);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: var(--gray-900);
+  padding: 10px 12px;
+  background: var(--gray-50);
+  border-radius: 6px;
+  border: 1px solid var(--gray-200);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* Spaces List */
+.spaces-list {
+  display: none;
+}
+
+.spaces-list.active {
+  display: block;
+}
+
+.space-card {
+  background: var(--gray-50);
+  border: 2px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.space-card:hover {
+  background: white;
+  border-color: var(--gray-300);
+  transform: translateX(4px);
+}
+
+.space-card.selected {
+  background: #ecfdf5;
+  border-color: var(--success);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.space-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.space-card-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--gray-900);
+}
+
+.space-card-type {
+  background: var(--gray-200);
+  color: var(--gray-700);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.space-card.selected .space-card-type {
+  background: var(--success);
+  color: white;
+}
+
+.space-card-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--gray-600);
+}
+
+.empty-sidebar {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--gray-400);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-success:hover {
+  background: var(--success-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background: var(--danger-hover);
+}
+
+.btn-secondary {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.btn-secondary:hover {
+  background: var(--gray-300);
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-full {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Notifications */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease;
+  border-left: 4px solid var(--success);
+}
+
+.notification.error {
+  border-left-color: var(--danger);
+}
+
+.notification-icon {
+  font-size: 20px;
+}
+
+.notification-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-900);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(400px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(400px); opacity: 0; }
+}
+
+/* Keyboard hint */
+kbd {
+  display: inline-block;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--gray-700);
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.keyboard-hint {
+  background: var(--gray-800);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+}
+
+.hint-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+</style>
+
+<div>
+  <!-- Top Toolbar -->
+  <div class="top-toolbar">
+    <div class="toolbar-left">
+      <div class="toolbar-title">
+        <span style="font-size: 24px;">📝</span>
+        <h1>Answer Space Designer</h1>
+      </div>
+      <div class="toolbar-meta">
+        <div class="meta-item">
+          <span>📄</span>
+          <span>Question #{{ question.id }}</span>
+        </div>
+        <div class="meta-item">
+          <span>📚</span>
+          <span>{{ question.subject.name }}</span>
+        </div>
+        <div class="meta-item">
+          <span>⭐</span>
+          <span>{{ question.marks }} marks</span>
+        </div>
+      </div>
+    </div>
+    <div class="toolbar-right">
+      <button class="btn btn-secondary" onclick="window.history.back()">
+        ← Back
+      </button>
+      <button class="btn btn-success" onclick="saveConfiguration()">
+        💾 Save Configuration
+      </button>
+    </div>
+  </div>
+
+  <!-- Tool Palette -->
+  <div class="tool-palette">
+    <div class="palette-section">
+      <span class="palette-label">Answer Types</span>
+      <button class="tool-btn" data-type="long_answer" onclick="selectType('long_answer')">
+        <span class="tool-icon">📝</span>
+        <span class="tool-name">Long Answer</span>
+      </button>
+      <button class="tool-btn" data-type="long_answer_lined" onclick="selectType('long_answer_lined')">
+        <span class="tool-icon">📄</span>
+        <span class="tool-name">Long (Lined)</span>
+      </button>
+      <button class="tool-btn" data-type="short_answer" onclick="selectType('short_answer')">
+        <span class="tool-icon">✏️</span>
+        <span class="tool-name">Short Answer</span>
+      </button>
+      <button class="tool-btn" data-type="half_line" onclick="selectType('half_line')">
+        <span class="tool-icon">🔢</span>
+        <span class="tool-name">Half-Line</span>
+      </button>
+      <button class="tool-btn" data-type="canvas" onclick="selectType('canvas')">
+        <span class="tool-icon">🎨</span>
+        <span class="tool-name">Canvas</span>
+      </button>
+    </div>
+
+    <div class="palette-section">
+      <span class="palette-label">Actions</span>
+      <button class="tool-btn" onclick="duplicateSelected()" title="Ctrl+D">
+        <span class="tool-icon">📋</span>
+        <span class="tool-name">Duplicate</span>
+      </button>
+      <button class="tool-btn" onclick="deleteSelected()" title="Delete">
+        <span class="tool-icon">🗑️</span>
+        <span class="tool-name">Delete</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="designer-layout">
+    <!-- Canvas Area -->
+    <div class="canvas-container">
+      <div class="canvas-toolbar">
+        <div class="canvas-info">
+          <div>Click and drag to create answer space</div>
+        </div>
+        <div class="zoom-controls">
+          <button onclick="zoomOut()">−</button>
+          <span class="zoom-level" id="zoomLevel">100%</span>
+          <button onclick="zoomIn()">+</button>
+          <button onclick="resetZoom()">Reset</button>
+        </div>
+      </div>
+
+      <div class="canvas-wrapper">
+        <div id="questionCanvas">
+          <img id="questionImage" src="{{ question.question_text }}" alt="Question">
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="right-sidebar">
+      <!-- Space Details (shown when space is selected) -->
+      <div class="space-details" id="spaceDetails">
+        <div class="sidebar-header">
+          <h3>Selected Space</h3>
+        </div>
+        <div class="sidebar-content">
+          <div class="detail-header">
+            <span class="detail-title" id="detailTitle">Answer Space</span>
+            <span class="detail-type" id="detailType">Long Answer</span>
+          </div>
+
+          <div class="form-group">
+            <label>Label</label>
+            <input type="text" id="configLabel" placeholder="e.g., Answer (a)">
+          </div>
+
+          <div class="form-group">
+            <label>Marks</label>
+            <input type="number" id="configMarks" value="1" min="0" step="0.5">
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-label">Position & Size</div>
+            <div class="detail-value" id="positionInfo">X: 0, Y: 0 | 100 × 50 px</div>
+          </div>
+
+          <div class="form-group">
+            <label>Model Answer / Grading Criteria</label>
+            <textarea id="configModelAnswer" placeholder="Enter the correct answer or key points for grading"></textarea>
+          </div>
+
+          <div class="detail-actions">
+            <button class="btn btn-primary btn-full" onclick="updateSelectedSpace()">
+              ✓ Update Space
+            </button>
+          </div>
+
+          <div class="detail-actions">
+            <button class="btn btn-secondary btn-small" onclick="duplicateSelected()">
+              📋 Duplicate
+            </button>
+            <button class="btn btn-danger btn-small" onclick="deleteSelected()">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spaces List (shown when no space is selected) -->
+      <div class="spaces-list active" id="spacesList">
+        <div class="sidebar-header">
+          <h3>
+            Answer Spaces
+            <span class="count-badge" id="spacesCount">0</span>
+          </h3>
+        </div>
+        <div class="sidebar-content" id="spacesListContent">
+          <div class="empty-sidebar">
+            <div class="empty-icon">👆</div>
+            <div class="empty-text">
+              Select a type above,<br>then click and drag<br>on the question image
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Hint -->
+  <div class="keyboard-hint">
+    <div class="hint-item">
+      <kbd>Delete</kbd> <span>Delete</span>
+    </div>
+    <div class="hint-item">
+      <kbd>↑↓←→</kbd> <span>Move (10px)</span>
+    </div>
+    <div class="hint-item">
+      <kbd>Ctrl</kbd>+<kbd>↑↓←→</kbd> <span>Move (1px)</span>
+    </div>
+    <div class="hint-item">
+      <kbd>Ctrl</kbd>+<kbd>D</kbd> <span>Duplicate</span>
+    </div>
+    <div class="hint-item">
+      <kbd>Esc</kbd> <span>Deselect</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let selectedType = null;
+let answerSpaces = [];
+let selectedSpaceId = null;
+let nextId = 1;
+let zoomScale = 1;
+let isDrawing = false;
+let drawStart = null;
+let currentPlaceholder = null;
+let isDragging = false;
+let isResizing = false;
+let dragOffset = { x: 0, y: 0 };
+let resizeDirection = null;
+
+const canvas = document.getElementById('questionCanvas');
+const image = document.getElementById('questionImage');
+
+// Initialize
+function init() {
+  setupCanvasInteraction();
+  loadExistingSpaces();
+}
+
+function setupCanvasInteraction() {
+  canvas.addEventListener('mousedown', handleMouseDown);
+  canvas.addEventListener('mousemove', handleMouseMove);
+  canvas.addEventListener('mouseup', handleMouseUp);
+}
+
+function handleMouseDown(e) {
+  if (!selectedType) {
+    showNotification('Please select an answer type first!', 'error');
+    return;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / zoomScale;
+  const y = (e.clientY - rect.top) / zoomScale;
+
+  const clickedElement = document.elementFromPoint(e.clientX, e.clientY);
+
+  if (clickedElement && clickedElement.classList.contains('answer-placeholder')) {
+    selectSpace(clickedElement.dataset.id);
+    isDragging = true;
+    const placeholderRect = clickedElement.getBoundingClientRect();
+    dragOffset.x = e.clientX - placeholderRect.left;
+    dragOffset.y = e.clientY - placeholderRect.top;
+    return;
+  }
+
+  if (clickedElement && clickedElement.classList.contains('resize-handle')) {
+    isResizing = true;
+    resizeDirection = clickedElement.className.split(' ')[1];
+    const parent = clickedElement.parentElement;
+    selectSpace(parent.dataset.id);
+    return;
+  }
+
+  isDrawing = true;
+  drawStart = { x, y };
+
+  currentPlaceholder = document.createElement('div');
+  currentPlaceholder.className = 'answer-placeholder';
+  currentPlaceholder.style.left = x + 'px';
+  currentPlaceholder.style.top = y + 'px';
+  currentPlaceholder.style.width = '0px';
+  currentPlaceholder.style.height = '0px';
+  canvas.appendChild(currentPlaceholder);
+}
+
+function handleMouseMove(e) {
+  if (isDrawing) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoomScale;
+    const y = (e.clientY - rect.top) / zoomScale;
+
+    const width = Math.abs(x - drawStart.x);
+    const height = Math.abs(y - drawStart.y);
+    const left = Math.min(x, drawStart.x);
+    const top = Math.min(y, drawStart.y);
+
+    currentPlaceholder.style.left = left + 'px';
+    currentPlaceholder.style.top = top + 'px';
+    currentPlaceholder.style.width = width + 'px';
+    currentPlaceholder.style.height = height + 'px';
+  } else if (isDragging && selectedSpaceId) {
+    const space = answerSpaces.find(s => s.id === selectedSpaceId);
+    if (space) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left - dragOffset.x) / zoomScale;
+      const y = (e.clientY - rect.top - dragOffset.y) / zoomScale;
+
+      space.x = Math.max(0, x);
+      space.y = Math.max(0, y);
+      renderPlaceholder(space);
+      updatePositionInfo(space);
+    }
+  } else if (isResizing && selectedSpaceId) {
+    const space = answerSpaces.find(s => s.id === selectedSpaceId);
+    if (space) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) / zoomScale;
+      const mouseY = (e.clientY - rect.top) / zoomScale;
+
+      if (resizeDirection.includes('e')) {
+        space.width = Math.max(50, mouseX - space.x);
+      }
+      if (resizeDirection.includes('s')) {
+        space.height = Math.max(30, mouseY - space.y);
+      }
+      if (resizeDirection.includes('w')) {
+        const newWidth = space.x + space.width - mouseX;
+        if (newWidth > 50) {
+          space.width = newWidth;
+          space.x = mouseX;
+        }
+      }
+      if (resizeDirection.includes('n')) {
+        const newHeight = space.y + space.height - mouseY;
+        if (newHeight > 30) {
+          space.height = newHeight;
+          space.y = mouseY;
+        }
+      }
+
+      renderPlaceholder(space);
+      updatePositionInfo(space);
+    }
+  }
+}
+
+function handleMouseUp(e) {
+  if (isDrawing && currentPlaceholder) {
+    const width = parseInt(currentPlaceholder.style.width);
+    const height = parseInt(currentPlaceholder.style.height);
+
+    if (width > 30 && height > 20) {
+      const space = {
+        id: 'space_' + nextId++,
+        type: selectedType,
+        x: parseInt(currentPlaceholder.style.left),
+        y: parseInt(currentPlaceholder.style.top),
+        width: width,
+        height: height,
+        label: getTypeName(selectedType),
+        marks: 1,
+        modelAnswer: ''
+      };
+
+      answerSpaces.push(space);
+      renderPlaceholder(space);
+      updateSpacesList();
+      selectSpace(space.id);
+      showNotification(`Created: ${space.label}`, 'success');
+    } else {
+      currentPlaceholder.remove();
+    }
+  }
+
+  isDrawing = false;
+  isDragging = false;
+  isResizing = false;
+  currentPlaceholder = null;
+  drawStart = null;
+  resizeDirection = null;
+}
+
+function renderPlaceholder(space) {
+  const existing = document.querySelector(`[data-id="${space.id}"]`);
+  if (existing) existing.remove();
+
+  const placeholder = document.createElement('div');
+  placeholder.className = 'answer-placeholder';
+  placeholder.dataset.id = space.id;
+  placeholder.style.left = space.x + 'px';
+  placeholder.style.top = space.y + 'px';
+  placeholder.style.width = space.width + 'px';
+  placeholder.style.height = space.height + 'px';
+
+  if (selectedSpaceId === space.id) {
+    placeholder.classList.add('selected');
+  }
+
+  placeholder.innerHTML = `
+    <div class="placeholder-label">
+      ${space.label}
+      <span class="label-marks">${space.marks}m</span>
+    </div>
+    <div class="resize-handle nw"></div>
+    <div class="resize-handle ne"></div>
+    <div class="resize-handle sw"></div>
+    <div class="resize-handle se"></div>
+  `;
+
+  canvas.appendChild(placeholder);
+}
+
+function selectType(type) {
+  selectedType = type;
+
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelector(`[data-type="${type}"]`).classList.add('active');
+}
+
+function selectSpace(id) {
+  selectedSpaceId = id;
+
+  document.querySelectorAll('.answer-placeholder').forEach(p => {
+    p.classList.remove('selected');
+  });
+  const placeholder = document.querySelector(`[data-id="${id}"]`);
+  if (placeholder) {
+    placeholder.classList.add('selected');
+  }
+
+  document.querySelectorAll('.space-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+
+  const space = answerSpaces.find(s => s.id === id);
+  if (space) {
+    // Show details panel
+    document.getElementById('spaceDetails').classList.add('active');
+    document.getElementById('spacesList').classList.remove('active');
+
+    // Update details
+    document.getElementById('detailTitle').textContent = space.label;
+    document.getElementById('detailType').textContent = getTypeName(space.type);
+    document.getElementById('configLabel').value = space.label;
+    document.getElementById('configMarks').value = space.marks;
+    document.getElementById('configModelAnswer').value = space.modelAnswer;
+    updatePositionInfo(space);
+
+    // Update list
+    const card = document.querySelector(`#card-${id}`);
+    if (card) card.classList.add('selected');
+  }
+}
+
+function updatePositionInfo(space) {
+  const info = `X: ${Math.round(space.x)}, Y: ${Math.round(space.y)} | ${Math.round(space.width)} × ${Math.round(space.height)} px`;
+  document.getElementById('positionInfo').textContent = info;
+}
+
+function updateSelectedSpace() {
+  if (!selectedSpaceId) return;
+
+  const space = answerSpaces.find(s => s.id === selectedSpaceId);
+  if (space) {
+    space.label = document.getElementById('configLabel').value || 'Untitled';
+    space.marks = parseFloat(document.getElementById('configMarks').value) || 1;
+    space.modelAnswer = document.getElementById('configModelAnswer').value;
+
+    renderPlaceholder(space);
+    updateSpacesList();
+    document.getElementById('detailTitle').textContent = space.label;
+    showNotification(`Updated: ${space.label}`, 'success');
+  }
+}
+
+function deleteSelected() {
+  if (selectedSpaceId) {
+    deleteSpace(selectedSpaceId);
+  }
+}
+
+function duplicateSelected() {
+  if (selectedSpaceId) {
+    duplicateSpace(selectedSpaceId);
+  }
+}
+
+function deleteSpace(id) {
+  const space = answerSpaces.find(s => s.id === id);
+  if (!space) return;
+
+  if (confirm(`Delete "${space.label}"? This cannot be undone.`)) {
+    answerSpaces = answerSpaces.filter(s => s.id !== id);
+    const placeholder = document.querySelector(`[data-id="${id}"]`);
+    if (placeholder) placeholder.remove();
+
+    updateSpacesList();
+    deselectAll();
+    showNotification(`Deleted: ${space.label}`, 'success');
+  }
+}
+
+function duplicateSpace(id) {
+  const space = answerSpaces.find(s => s.id === id);
+  if (space) {
+    const newSpace = {
+      ...space,
+      id: 'space_' + nextId++,
+      x: space.x + 20,
+      y: space.y + 20,
+      label: space.label + ' (copy)'
+    };
+    answerSpaces.push(newSpace);
+    renderPlaceholder(newSpace);
+    updateSpacesList();
+    selectSpace(newSpace.id);
+    showNotification(`Duplicated: ${space.label}`, 'success');
+  }
+}
+
+function updateSpacesList() {
+  const container = document.getElementById('spacesListContent');
+  document.getElementById('spacesCount').textContent = answerSpaces.length;
+
+  if (answerSpaces.length === 0) {
+    container.innerHTML = `
+      <div class="empty-sidebar">
+        <div class="empty-icon">👆</div>
+        <div class="empty-text">
+          Select a type above,<br>then click and drag<br>on the question image
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = answerSpaces.map(space => `
+    <div class="space-card ${selectedSpaceId === space.id ? 'selected' : ''}"
+         id="card-${space.id}"
+         onclick="selectSpace('${space.id}')">
+      <div class="space-card-header">
+        <div class="space-card-title">${space.label}</div>
+        <div class="space-card-type">${getTypeName(space.type)}</div>
+      </div>
+      <div class="space-card-meta">
+        <span>📍 ${Math.round(space.x)}, ${Math.round(space.y)}</span>
+        <span>📏 ${Math.round(space.width)}×${Math.round(space.height)}</span>
+        <span>⭐ ${space.marks}m</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getTypeName(type) {
+  const names = {
+    'long_answer': 'Long Answer',
+    'long_answer_lined': 'Long (Lined)',
+    'short_answer': 'Short Answer',
+    'half_line': 'Half-Line',
+    'canvas': 'Canvas'
+  };
+  return names[type] || type;
+}
+
+function deselectAll() {
+  selectedSpaceId = null;
+  document.querySelectorAll('.answer-placeholder').forEach(p => {
+    p.classList.remove('selected');
+  });
+  document.querySelectorAll('.space-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  document.getElementById('spaceDetails').classList.remove('active');
+  document.getElementById('spacesList').classList.add('active');
+}
+
+function zoomIn() {
+  zoomScale = Math.min(zoomScale + 0.1, 2);
+  updateZoom();
+}
+
+function zoomOut() {
+  zoomScale = Math.max(zoomScale - 0.1, 0.5);
+  updateZoom();
+}
+
+function resetZoom() {
+  zoomScale = 1;
+  updateZoom();
+}
+
+function updateZoom() {
+  canvas.style.transform = `scale(${zoomScale})`;
+  canvas.style.transformOrigin = 'top left';
+  document.getElementById('zoomLevel').textContent = Math.round(zoomScale * 100) + '%';
+}
+
+function showNotification(message, type = 'success') {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.innerHTML = `
+    <span class="notification-icon">${type === 'success' ? '✓' : '⚠'}</span>
+    <span class="notification-text">${message}</span>
+  `;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 2500);
+}
+
+function saveConfiguration() {
+  if (answerSpaces.length === 0) {
+    showNotification('Please add at least one answer space!', 'error');
+    return;
+  }
+
+  const imgWidth = image.naturalWidth;
+  const imgHeight = image.naturalHeight;
+
+  const config = {
+    spaces: answerSpaces.map(space => ({
+      ...space,
+      xPercent: (space.x / image.offsetWidth) * 100,
+      yPercent: (space.y / image.offsetHeight) * 100,
+      widthPercent: (space.width / image.offsetWidth) * 100,
+      heightPercent: (space.height / image.offsetHeight) * 100
+    })),
+    imageWidth: imgWidth,
+    imageHeight: imgHeight
+  };
+
+  fetch('{% url "save_answer_spaces" question.id %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify(config)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      showNotification('Configuration saved successfully!', 'success');
+      setTimeout(() => {
+        window.location.href = '{% url "unconfigured_questions_list" %}';
+      }, 1000);
+    } else {
+      showNotification('Error: ' + (data.error || 'Failed to save'), 'error');
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    showNotification('Network error. Please try again.', 'error');
+  });
+}
+
+function loadExistingSpaces() {
+  // TODO: Load existing configuration
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  const isTyping = document.activeElement.tagName === 'INPUT' ||
+                   document.activeElement.tagName === 'TEXTAREA';
+
+  if (e.key === 'Delete' && selectedSpaceId && !isTyping) {
+    deleteSpace(selectedSpaceId);
+  }
+
+  if (e.key === 'Escape') {
+    deselectAll();
+  }
+
+  if (selectedSpaceId && !isTyping) {
+    const space = answerSpaces.find(s => s.id === selectedSpaceId);
+    if (space) {
+      let moved = false;
+      const step = e.ctrlKey ? 1 : 10;
+
+      if (e.key === 'ArrowLeft') {
+        space.x = Math.max(0, space.x - step);
+        moved = true;
+      } else if (e.key === 'ArrowRight') {
+        space.x = Math.min(image.offsetWidth - space.width, space.x + step);
+        moved = true;
+      } else if (e.key === 'ArrowUp') {
+        space.y = Math.max(0, space.y - step);
+        moved = true;
+      } else if (e.key === 'ArrowDown') {
+        space.y = Math.min(image.offsetHeight - space.height, space.y + step);
+        moved = true;
+      }
+
+      if (moved) {
+        e.preventDefault();
+        renderPlaceholder(space);
+        updatePositionInfo(space);
+        updateSpacesList();
+      }
+    }
+  }
+
+  if (e.ctrlKey && e.key === 'd' && selectedSpaceId) {
+    e.preventDefault();
+    duplicateSpace(selectedSpaceId);
+  }
+});
+
+// Initialize
+init();
+</script>
+
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends 'student/student_base.html' %}
+
+{% block title %}Resources{% endblock %}
+
+{% block content %}
+<style>
+.r-wrap { max-width: 1000px; margin: 0 auto; }
+.r-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.r-head h1 { font-size: 22px; font-weight: 700; color: #111827; margin: 0; }
+
+/* Filters */
+.r-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.r-filters select, .r-filters button { padding: 7px 14px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 13px; background: white; cursor: pointer; }
+.r-filters button { background: #2563eb; color: white; border: none; font-weight: 600; }
+
+/* Upload card */
+.upload-card {
+  background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06); border: 2px dashed #d1d5db;
+}
+.upload-card.open { border-color: #2563eb; border-style: solid; }
+.upload-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #2563eb; font-weight: 600; font-size: 14px; }
+.upload-form { display: none; margin-top: 14px; }
+.upload-form.show { display: block; }
+.uf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.uf-row.full { grid-template-columns: 1fr; }
+.uf-row label { display: block; font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 4px; }
+.uf-row input, .uf-row select, .uf-row textarea { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; }
+.uf-row textarea { resize: vertical; min-height: 60px; }
+.upload-btn { padding: 10px 24px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.upload-btn:hover { background: #1d4ed8; }
+
+/* Resource grid */
+.r-grid { display: grid; gap: 12px; }
+.r-card {
+  background: white; border-radius: 12px; padding: 16px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06); display: flex; align-items: center; gap: 14px;
+  transition: box-shadow .15s;
+}
+.r-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.r-icon { font-size: 28px; flex-shrink: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: #f3f4f6; border-radius: 10px; }
+.r-info { flex: 1; min-width: 0; }
+.r-title { font-size: 15px; font-weight: 600; color: #111827; margin-bottom: 3px; }
+.r-title a { text-decoration: none; color: inherit; }
+.r-title a:hover { color: #2563eb; }
+.r-meta { font-size: 12px; color: #6b7280; display: flex; gap: 12px; flex-wrap: wrap; }
+.r-badge { background: #eff6ff; color: #2563eb; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 11px; }
+.r-actions { display: flex; gap: 6px; }
+.r-actions a, .r-actions button { padding: 6px 12px; border-radius: 6px; font-size: 12px; text-decoration: none; border: none; cursor: pointer; }
+.r-dl { background: #ecfdf5; color: #059669; font-weight: 600; }
+.r-del { background: #fef2f2; color: #dc2626; font-weight: 600; }
+.empty-box { text-align: center; padding: 48px 20px; color: #9ca3af; }
+@media (max-width: 640px) { .uf-row { grid-template-columns: 1fr; } }
+</style>
+
+<div class="r-wrap">
+  <div class="r-head">
+    <h1>📁 Resources</h1>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="r-filters">
+    <select name="subject" onchange="this.form.submit()">
+      <option value="">All Subjects</option>
+      {% for s in subjects %}
+      <option value="{{ s.id }}" {% if selected_subject == s.id|stringformat:"d" %}selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="type" onchange="this.form.submit()">
+      <option value="">All Types</option>
+      {% for val, label in resource_types %}
+      <option value="{{ val }}" {% if selected_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <!-- Upload -->
+  <div class="upload-card" id="uploadCard">
+    <div class="upload-toggle" onclick="document.getElementById('uploadForm').classList.toggle('show'); document.getElementById('uploadCard').classList.toggle('open');">
+      ➕ Upload a resource
+    </div>
+    <form method="post" action="{% url 'resource_upload' %}" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+      {% csrf_token %}
+      <div class="uf-row">
+        <div><label>Title *</label><input type="text" name="title" required></div>
+        <div><label>Type</label>
+          <select name="resource_type" id="resType" onchange="toggleLinkField()">
+            {% for val, label in resource_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="uf-row">
+        <div><label>Subject</label>
+          <select name="subject"><option value="">-- None --</option>{% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+        </div>
+        <div id="fileField"><label>File *</label><input type="file" name="file"></div>
+        <div id="linkField" style="display:none;"><label>URL *</label><input type="url" name="link_url" placeholder="https://..."></div>
+      </div>
+      <div class="uf-row full">
+        <div><label>Description</label><textarea name="description" placeholder="Optional note..."></textarea></div>
+      </div>
+      <button type="submit" class="upload-btn">Upload</button>
+    </form>
+  </div>
+
+  <!-- Resource list -->
+  <div class="r-grid">
+    {% for r in resources %}
+    <div class="r-card">
+      <div class="r-icon">
+        {% if r.resource_type == 'notes' %}📝{% elif r.resource_type == 'homework' %}📋{% elif r.resource_type == 'worksheet' %}📄{% elif r.resource_type == 'link' %}🔗{% else %}📎{% endif %}
+      </div>
+      <div class="r-info">
+        <div class="r-title">
+          {% if r.is_link %}<a href="{{ r.link_url }}" target="_blank" rel="noopener">{{ r.title }}</a>
+          {% elif r.file %}<a href="{{ r.file.url }}" target="_blank">{{ r.title }}</a>
+          {% else %}{{ r.title }}{% endif %}
+        </div>
+        <div class="r-meta">
+          <span class="r-badge">{{ r.get_resource_type_display }}</span>
+          {% if r.subject %}<span>{{ r.subject.name }}</span>{% endif %}
+          <span>{{ r.uploaded_by.get_full_name|default:r.uploaded_by.username }}</span>
+          <span>{{ r.created_at|date:"d-m-Y" }}</span>
+        </div>
+      </div>
+      <div class="r-actions">
+        {% if r.is_link %}
+        <a href="{{ r.link_url }}" target="_blank" class="r-dl">Open</a>
+        {% elif r.file %}
+        <a href="{{ r.file.url }}" target="_blank" class="r-dl">Download</a>
+        {% endif %}
+        {% if r.uploaded_by == request.user or is_teacher %}
+        <form method="post" action="{% url 'resource_delete' r.id %}" style="display:inline;" onsubmit="return confirm('Delete this resource?');">
+          {% csrf_token %}
+          <button type="submit" class="r-del">Delete</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="empty-box">
+      <div style="font-size: 48px; margin-bottom: 8px; opacity: .4;">📁</div>
+      <p style="font-size: 16px; color: #6b7280;">No resources yet. Be the first to upload!</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+function toggleLinkField() {
+  var t = document.getElementById('resType').value;
+  document.getElementById('fileField').style.display = t === 'link' ? 'none' : 'block';
+  document.getElementById('linkField').style.display = t === 'link' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

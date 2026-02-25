@@ -458,9 +458,10 @@ body {
     <div class="modal-body">
       <div class="auto-assign-section" id="msSection" style="display: none;">
         <h4>📋 Auto-Assign Answers from MS</h4>
-        <p>Enter the 40 answer keys from marking scheme (e.g., ABCDABCD...)</p>
-        <input type="text" id="msAnswerInput" placeholder="ABCDABCDABCD..." maxlength="40">
+        <p>Enter the answer keys from marking scheme (e.g., DCCBDDCDAA...)</p>
+        <input type="text" id="msAnswerInput" placeholder="DCCBDDCDAAADCCDA..." maxlength="50" style="width: 300px;">
         <button class="auto-assign-btn" onclick="autoAssignAnswers()">Auto-Assign Answers</button>
+        <button class="auto-assign-btn" onclick="debugExtractedText()" style="background: #6b7280; margin-left: 8px;">🔍 Debug MS Text</button>
       </div>
 
       <div class="slices-grid" id="slicesGrid"></div>
@@ -1248,57 +1249,255 @@ function renderSlices() {
 async function extractAnswersFromMS() {
   if (!msDoc) return;
 
-  let extractedText = '';
+  // Cambridge MS PDFs typically have the answer key table starting on page 2
+  // Extract text from pages 2+ first (skip cover page)
+  let page2OnwardsText = '';
+  let allPagesText = '';
 
-  // Extract text from all pages of MS
   for (let pageNum = 1; pageNum <= msDoc.numPages; pageNum++) {
     const page = await msDoc.getPage(pageNum);
     const textContent = await page.getTextContent();
+
+    // Get text items - pdf.js extracts each text element separately
     const pageText = textContent.items.map(item => item.str).join(' ');
-    extractedText += pageText + ' ';
+    allPagesText += ' ' + pageText;
+
+    // Focus on page 2 onwards where the answer table usually is
+    if (pageNum >= 2) {
+      page2OnwardsText += ' ' + pageText;
+    }
   }
 
-  // Find answer key pattern - look for 40 consecutive A/B/C/D characters
-  // Common patterns: "1A 2B 3C..." or "1. A 2. B..." or just "ABCDABCD..."
-  const cleanText = extractedText.toUpperCase().replace(/\s+/g, '');
+  console.log('Text from page 2+:', page2OnwardsText.substring(0, 1000));
 
-  // Try to find answer key patterns
   let answerKey = '';
+  let extractionMethod = '';
 
-  // Pattern 1: Remove numbers and dots, extract just letters
-  const lettersOnly = cleanText.replace(/[^ABCD]/g, '');
-
-  // Look for a sequence of 40 valid answers
-  if (lettersOnly.length >= 40) {
-    answerKey = lettersOnly.substring(0, 40);
+  // Strategy 1: Cambridge table format - look for "Question Answer Marks" table
+  // Format: "1 D 1" "2 C 1" etc. (question number, answer letter, marks)
+  answerKey = extractFromCambridgeTable(page2OnwardsText);
+  if (answerKey && answerKey.length >= 30) {
+    extractionMethod = 'Cambridge table';
   }
 
-  if (answerKey.length === 40 && /^[ABCD]{40}$/.test(answerKey)) {
+  // Strategy 2: Try on all pages if page 2+ didn't work
+  if (!answerKey || answerKey.length < 30) {
+    answerKey = extractFromCambridgeTable(allPagesText);
+    if (answerKey && answerKey.length >= 30) {
+      extractionMethod = 'Cambridge table (all pages)';
+    }
+  }
+
+  // Strategy 3: Look for any number-letter patterns
+  if (!answerKey || answerKey.length < 30) {
+    answerKey = extractAnyNumberLetterPattern(page2OnwardsText);
+    if (answerKey && answerKey.length >= 30) {
+      extractionMethod = 'number-letter patterns';
+    }
+  }
+
+  if (answerKey && answerKey.length >= 30 && /^[ABCD]+$/.test(answerKey)) {
     msAnswers = answerKey;
     document.getElementById('msAnswerInput').value = answerKey;
 
-    // Show notification
-    alert('✅ Answer key extracted from MS PDF!\n\n' + answerKey.match(/.{1,10}/g).join('\n'));
+    const formattedKey = answerKey.match(/.{1,10}/g).join('\n');
+    alert(`✅ Answer key extracted (${extractionMethod})!\n\nFound ${answerKey.length} answers:\n${formattedKey}`);
 
-    // Auto-assign if we already have sliced questions
     if (slicedImages.length > 0) {
       autoAssignAnswers();
     }
   } else {
-    alert('⚠️ Could not automatically extract answer key from MS PDF.\nPlease enter it manually in the text box.');
+    const partialCount = answerKey ? answerKey.replace(/[^ABCD]/g, '').length : 0;
+    alert(`⚠️ Could not fully extract answer key (found ${partialCount} answers).\nPlease enter it manually.\n\nFormat: DCCBDDCDAA... (one letter per question)`);
+    if (answerKey) {
+      document.getElementById('msAnswerInput').value = answerKey.replace(/[^ABCD]/g, '');
+    }
   }
 }
 
-function autoAssignAnswers() {
-  const msAnswer = document.getElementById('msAnswerInput').value.toUpperCase();
+// Extract from Cambridge table: "Question Answer Marks" with rows like "1 D 1"
+function extractFromCambridgeTable(text) {
+  const answers = {};
 
-  if (msAnswer.length !== 40) {
-    alert('Please enter exactly 40 answers (one for each question)');
+  // Cambridge format has: Question number, Answer (A/B/C/D), Marks (usually 1)
+  // The text might come out as: "1 D 1 2 C 1 3 C 1 4 B 1..."
+  // Or with spacing: "1 D 1 2 C 1"
+
+  // Key insight: In this format, we're looking for patterns where:
+  // - A number 1-40 is followed by A/B/C/D
+  // - Often followed by "1" (the marks)
+
+  // Pattern: number (1-40) followed by single letter A/B/C/D, possibly followed by marks
+  // We need to be careful not to match the "1" in marks column as question 1
+
+  // First, try to find the answer table section by looking for "Question" and "Answer" headers
+  const tableStart = text.search(/Question\s+Answer/i);
+  const relevantText = tableStart >= 0 ? text.substring(tableStart) : text;
+
+  // Strategy: Look for sequences where question numbers increment
+  // Find all potential "number letter" pairs first
+  const allMatches = [];
+  const pattern = /\b(\d{1,2})\s+([ABCD])\b/gi;
+  let match;
+
+  while ((match = pattern.exec(relevantText)) !== null) {
+    const qNum = parseInt(match[1]);
+    const answer = match[2].toUpperCase();
+    const position = match.index;
+
+    if (qNum >= 1 && qNum <= 40) {
+      allMatches.push({ qNum, answer, position });
+    }
+  }
+
+  console.log('All potential matches:', allMatches);
+
+  // Find the longest sequence of consecutive or near-consecutive question numbers
+  // This helps filter out noise (like "1" from marks column being matched with random letters)
+
+  if (allMatches.length === 0) {
+    return '';
+  }
+
+  // Group matches by question number, keep only first occurrence of each
+  for (const m of allMatches) {
+    if (!answers[m.qNum]) {
+      answers[m.qNum] = m.answer;
+    }
+  }
+
+  // Validate: we should have a reasonably continuous sequence
+  const questionNums = Object.keys(answers).map(Number).sort((a, b) => a - b);
+  console.log('Found question numbers:', questionNums);
+
+  // Check if we have a good sequence starting from 1
+  if (questionNums[0] !== 1) {
+    console.warn('Sequence does not start from 1, starts from:', questionNums[0]);
+  }
+
+  return buildAnswerString(answers);
+}
+
+// Fallback: extract any number-letter patterns
+function extractAnyNumberLetterPattern(text) {
+  const answers = {};
+
+  // More aggressive pattern matching
+  // Look for digit(s) followed by space(s) and a single A/B/C/D
+
+  const patterns = [
+    /\b(\d{1,2})\s+([ABCD])(?=\s|$|\d)/gi,  // "1 D " or "1 D2"
+    /\b(\d{1,2})\.?\s*([ABCD])\b/gi,         // "1.D" or "1 D"
+    /(?:^|\s)(\d{1,2})\s*([ABCD])(?:\s|$)/gim // Start of line patterns
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const qNum = parseInt(match[1]);
+      const answer = match[2].toUpperCase();
+
+      if (qNum >= 1 && qNum <= 40 && !answers[qNum]) {
+        answers[qNum] = answer;
+      }
+    }
+  }
+
+  return buildAnswerString(answers);
+}
+
+// Build answer string from answers object
+function buildAnswerString(answers) {
+  const foundCount = Object.keys(answers).length;
+
+  if (foundCount < 25) {
+    console.warn(`Only found ${foundCount} answers, need at least 25`);
+    return '';
+  }
+
+  // Find the max question number we have an answer for
+  const maxQuestion = Math.max(...Object.keys(answers).map(Number));
+
+  let answerKey = '';
+  let missingQuestions = [];
+
+  for (let i = 1; i <= maxQuestion; i++) {
+    if (answers[i]) {
+      answerKey += answers[i];
+    } else {
+      missingQuestions.push(i);
+    }
+  }
+
+  if (missingQuestions.length > 0) {
+    console.warn(`Missing answers for questions: ${missingQuestions.join(', ')}`);
+  }
+
+  // If too many missing (more than 5), something is wrong
+  if (missingQuestions.length > 5) {
+    console.warn(`Too many missing answers (${missingQuestions.length}), extraction may be incorrect`);
+    // Still return what we have, but log warning
+  }
+
+  console.log(`Built answer key with ${answerKey.length} answers`);
+  return answerKey;
+}
+
+// Debug function to show extracted text from MS PDF
+async function debugExtractedText() {
+  if (!msDoc) {
+    alert('No MS PDF loaded. Please upload a marking scheme PDF first.');
+    return;
+  }
+
+  let debugInfo = '=== MS PDF Debug Info ===\n\n';
+  debugInfo += `Total pages: ${msDoc.numPages}\n\n`;
+
+  for (let pageNum = 1; pageNum <= Math.min(msDoc.numPages, 3); pageNum++) {
+    const page = await msDoc.getPage(pageNum);
+    const textContent = await page.getTextContent();
+
+    debugInfo += `--- Page ${pageNum} ---\n`;
+    debugInfo += `Text items count: ${textContent.items.length}\n`;
+
+    // Show raw text items (first 50)
+    debugInfo += '\nRaw text items:\n';
+    textContent.items.slice(0, 50).forEach((item, idx) => {
+      debugInfo += `  [${idx}] "${item.str}" (y:${Math.round(item.transform[5])})\n`;
+    });
+
+    // Show joined text
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    debugInfo += `\nJoined text (first 500 chars):\n${pageText.substring(0, 500)}\n`;
+
+    // Try to find number-letter patterns
+    const matches = [...pageText.matchAll(/\b(\d{1,2})\s+([ABCD])\b/gi)];
+    debugInfo += `\nNumber-letter matches found: ${matches.length}\n`;
+    matches.slice(0, 20).forEach(m => {
+      debugInfo += `  Q${m[1]} = ${m[2]}\n`;
+    });
+
+    debugInfo += '\n';
+  }
+
+  // Show in a new window for easier viewing
+  const debugWindow = window.open('', '_blank', 'width=800,height=600');
+  debugWindow.document.write(`<pre style="font-family: monospace; font-size: 12px; white-space: pre-wrap;">${debugInfo}</pre>`);
+  debugWindow.document.title = 'MS PDF Debug Info';
+
+  console.log(debugInfo);
+}
+
+function autoAssignAnswers() {
+  const msAnswer = document.getElementById('msAnswerInput').value.toUpperCase().replace(/[^ABCD]/g, '');
+
+  if (msAnswer.length === 0) {
+    alert('Please enter answers (A/B/C/D) in the text box');
     return;
   }
 
   // Validate that all characters are A, B, C, or D
-  if (!/^[ABCD]{40}$/.test(msAnswer)) {
+  if (!/^[ABCD]+$/.test(msAnswer)) {
     alert('Invalid input. Please use only A, B, C, or D');
     return;
   }
@@ -1306,15 +1505,25 @@ function autoAssignAnswers() {
   // Store for later use
   msAnswers = msAnswer;
 
+  // Update the input field with cleaned value
+  document.getElementById('msAnswerInput').value = msAnswer;
+
   // Assign answers to dropdowns
-  for (let i = 0; i < Math.min(slicedImages.length, 40); i++) {
+  const assignCount = Math.min(slicedImages.length, msAnswer.length);
+  for (let i = 0; i < assignCount; i++) {
     const select = document.getElementById(`answer_${i}`);
     if (select) {
       select.value = msAnswer[i];
     }
   }
 
-  alert(`Auto-assigned answers to ${Math.min(slicedImages.length, 40)} questions`);
+  // Warn if mismatch between questions and answers
+  if (slicedImages.length !== msAnswer.length) {
+    alert(`⚠️ Note: Found ${msAnswer.length} answers but ${slicedImages.length} questions.\nAssigned answers to ${assignCount} questions.\n\nPlease verify the answers are correct.`);
+  } else {
+    alert(`✅ Auto-assigned answers to ${assignCount} questions`);
+  }
+
   updateImportButton();
 }
 
@@ -1427,7 +1636,7 @@ async function saveProgress() {
   }
 
   const sessionName = prompt('Enter a name for this import session:',
-    `Import ${new Date().toLocaleDateString()}`);
+    `Import ${new Date().toLocaleDateString('en-GB')}`);
 
   if (!sessionName) {
     return;

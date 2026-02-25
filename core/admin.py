@@ -10,6 +10,8 @@ from .models import (
     Student,
     ClassGroup,
     StudentAnswer,
+    SubjectGradeCombination,
+    QuestionBank,
 )
 from django.contrib.auth.models import User
 
@@ -20,7 +22,7 @@ class GradeAdmin(admin.ModelAdmin):
 
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "code", "description")
 
 
 @admin.register(Topic)
@@ -162,3 +164,18 @@ class StudentAnswerAdmin(admin.ModelAdmin):
     list_filter = ("test", "evaluated_at")
     search_fields = ("student__full_name", "test__title")
     readonly_fields = ("submitted_at",)
+
+
+@admin.register(SubjectGradeCombination)
+class SubjectGradeCombinationAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "subject", "grade", "level", "is_active")
+    list_filter = ("level", "is_active", "subject", "grade")
+    search_fields = ("code", "name", "description")
+
+
+@admin.register(QuestionBank)
+class QuestionBankAdmin(admin.ModelAdmin):
+    list_display = ("name", "subject", "grade", "status", "question_count", "created_at")
+    list_filter = ("status", "is_core", "subject", "grade")
+    search_fields = ("name", "description")
+    readonly_fields = ("created_at", "updated_at", "activated_at")

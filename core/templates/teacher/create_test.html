@@ -654,6 +654,25 @@
       </div>
     </div>
 
+    <!-- ASSIGNMENT SECTION (moved to top for quick access) -->
+    <div class="assignment-section" style="margin-bottom: 24px;">
+      <div class="assignment-summary">
+        <div>
+          <h2 style="margin: 0 0 8px 0;">Assignment</h2>
+          <p class="assignment-count">
+            <strong id="assignmentCount">{{ assigned_students.count }}</strong> student(s) assigned
+          </p>
+        </div>
+        <button type="button" class="btn outline" onclick="openAssignmentModal()">
+          👥 Manage Assignments
+        </button>
+      </div>
+
+      <div class="assigned-list" id="assignedList">
+        <!-- Populated by JavaScript -->
+      </div>
+    </div>
+
     <!-- QUESTIONS SECTION -->
     <div class="questions-section">
       <div class="section-header">
@@ -677,11 +696,11 @@
                   </button>
                 </div>
               </div>
-              
+
               <div class="question-content">
                 {{ tq.question.question_text|safe }}
               </div>
-              
+
               <div class="question-meta">
                 <span class="meta-badge">{{ tq.question.marks }} mark{{ tq.question.marks|pluralize }}</span>
                 <span class="meta-badge">{{ tq.question.get_question_type_display }}</span>
@@ -706,24 +725,34 @@
       </div>
     </div>
 
-    <!-- ASSIGNMENT SECTION -->
-    <div class="assignment-section">
+    <!-- TEACHER SHARING SECTION -->
+    {% if is_owner %}
+    <div class="assignment-section" style="margin-top: 20px; border-top: 2px solid #e5e7eb; padding-top: 20px;">
       <div class="assignment-summary">
         <div>
-          <h2 style="margin: 0 0 8px 0;">Assignment</h2>
-          <p class="assignment-count">
-            <strong id="assignmentCount">{{ assigned_students.count }}</strong> student(s) assigned
+          <h2 style="margin: 0 0 8px 0;">👥 Shared with Teachers</h2>
+          <p class="assignment-count" style="font-size: 13px; color: #6b7280;">
+            Shared teachers can see, edit, grade, monitor, publish and delete this test.
           </p>
         </div>
-        <button type="button" class="btn outline" onclick="openAssignmentModal()">
-          👥 Manage Assignments
-        </button>
       </div>
-      
-      <div class="assigned-list" id="assignedList">
-        <!-- Populated by JavaScript -->
+      <div style="margin-top: 12px;">
+        {% for tp in school_teachers %}
+        <label style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s;"
+               onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+          <input type="checkbox" name="assigned_teachers" value="{{ tp.user.id }}"
+                 {% if tp.user.id in assigned_teacher_ids %}checked{% endif %}
+                 style="width: 16px; height: 16px; accent-color: #2563eb;">
+          <span style="font-size: 14px;">{{ tp.user.first_name }} {{ tp.user.last_name }}</span>
+          <span style="font-size: 11px; color: #9ca3af;">({{ tp.user.username }})</span>
+          <span style="font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #f3f4f6; color: #6b7280; margin-left: auto;">{{ tp.role }}</span>
+        </label>
+        {% empty %}
+        <p style="color: #9ca3af; font-size: 13px; padding: 10px;">No other teachers in your school to share with.</p>
+        {% endfor %}
       </div>
     </div>
+    {% endif %}
 
     <!-- Hidden inputs for assignments -->
     <div id="hiddenAssignments"></div>

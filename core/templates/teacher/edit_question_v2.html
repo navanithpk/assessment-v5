@@ -1,0 +1,1336 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Question #{{ question.id }} — Lumen</title>
+<style>
+/* ── Reset & base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --purple: #667eea;
+  --purple-dark: #4c51bf;
+  --purple-light: #e8ebff;
+  --green: #48bb78;
+  --green-dark: #2f855a;
+  --red: #f56565;
+  --amber: #ed8936;
+  --bg: #f0f2f8;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #2d3748;
+  --muted: #718096;
+  --header-h: 60px;
+  --toolbar-h: 56px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.header {
+  height: var(--header-h);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  z-index: 100;
+}
+
+.header-title {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.header-badge {
+  background: rgba(255,255,255,.22);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.header-spacer { flex: 1; }
+
+.header-breadcrumb {
+  font-size: 13px;
+  opacity: .8;
+  white-space: nowrap;
+}
+
+.header-breadcrumb a { color: white; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.4); }
+
+/* ── Toolbar ─────────────────────────────────────────────────── */
+.toolbar {
+  height: var(--toolbar-h);
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.toolbar-sep {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:hover { filter: brightness(.93); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); filter: brightness(.87); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.btn-primary  { background: var(--purple); color: white; }
+.btn-success  { background: var(--green); color: white; }
+.btn-danger   { background: var(--red); color: white; }
+.btn-ghost    { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+.btn-amber    { background: var(--amber); color: white; }
+.btn-save     { background: linear-gradient(135deg,#48bb78,#2f855a); color: white; font-size: 14px; padding: 9px 20px; }
+
+.add-space-btn { background: var(--purple-light); color: var(--purple-dark); border: 1.5px dashed var(--purple); }
+.add-space-btn:hover { background: var(--purple); color: white; }
+
+/* ── Main layout ─────────────────────────────────────────────── */
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Left pane: question image ───────────────────────────────── */
+.pane-image {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #e8eaf0;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.pane-image-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pane-image-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+/* Canvas wrapper */
+.canvas-wrapper {
+  position: relative;
+  display: inline-block;
+  min-width: min-content;
+  cursor: crosshair;
+  user-select: none;
+}
+
+#qImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  pointer-events: none;
+}
+
+/* Answer space overlays */
+.ans-space {
+  position: absolute;
+  border: 2px solid var(--purple);
+  background: rgba(102,126,234,.12);
+  cursor: move;
+  border-radius: 3px;
+  transition: background .12s, border-color .12s;
+}
+.ans-space:hover {
+  background: rgba(102,126,234,.22);
+  border-color: var(--purple-dark);
+  box-shadow: 0 0 0 3px rgba(102,126,234,.18);
+}
+.ans-space.selected {
+  border-color: var(--green);
+  background: rgba(72,187,120,.15);
+  box-shadow: 0 0 0 3px rgba(72,187,120,.22);
+}
+
+/* Space type colour coding */
+.ans-space[data-type="calc_space"]  { border-color: var(--amber); background: rgba(237,137,54,.12); }
+.ans-space[data-type="calc_space"].selected { border-color: #c05621; background: rgba(237,137,54,.22); }
+.ans-space[data-type="table_cell"]  { border-color: #38b2ac; background: rgba(56,178,172,.12); }
+.ans-space[data-type="table_cell"].selected { border-color: #2c7a7b; background: rgba(56,178,172,.22); }
+.ans-space[data-type="canvas"]      { border-color: #e53e3e; background: rgba(229,62,62,.10); }
+.ans-space[data-type="canvas"].selected { border-color: #9b2c2c; background: rgba(229,62,62,.2); }
+
+.space-badge {
+  position: absolute;
+  top: -22px;
+  left: 0;
+  background: var(--purple);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px 4px 0 0;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: .3px;
+}
+.ans-space[data-type="calc_space"] .space-badge { background: var(--amber); }
+.ans-space[data-type="table_cell"] .space-badge { background: #38b2ac; }
+.ans-space[data-type="canvas"]     .space-badge { background: #e53e3e; }
+
+/* Resize handles */
+.rh {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--purple);
+  box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  z-index: 2;
+}
+.ans-space[data-type="calc_space"] .rh { border-color: var(--amber); }
+.ans-space[data-type="table_cell"] .rh { border-color: #38b2ac; }
+.ans-space[data-type="canvas"]     .rh { border-color: #e53e3e; }
+.rh.nw { top:-5px;  left:-5px;  cursor:nw-resize; }
+.rh.n  { top:-5px;  left:50%;   transform:translateX(-50%); cursor:n-resize; }
+.rh.ne { top:-5px;  right:-5px; cursor:ne-resize; }
+.rh.e  { top:50%;   right:-5px; transform:translateY(-50%); cursor:e-resize; }
+.rh.se { bottom:-5px; right:-5px; cursor:se-resize; }
+.rh.s  { bottom:-5px; left:50%; transform:translateX(-50%); cursor:s-resize; }
+.rh.sw { bottom:-5px; left:-5px; cursor:sw-resize; }
+.rh.w  { top:50%;  left:-5px;  transform:translateY(-50%); cursor:w-resize; }
+
+.del-btn {
+  position: absolute;
+  top: -12px; right: -12px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--red);
+  color: white;
+  border: 2px solid white;
+  font-size: 14px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  z-index: 3;
+}
+.del-btn:hover { background: #c53030; transform: scale(1.15); }
+
+/* No-image state */
+.no-image-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding: 40px;
+}
+.no-image-state .icon { font-size: 56px; }
+.no-image-state p { font-size: 15px; }
+.no-image-state small { font-size: 12px; color: #a0aec0; }
+
+/* ── Right pane: metadata + mark scheme ──────────────────────── */
+.pane-meta {
+  width: 40%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.pane-meta-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* Meta sections */
+.meta-section {
+  margin-bottom: 22px;
+}
+.meta-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.field-row.single { grid-template-columns: 1fr; }
+.field-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.field select,
+.field input {
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+  transition: border .15s, box-shadow .15s;
+  background: white;
+}
+.field select:focus,
+.field input:focus {
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(102,126,234,.12);
+}
+
+/* LO box */
+.lo-box {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: #fafbff;
+  font-size: 13px;
+}
+.lo-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 4px 0;
+  line-height: 1.4;
+}
+.lo-item input { margin-top: 2px; flex-shrink: 0; }
+.lo-item .lo-code { font-weight: 700; color: var(--purple-dark); flex-shrink: 0; }
+
+/* Mark scheme textarea */
+.ms-textarea {
+  width: 100%;
+  min-height: 130px;
+  padding: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.6;
+  color: var(--text);
+  transition: border .15s;
+}
+.ms-textarea:focus {
+  outline: none;
+  border-color: var(--purple);
+  box-shadow: 0 0 0 3px rgba(102,126,234,.1);
+}
+
+/* Answer spaces list in sidebar */
+.spaces-list { display: flex; flex-direction: column; gap: 6px; }
+
+.space-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: all .15s;
+  background: #fafbff;
+}
+.space-row:hover { border-color: var(--purple); background: var(--purple-light); }
+.space-row.active { border-color: var(--green); background: #f0fff4; }
+
+.space-row-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-text_line   { background: var(--purple); }
+.dot-calc_space  { background: var(--amber); }
+.dot-table_cell  { background: #38b2ac; }
+.dot-canvas      { background: var(--red); }
+
+.space-row-info { flex: 1; min-width: 0; }
+.space-row-name { font-size: 12px; font-weight: 600; color: var(--text); }
+.space-row-dims { font-size: 11px; color: var(--muted); }
+
+.space-row-marks {
+  font-size: 12px; font-weight: 700;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* Properties panel */
+.props-panel {
+  background: #f7f9ff;
+  border: 1.5px solid var(--purple-light);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 8px;
+}
+.props-panel .field label { color: #5a67d8; }
+.props-panel .field select,
+.props-panel .field input {
+  background: white;
+}
+
+.props-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.props-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.props-grid-4 label,
+.props-grid   label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.props-grid-4 input,
+.props-grid   input,
+.props-grid   select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+/* Status toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all .25s;
+  z-index: 9999;
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: var(--green); }
+.toast.error   { background: var(--red); }
+
+/* AI buttons */
+.ai-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.btn-ai {
+  background: linear-gradient(135deg,#9f7aea,#7b2ff7);
+  color: white;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-ai:disabled { opacity: .4; cursor: not-allowed; }
+.ai-status { font-size: 11px; color: var(--muted); font-style: italic; align-self: center; }
+
+/* Keyboard shortcut hint */
+.kbd {
+  background: #edf2f7;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--muted);
+}
+
+/* Nav arrows */
+.nav-arrows {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────── -->
+<div class="header">
+  <span class="header-title">✏️ Question Editor</span>
+  <span class="header-badge">
+    #{{ question.id }}
+    {% if question.parent %} · sub-question {{ question.question_number }}{% endif %}
+  </span>
+  <span class="header-badge" id="qTypeBadge" style="background:rgba(255,255,255,.15);">
+    {{ question.get_question_type_display }}
+  </span>
+  <div class="header-spacer"></div>
+  <span class="header-breadcrumb">
+    <a href="{% url 'teacher_dashboard' %}">Dashboard</a> ›
+    <a href="{% url 'question_library' %}">Library</a> ›
+    Question #{{ question.id }}
+  </span>
+</div>
+
+<!-- ── Toolbar ─────────────────────────────────────────────────── -->
+<div class="toolbar">
+  <!-- Add space buttons (only meaningful when image present) -->
+  <span style="font-size:12px;font-weight:600;color:var(--muted);">Add space:</span>
+  <button class="btn add-space-btn" id="btnAddText"   onclick="addSpace('text_line')"  title="Text Line">📝 Text</button>
+  <button class="btn add-space-btn" id="btnAddCalc"   onclick="addSpace('calc_space')" title="Calculation Space">🔢 Calc</button>
+  <button class="btn add-space-btn" id="btnAddTable"  onclick="addSpace('table_cell')" title="Table Cell">📊 Table</button>
+  <button class="btn add-space-btn" id="btnAddCanvas" onclick="addSpace('canvas')"     title="Drawing Canvas">🎨 Draw</button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="btn btn-ghost" onclick="clearSelection()" title="Deselect all">⊡ Deselect</button>
+
+  <div class="toolbar-sep"></div>
+
+  <!-- Navigation between questions -->
+  <div class="nav-arrows">
+    <button class="btn btn-ghost" onclick="navigateQ(-1)" title="Previous question (Ctrl+←)">← Prev</button>
+    <button class="btn btn-ghost" onclick="navigateQ(1)"  title="Next question (Ctrl+→)">Next →</button>
+  </div>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="btn btn-success btn-save" onclick="saveAll()" id="saveBtn">
+    💾 Save <span class="kbd" style="margin-left:4px;">Ctrl+S</span>
+  </button>
+  <a href="{% url 'question_library' %}" class="btn btn-ghost">✕ Close</a>
+</div>
+
+<!-- ── Main ───────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- LEFT: Image / canvas -->
+  <div class="pane-image" id="imagePane">
+    <div class="pane-image-header">
+      🖼️ Question Paper Image
+      {% if page_count > 1 %}
+        <span style="background:#e6fffa;color:#2c7a7b;border-radius:6px;padding:2px 8px;font-size:11px;">
+          {{ page_count }} pages stitched
+        </span>
+      {% endif %}
+      <span style="margin-left:auto;font-size:11px;color:#a0aec0;">
+        Click on image to draw a new answer space • drag to move • handles to resize
+      </span>
+    </div>
+
+    {% if question_image %}
+    <div class="pane-image-scroll" id="imageScroll">
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <img id="qImage" src="{{ question_image }}" alt="Question image"
+             onload="onImageLoad()" draggable="false">
+        <!-- Answer space overlays injected here by JS -->
+      </div>
+    </div>
+    {% else %}
+    <div class="no-image-state" id="noImageState">
+      <div class="icon">📄</div>
+      <p>No question image for this question.</p>
+      <small>Structured questions from the QP-MS ingester will display their image here.<br>
+             Text-based questions use the Mark Scheme panel on the right.</small>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT: Metadata + mark scheme -->
+  <div class="pane-meta">
+    <div class="pane-meta-scroll">
+
+      <!-- ── Metadata ── -->
+      <div class="meta-section">
+        <div class="meta-section-title">📋 Question Metadata</div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Grade</label>
+            <select id="fGrade" onchange="onGradeSubjectChange()">
+              <option value="">—</option>
+              {% for g in grades %}
+              <option value="{{ g.id }}" {% if question.grade_id == g.id %}selected{% endif %}>{{ g.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Subject</label>
+            <select id="fSubject" onchange="onGradeSubjectChange()">
+              <option value="">—</option>
+              {% for s in subjects %}
+              <option value="{{ s.id }}" {% if question.subject_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Topic</label>
+            <select id="fTopic" onchange="onTopicChange()">
+              <option value="">— select topic —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Type</label>
+            <select id="fType">
+              <option value="mcq"        {% if question.question_type == 'mcq' %}selected{% endif %}>MCQ</option>
+              <option value="theory"     {% if question.question_type == 'theory' %}selected{% endif %}>Theory</option>
+              <option value="structured" {% if question.question_type == 'structured' %}selected{% endif %}>Structured</option>
+              <option value="practical"  {% if question.question_type == 'practical' %}selected{% endif %}>Practical</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Year</label>
+            <select id="fYear">
+              <option value="">—</option>
+              {% for y in years %}
+              <option value="{{ y }}" {% if question.year == y %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Marks</label>
+            <input type="number" id="fMarks" value="{{ question.marks }}" min="0" step="0.5">
+          </div>
+        </div>
+
+        <!-- AI buttons -->
+        <div class="ai-row">
+          <button class="btn-ai" id="aiTopicBtn" onclick="aiSuggestTopic()" disabled>🤖 Suggest Topic</button>
+          <button class="btn-ai" id="aiLOBtn"    onclick="aiSuggestLOs()"   disabled>🤖 Suggest LOs</button>
+          <span class="ai-status" id="aiStatus"></span>
+        </div>
+      </div>
+
+      <!-- ── Learning Objectives ── -->
+      <div class="meta-section">
+        <div class="meta-section-title">🎯 Learning Objectives</div>
+        <div class="lo-box" id="loBox">
+          <em style="color:var(--muted);">Select a topic to load objectives…</em>
+        </div>
+      </div>
+
+      <!-- ── Mark Scheme ── -->
+      <div class="meta-section">
+        <div class="meta-section-title">📝 Mark Scheme / Model Answer</div>
+        <textarea class="ms-textarea" id="fAnswerText" placeholder="Enter mark scheme, model answer, or key points…">{{ question.answer_text }}</textarea>
+      </div>
+
+      <!-- ── Answer Spaces ── -->
+      <div class="meta-section" id="spacesSection">
+        <div class="meta-section-title" style="display:flex;align-items:center;gap:6px;">
+          📐 Answer Spaces
+          <span id="spaceCount" style="background:var(--purple);color:white;border-radius:999px;padding:1px 8px;font-size:10px;font-weight:700;">0</span>
+        </div>
+
+        <div id="spacesList" class="spaces-list"></div>
+
+        <!-- Selected space properties -->
+        <div class="props-panel" id="propsPanel" style="display:none;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--purple-dark);">
+            ✏️ Edit Selected Space
+          </div>
+
+          <div class="props-grid">
+            <div>
+              <label>Type</label>
+              <select id="pType" onchange="applyProps()">
+                <option value="text_line">Text Line</option>
+                <option value="calc_space">Calc Space</option>
+                <option value="table_cell">Table Cell</option>
+                <option value="canvas">Drawing</option>
+              </select>
+            </div>
+            <div>
+              <label>Marks</label>
+              <input type="number" id="pMarks" step="0.5" min="0" onchange="applyProps()">
+            </div>
+          </div>
+
+          <div class="props-grid-4">
+            <div><label>X</label><input type="number" id="pX" onchange="applyPropsCoords()"></div>
+            <div><label>Y</label><input type="number" id="pY" onchange="applyPropsCoords()"></div>
+            <div><label>W</label><input type="number" id="pW" onchange="applyPropsCoords()"></div>
+            <div><label>H</label><input type="number" id="pH" onchange="applyPropsCoords()"></div>
+          </div>
+
+          <button class="btn btn-danger" style="width:100%;font-size:12px;padding:6px;"
+                  onclick="deleteSelectedSpace()">🗑 Delete Space</button>
+        </div>
+      </div>
+
+    </div><!-- /pane-meta-scroll -->
+  </div><!-- /pane-meta -->
+</div><!-- /main -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<script>
+// ── Data from server ─────────────────────────────────────────────
+const QUESTION_ID    = {{ question.id }};
+const CSRF_TOKEN     = '{{ csrf_token }}';
+const SELECTED_LO_IDS = new Set({{ selected_lo_ids|default:"[]"|safe }});
+const CURRENT_TOPIC_ID = {{ question.topic_id|default:"null" }};
+const HAS_IMAGE = {% if question_image %}true{% else %}false{% endif %};
+
+// ── State ─────────────────────────────────────────────────────────
+let spaces = {{ answer_spaces_json|safe }};  // array of space objects
+let nextId  = spaces.length ? Math.max(...spaces.map(s => s.id)) + 1 : 1;
+let selectedId = null;
+
+// Drawing a new space via mouse
+let drawing = false;
+let drawStart = null;
+let drawEl    = null;
+
+// Drag / resize
+let interacting = false;
+let intType = null;   // 'drag' or 'resize'
+let intDir  = null;
+let intSpace = null;
+let intStart = null;
+let intOrig  = null;
+
+const TYPE_LABELS = {
+  text_line:  'Text Line',
+  calc_space: 'Calc Space',
+  table_cell: 'Table Cell',
+  canvas:     'Drawing',
+};
+const TYPE_DEFAULTS = {
+  text_line:  { width: 580, height: 64 },
+  calc_space: { width: 300, height: 160 },
+  table_cell: { width: 180, height: 60 },
+  canvas:     { width: 400, height: 200 },
+};
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadTopics(CURRENT_TOPIC_ID, () => {
+    if (CURRENT_TOPIC_ID) loadLOs(CURRENT_TOPIC_ID);
+  });
+
+  if (HAS_IMAGE) {
+    // Spaces will be rendered once the image loads (onImageLoad)
+  }
+  updateSpacesList();
+  updateAIButtons();
+});
+
+function onImageLoad() {
+  const wrapper = document.getElementById('canvasWrapper');
+  // Render all existing spaces
+  spaces.forEach(s => renderSpace(s));
+  updateSpacesList();
+
+  // Mouse events for drawing new spaces
+  wrapper.addEventListener('mousedown', onWrapperMousedown);
+  document.addEventListener('mousemove', onDocMousemove);
+  document.addEventListener('mouseup',   onDocMouseup);
+}
+
+// ── Draw new space by clicking on image ──────────────────────────
+function onWrapperMousedown(e) {
+  // Ignore if clicking on an existing space or its children
+  if (e.target !== document.getElementById('canvasWrapper') &&
+      e.target !== document.getElementById('qImage')) return;
+
+  const rect = getWrapperRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  drawing   = true;
+  drawStart = { x, y };
+
+  drawEl = document.createElement('div');
+  drawEl.style.cssText = `
+    position:absolute;left:${x}px;top:${y}px;width:0;height:0;
+    border:2px dashed var(--purple);background:rgba(102,126,234,.1);
+    border-radius:3px;pointer-events:none;z-index:10;
+  `;
+  document.getElementById('canvasWrapper').appendChild(drawEl);
+  e.preventDefault();
+}
+
+function onDocMousemove(e) {
+  if (drawing && drawStart) {
+    const rect = getWrapperRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const x  = Math.min(drawStart.x, cx);
+    const y  = Math.min(drawStart.y, cy);
+    const w  = Math.abs(cx - drawStart.x);
+    const h  = Math.abs(cy - drawStart.y);
+    drawEl.style.left   = x + 'px';
+    drawEl.style.top    = y + 'px';
+    drawEl.style.width  = w + 'px';
+    drawEl.style.height = h + 'px';
+    return;
+  }
+
+  if (interacting && intSpace) {
+    const dx = e.clientX - intStart.x;
+    const dy = e.clientY - intStart.y;
+
+    if (intType === 'drag') {
+      intSpace.x = Math.max(0, intOrig.x + dx);
+      intSpace.y = Math.max(0, intOrig.y + dy);
+    } else {
+      // Resize
+      let nx = intOrig.x, ny = intOrig.y, nw = intOrig.w, nh = intOrig.h;
+      if (intDir.includes('e'))  nw = Math.max(20, intOrig.w + dx);
+      if (intDir.includes('s'))  nh = Math.max(12, intOrig.h + dy);
+      if (intDir.includes('w')) { nw = Math.max(20, intOrig.w - dx); nx = intOrig.x + (intOrig.w - nw); }
+      if (intDir.includes('n')) { nh = Math.max(12, intOrig.h - dy); ny = intOrig.y + (intOrig.h - nh); }
+      intSpace.x = nx; intSpace.y = ny; intSpace.width = nw; intSpace.height = nh;
+    }
+
+    const el = document.getElementById(`sp-${intSpace.id}`);
+    if (el) applySpaceStyle(el, intSpace);
+    if (selectedId === intSpace.id) syncPropsFields(intSpace);
+  }
+}
+
+function onDocMouseup(e) {
+  if (drawing) {
+    drawing = false;
+    const rect = getWrapperRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const w  = Math.abs(cx - drawStart.x);
+    const h  = Math.abs(cy - drawStart.y);
+
+    if (drawEl) { drawEl.remove(); drawEl = null; }
+
+    if (w > 10 && h > 10) {
+      const x = Math.min(drawStart.x, cx);
+      const y = Math.min(drawStart.y, cy);
+      addSpace('text_line', x, y, w, h);
+    }
+    drawStart = null;
+    return;
+  }
+
+  if (interacting) {
+    interacting = false;
+    intSpace = null;
+    intType = intDir = intStart = intOrig = null;
+    updateSpacesList();
+  }
+}
+
+function getWrapperRect() {
+  return document.getElementById('canvasWrapper').getBoundingClientRect();
+}
+
+// ── Add / render spaces ───────────────────────────────────────────
+function addSpace(type, x, y, w, h) {
+  const defaults = TYPE_DEFAULTS[type] || { width: 300, height: 80 };
+  const space = {
+    id:     nextId++,
+    type,
+    x:      Math.round(x ?? 60),
+    y:      Math.round(y ?? 60),
+    width:  Math.round(w ?? defaults.width),
+    height: Math.round(h ?? defaults.height),
+    order:  spaces.length,
+    marks:  1,
+    config: {},
+  };
+  spaces.push(space);
+  if (HAS_IMAGE) renderSpace(space);
+  selectSpace(space.id);
+  updateSpacesList();
+  showToast(`Added ${TYPE_LABELS[type]}`, 'success');
+}
+
+function renderSpace(sp) {
+  const wrapper = document.getElementById('canvasWrapper');
+  if (!wrapper) return;
+
+  // Remove if already exists
+  const existing = document.getElementById(`sp-${sp.id}`);
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.className = 'ans-space';
+  el.id = `sp-${sp.id}`;
+  el.dataset.type = sp.type;
+  applySpaceStyle(el, sp);
+
+  el.innerHTML = `
+    <div class="space-badge" id="badge-${sp.id}"></div>
+    <div class="rh nw" data-dir="nw"></div>
+    <div class="rh n"  data-dir="n"></div>
+    <div class="rh ne" data-dir="ne"></div>
+    <div class="rh e"  data-dir="e"></div>
+    <div class="rh se" data-dir="se"></div>
+    <div class="rh s"  data-dir="s"></div>
+    <div class="rh sw" data-dir="sw"></div>
+    <div class="rh w"  data-dir="w"></div>
+    <div class="del-btn" onclick="deleteSpace(${sp.id},event)">×</div>
+  `;
+
+  // Select on click
+  el.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('del-btn')) return;
+    selectSpace(sp.id);
+
+    if (e.target.classList.contains('rh')) {
+      startInteract('resize', sp, e, e.target.dataset.dir);
+    } else {
+      startInteract('drag', sp, e, null);
+    }
+    e.stopPropagation();
+  });
+
+  wrapper.appendChild(el);
+  updateBadge(sp);
+}
+
+function applySpaceStyle(el, sp) {
+  el.style.left   = sp.x      + 'px';
+  el.style.top    = sp.y      + 'px';
+  el.style.width  = sp.width  + 'px';
+  el.style.height = sp.height + 'px';
+  el.dataset.type = sp.type;
+}
+
+function updateBadge(sp) {
+  const badge = document.getElementById(`badge-${sp.id}`);
+  if (!badge) return;
+  const idx = spaces.findIndex(s => s.id === sp.id);
+  badge.textContent = `#${idx+1} · ${TYPE_LABELS[sp.type]} · ${sp.marks}m`;
+}
+
+// ── Selection ─────────────────────────────────────────────────────
+function selectSpace(id) {
+  selectedId = id;
+  const sp = spaces.find(s => s.id === id);
+
+  document.querySelectorAll('.ans-space').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.space-row').forEach(el => el.classList.remove('active'));
+
+  const el = document.getElementById(`sp-${id}`);
+  if (el) el.classList.add('selected');
+  const row = document.getElementById(`sr-${id}`);
+  if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest' }); }
+
+  if (sp) {
+    document.getElementById('propsPanel').style.display = 'block';
+    syncPropsFields(sp);
+  }
+}
+
+function clearSelection() {
+  selectedId = null;
+  document.querySelectorAll('.ans-space').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.space-row').forEach(el => el.classList.remove('active'));
+  document.getElementById('propsPanel').style.display = 'none';
+}
+
+function syncPropsFields(sp) {
+  document.getElementById('pType').value  = sp.type;
+  document.getElementById('pMarks').value = sp.marks;
+  document.getElementById('pX').value     = sp.x;
+  document.getElementById('pY').value     = sp.y;
+  document.getElementById('pW').value     = sp.width;
+  document.getElementById('pH').value     = sp.height;
+}
+
+// ── Properties panel -> update space ─────────────────────────────
+function applyProps() {
+  if (!selectedId) return;
+  const sp = spaces.find(s => s.id === selectedId);
+  if (!sp) return;
+  sp.type  = document.getElementById('pType').value;
+  sp.marks = parseFloat(document.getElementById('pMarks').value) || 0;
+  const el = document.getElementById(`sp-${sp.id}`);
+  if (el) applySpaceStyle(el, sp);
+  updateBadge(sp);
+  updateSpacesList();
+}
+
+function applyPropsCoords() {
+  if (!selectedId) return;
+  const sp = spaces.find(s => s.id === selectedId);
+  if (!sp) return;
+  sp.x      = parseInt(document.getElementById('pX').value) || 0;
+  sp.y      = parseInt(document.getElementById('pY').value) || 0;
+  sp.width  = parseInt(document.getElementById('pW').value) || 50;
+  sp.height = parseInt(document.getElementById('pH').value) || 20;
+  const el  = document.getElementById(`sp-${sp.id}`);
+  if (el) applySpaceStyle(el, sp);
+  updateBadge(sp);
+}
+
+// ── Delete ────────────────────────────────────────────────────────
+function deleteSpace(id, evt) {
+  evt.stopPropagation();
+  if (!confirm('Delete this answer space?')) return;
+  spaces = spaces.filter(s => s.id !== id);
+  const el = document.getElementById(`sp-${id}`);
+  if (el) el.remove();
+  if (selectedId === id) {
+    selectedId = null;
+    document.getElementById('propsPanel').style.display = 'none';
+  }
+  updateSpacesList();
+}
+
+function deleteSelectedSpace() {
+  if (!selectedId) return;
+  if (!confirm('Delete this answer space?')) return;
+  const id = selectedId;
+  spaces = spaces.filter(s => s.id !== id);
+  const el = document.getElementById(`sp-${id}`);
+  if (el) el.remove();
+  selectedId = null;
+  document.getElementById('propsPanel').style.display = 'none';
+  updateSpacesList();
+}
+
+// ── Drag / Resize ─────────────────────────────────────────────────
+function startInteract(type, sp, e, dir) {
+  interacting = true;
+  intType   = type;
+  intDir    = dir;
+  intSpace  = sp;
+  intStart  = { x: e.clientX, y: e.clientY };
+  intOrig   = { x: sp.x, y: sp.y, w: sp.width, h: sp.height };
+  e.preventDefault();
+}
+
+// ── Spaces list in sidebar ────────────────────────────────────────
+function updateSpacesList() {
+  const list = document.getElementById('spacesList');
+  const cnt  = document.getElementById('spaceCount');
+  cnt.textContent = spaces.length;
+
+  if (!spaces.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px 0;">No answer spaces yet</div>';
+    return;
+  }
+
+  list.innerHTML = spaces.map((sp, i) => `
+    <div class="space-row ${selectedId === sp.id ? 'active' : ''}"
+         id="sr-${sp.id}" onclick="selectSpace(${sp.id})">
+      <div class="space-row-dot dot-${sp.type}"></div>
+      <div class="space-row-info">
+        <div class="space-row-name">#${i+1} · ${TYPE_LABELS[sp.type]}</div>
+        <div class="space-row-dims">${sp.width}×${sp.height} px &nbsp; at (${sp.x}, ${sp.y})</div>
+      </div>
+      <div class="space-row-marks">${sp.marks}m</div>
+    </div>
+  `).join('');
+}
+
+// ── Topics / LOs (AJAX) ───────────────────────────────────────────
+function onGradeSubjectChange() {
+  const gId = document.getElementById('fGrade').value;
+  const sId = document.getElementById('fSubject').value;
+  const topicSel = document.getElementById('fTopic');
+  topicSel.innerHTML = '<option value="">— select topic —</option>';
+  document.getElementById('loBox').innerHTML = '<em style="color:var(--muted);">Select a topic to load objectives…</em>';
+  updateAIButtons();
+  if (!gId || !sId) return;
+
+  fetch(`/ajax/topics/?grade_id=${gId}&subject_id=${sId}`)
+    .then(r => r.json())
+    .then(d => {
+      d.topics.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.id; o.textContent = t.name;
+        topicSel.appendChild(o);
+      });
+      // Re-select current topic if it's in the list
+      if (CURRENT_TOPIC_ID) {
+        topicSel.value = CURRENT_TOPIC_ID;
+        if (topicSel.value) loadLOs(topicSel.value);
+      }
+      updateAIButtons();
+    });
+}
+
+function loadTopics(currentTopicId, callback) {
+  const gId = document.getElementById('fGrade').value;
+  const sId = document.getElementById('fSubject').value;
+  const topicSel = document.getElementById('fTopic');
+  if (!gId || !sId) { if (callback) callback(); return; }
+
+  fetch(`/ajax/topics/?grade_id=${gId}&subject_id=${sId}`)
+    .then(r => r.json())
+    .then(d => {
+      topicSel.innerHTML = '<option value="">— select topic —</option>';
+      d.topics.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.id; o.textContent = t.name;
+        if (currentTopicId && t.id === currentTopicId) o.selected = true;
+        topicSel.appendChild(o);
+      });
+      updateAIButtons();
+      if (callback) callback();
+    });
+}
+
+function onTopicChange() {
+  const tid = document.getElementById('fTopic').value;
+  if (tid) loadLOs(tid);
+  else document.getElementById('loBox').innerHTML = '<em style="color:var(--muted);">Select a topic…</em>';
+  updateAIButtons();
+}
+
+function loadLOs(topicId) {
+  fetch(`/ajax/los/?topic_id=${topicId}`)
+    .then(r => r.json())
+    .then(d => {
+      const box = document.getElementById('loBox');
+      if (!d.los.length) { box.innerHTML = '<em style="color:var(--muted);">No objectives for this topic.</em>'; return; }
+      box.innerHTML = '';
+      d.los.forEach(lo => {
+        const label = document.createElement('label');
+        label.className = 'lo-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.value = lo.id;
+        cb.checked = SELECTED_LO_IDS.has(lo.id);
+        cb.onchange = () => cb.checked ? SELECTED_LO_IDS.add(lo.id) : SELECTED_LO_IDS.delete(lo.id);
+        label.appendChild(cb);
+        // IMPORTANT: use insertAdjacentHTML, NOT innerHTML += (which destroys cb's event listener)
+        label.insertAdjacentHTML('beforeend', `<span class="lo-code">${lo.code}</span> — ${lo.description}`);
+        box.appendChild(label);
+      });
+    });
+}
+
+// ── AI suggestions ────────────────────────────────────────────────
+function updateAIButtons() {
+  const g = document.getElementById('fGrade').value;
+  const s = document.getElementById('fSubject').value;
+  const t = document.getElementById('fTopic').value;
+  document.getElementById('aiTopicBtn').disabled = !(g && s);
+  document.getElementById('aiLOBtn').disabled    = !t;
+}
+
+async function aiSuggestTopic() {
+  const status = document.getElementById('aiStatus');
+
+  status.textContent = 'Thinking…';
+  document.getElementById('aiTopicBtn').disabled = true;
+  try {
+    const res = await fetch('/ajax/ai-suggest-topic/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({
+        question_id: QUESTION_ID,
+        question_text: document.getElementById('fAnswerText').value || '',
+        subject_id: document.getElementById('fSubject').value,
+        grade_id:   document.getElementById('fGrade').value,
+      })
+    });
+    const d = await res.json();
+    if (d.success) {
+      document.getElementById('fTopic').value = d.topic_id;
+      loadLOs(d.topic_id);
+      status.textContent = `✓ ${d.topic_name}`;
+    } else {
+      status.textContent = d.error || 'Failed';
+    }
+  } catch(e) { status.textContent = 'Error'; }
+  finally { updateAIButtons(); }
+}
+
+async function aiSuggestLOs() {
+  const status = document.getElementById('aiStatus');
+  const tid = document.getElementById('fTopic').value;
+
+  status.textContent = 'Thinking…';
+  document.getElementById('aiLOBtn').disabled = true;
+  try {
+    const res = await fetch('/ajax/ai-suggest-los/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({
+        question_id: QUESTION_ID,
+        question_text: document.getElementById('fAnswerText').value || '',
+        topic_id: tid,
+      })
+    });
+    const d = await res.json();
+    if (d.success) {
+      d.learning_objectives.forEach(lo => SELECTED_LO_IDS.add(lo.id));
+      loadLOs(tid);
+      status.textContent = `✓ ${d.learning_objectives.map(l=>l.code).join(', ')}`;
+    } else {
+      status.textContent = d.error || 'Failed';
+    }
+  } catch(e) { status.textContent = 'Error'; }
+  finally { updateAIButtons(); }
+}
+
+// ── Save ──────────────────────────────────────────────────────────
+async function saveAll() {
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving…';
+
+  const payload = {
+    grade_id:      parseInt(document.getElementById('fGrade').value)   || null,
+    subject_id:    parseInt(document.getElementById('fSubject').value)  || null,
+    topic_id:      parseInt(document.getElementById('fTopic').value)    || null,
+    year:          parseInt(document.getElementById('fYear').value)     || null,
+    marks:         parseFloat(document.getElementById('fMarks').value)  || 0,
+    question_type: document.getElementById('fType').value,
+    answer_text:   document.getElementById('fAnswerText').value,
+    lo_ids:        Array.from(SELECTED_LO_IDS),
+    answer_spaces: spaces,
+  };
+
+  try {
+    const res = await fetch('', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify(payload),
+    });
+    const d = await res.json();
+    if (d.success) {
+      showToast('✓ Saved!', 'success');
+      // Re-render all spaces to refresh badges (order may have changed)
+      spaces.forEach(s => { if (HAS_IMAGE) renderSpace(s); });
+      updateSpacesList();
+    } else {
+      showToast('Error: ' + (d.error || 'Unknown'), 'error');
+    }
+  } catch(e) {
+    showToast('Network error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save <span class="kbd" style="margin-left:4px;">Ctrl+S</span>';
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── Keyboard shortcuts ────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 's') { e.preventDefault(); saveAll(); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); navigateQ(1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); navigateQ(-1); }
+    if (e.key === 'b') { e.preventDefault(); if (!document.getElementById('aiTopicBtn').disabled) aiSuggestTopic(); }
+    if (e.key === 'm') { e.preventDefault(); if (!document.getElementById('aiLOBtn').disabled) aiSuggestLOs(); }
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    // Only if focus is NOT in an input/textarea
+    if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+    if (selectedId) deleteSelectedSpace();
+  }
+  if (e.key === 'Escape') clearSelection();
+});
+
+function navigateQ(offset) {
+  const match = window.location.pathname.match(/\/questions\/edit\/(\d+)\//);
+  if (!match) {
+    // We're on the v2 editor path — try that pattern too
+    const m2 = window.location.pathname.match(/\/questions\/(\d+)\/edit-v2\//);
+    if (!m2) return;
+    const nextId = parseInt(m2[1]) + offset;
+    if (nextId > 0) window.location.href = `/questions/${nextId}/edit-v2/`;
+    return;
+  }
+  const nextQId = parseInt(match[1]) + offset;
+  if (nextQId > 0) window.location.href = `/questions/edit/${nextQId}/`;
+}
+</script>
+</body>
+</html>

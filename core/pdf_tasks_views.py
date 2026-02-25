@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.contrib import messages
 from django.utils import timezone
-from .models import PDFImportSession, ProcessedPDF, Grade, Subject
+from .models import PDFImportSession, ProcessedPDF, Grade, Subject, Question
 from .views import staff_member_required
 import hashlib
 
@@ -67,15 +67,30 @@ def check_duplicate_pdf(request):
         existing_pdf = ProcessedPDF.objects.filter(file_hash=file_hash).first()
 
         if existing_pdf:
-            return JsonResponse({
-                'is_duplicate': True,
-                'processed_date': existing_pdf.processed_at.strftime('%Y-%m-%d %H:%M'),
-                'processed_by': existing_pdf.processed_by.username,
-                'questions_created': existing_pdf.questions_created,
-                'grade': existing_pdf.grade.name,
-                'subject': existing_pdf.subject.name,
-                'year': existing_pdf.year
-            })
+            # Verify that questions from this paper still exist in the library
+            surviving = existing_pdf.get_surviving_question_count()
+            originally_created = existing_pdf.questions_created
+
+            if existing_pdf.all_questions_deleted:
+                # All questions were deleted — allow re-slicing
+                # Remove the stale record so it doesn't block again
+                existing_pdf.delete()
+                return JsonResponse({
+                    'is_duplicate': False,
+                    'file_hash': file_hash,
+                    'note': 'Previously sliced but all questions were deleted. Re-slicing allowed.'
+                })
+            else:
+                return JsonResponse({
+                    'is_duplicate': True,
+                    'processed_date': existing_pdf.processed_at.strftime('%d-%m-%Y %H:%M'),
+                    'processed_by': existing_pdf.processed_by.username,
+                    'questions_created': originally_created,
+                    'questions_surviving': surviving,
+                    'grade': existing_pdf.grade.name,
+                    'subject': existing_pdf.subject.name,
+                    'year': existing_pdf.year
+                })
         else:
             return JsonResponse({
                 'is_duplicate': False,
@@ -105,6 +120,7 @@ def mark_pdf_processed(request):
         subject_id = data.get('subject_id')
         year = data.get('year')
         questions_created = data.get('questions_created', 0)
+        question_ids = data.get('question_ids', [])  # List of Question PKs
 
         if not all([file_name, file_hash, grade_id, subject_id]):
             return JsonResponse({'error': 'Missing required fields'}, status=400)
@@ -118,9 +134,21 @@ def mark_pdf_processed(request):
                 'grade_id': grade_id,
                 'subject_id': subject_id,
                 'year': year,
-                'questions_created': questions_created
+                'questions_created': questions_created,
+                'question_ids': question_ids,
             }
         )
+
+        # If it already existed (re-slice after deletion), update the record
+        if not created:
+            processed_pdf.file_name = file_name
+            processed_pdf.processed_by = request.user
+            processed_pdf.grade_id = grade_id
+            processed_pdf.subject_id = subject_id
+            processed_pdf.year = year
+            processed_pdf.questions_created = questions_created
+            processed_pdf.question_ids = question_ids
+            processed_pdf.save()
 
         return JsonResponse({
             'success': True,

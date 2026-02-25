@@ -1548,7 +1548,7 @@ async function saveProgress() {
   }
 
   const sessionName = prompt('Enter a name for this import session:',
-    `Import ${new Date().toLocaleDateString()}`);
+    `Import ${new Date().toLocaleDateString('en-GB')}`);
 
   if (!sessionName) {
     return;
