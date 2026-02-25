@@ -1,0 +1,1109 @@
+{% extends 'teacher/teacher_base.html' %}
+
+{% block title %}Answer Space Designer - Q{{ question.id }}{% endblock %}
+
+{% block content %}
+<style>
+* {
+  box-sizing: border-box;
+}
+
+.designer-wrapper {
+  padding: 20px;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+.designer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.designer-header h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #111827;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: #10b981;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  color: white;
+}
+
+.designer-container {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 20px;
+  height: calc(100vh - 200px);
+}
+
+/* Canvas Area */
+.canvas-area {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 20px;
+  overflow: auto;
+  position: relative;
+}
+
+.canvas-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.canvas-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #111827;
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.zoom-controls button {
+  padding: 6px 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.zoom-controls button:hover {
+  background: #e5e7eb;
+}
+
+#questionCanvas {
+  position: relative;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  background: #fafafa;
+  cursor: crosshair;
+  user-select: none;
+}
+
+#questionImage {
+  width: 100%;
+  display: block;
+  pointer-events: none;
+}
+
+.answer-placeholder {
+  position: absolute;
+  border: 3px dashed #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  cursor: move;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e40af;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.answer-placeholder:hover {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.2);
+  z-index: 100;
+}
+
+.answer-placeholder.selected {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border-style: solid;
+  z-index: 101;
+}
+
+.answer-placeholder .placeholder-label {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: white;
+  border: 2px solid #3b82f6;
+  border-radius: 50%;
+}
+
+.resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+.resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+.resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+.resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+
+/* Right Sidebar */
+.sidebar {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 20px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #111827;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.answer-type-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.type-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: white;
+}
+
+.type-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.type-card.active {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.type-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.type-icon {
+  font-size: 24px;
+}
+
+.type-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.type-desc {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.answer-spaces-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.space-item {
+  background: #f9fafb;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.space-item:hover {
+  border-color: #3b82f6;
+}
+
+.space-item.selected {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.space-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.space-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+}
+
+.space-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.space-info {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.space-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.space-actions button {
+  flex: 1;
+  padding: 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.btn-edit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.btn-edit:hover {
+  background: #bfdbfe;
+}
+
+.btn-delete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-delete:hover {
+  background: #fecaca;
+}
+
+.config-panel {
+  background: #f9fafb;
+  border-radius: 8px;
+  padding: 16px;
+  display: none;
+}
+
+.config-panel.active {
+  display: block;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.form-group textarea {
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.instructions {
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.instructions h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #1e40af;
+}
+
+.instructions ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: #1e40af;
+  line-height: 1.6;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-state-text {
+  font-size: 14px;
+}
+
+kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: #1e40af;
+  background: #e0e7ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+</style>
+
+<div class="designer-wrapper">
+  <!-- Header -->
+  <div class="designer-header">
+    <div>
+      <h1>📝 Answer Space Designer</h1>
+      <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">
+        Question #{{ question.id }} | {{ question.subject.name }} | {{ question.marks }} marks
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="window.history.back()">
+        ← Back
+      </button>
+      <button class="btn btn-success" onclick="saveConfiguration()">
+        💾 Save Configuration
+      </button>
+    </div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <div style="flex: 1;">
+        <h4>🎯 How to use:</h4>
+        <ul>
+          <li><strong>Click on a type</strong> on the right to select it</li>
+          <li><strong>Click and drag</strong> on the question image to create an answer placeholder</li>
+          <li><strong>Drag to move</strong> | <strong>Resize handles</strong> to adjust size</li>
+          <li><strong>Click a placeholder</strong> to edit its properties</li>
+          <li>Answer spaces will appear <strong>exactly here</strong> for students during tests</li>
+        </ul>
+      </div>
+      <div style="margin-left: 40px; background: white; padding: 12px 16px; border-radius: 8px; border: 2px solid #3b82f6;">
+        <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #1e40af;">⌨️ Keyboard Shortcuts</h4>
+        <div style="font-size: 12px; color: #1e40af; line-height: 1.8;">
+          <div><kbd>Delete</kbd> - Delete selected space</div>
+          <div><kbd>Esc</kbd> - Deselect all</div>
+          <div><kbd>↑↓←→</kbd> - Move selected (10px)</div>
+          <div><kbd>Ctrl</kbd>+<kbd>↑↓←→</kbd> - Fine move (1px)</div>
+          <div><kbd>Ctrl</kbd>+<kbd>D</kbd> - Duplicate selected</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Designer -->
+  <div class="designer-container">
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+      <div class="canvas-header">
+        <h3>Question Image</h3>
+        <div class="zoom-controls">
+          <button onclick="zoomOut()">−</button>
+          <span id="zoomLevel">100%</span>
+          <button onclick="zoomIn()">+</button>
+          <button onclick="resetZoom()">Reset</button>
+        </div>
+      </div>
+
+      <div id="questionCanvas">
+        <img id="questionImage" src="{{ question.question_text }}" alt="Question">
+        <!-- Placeholders will be added here dynamically -->
+      </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="sidebar">
+      <!-- Answer Type Selection -->
+      <div>
+        <h3>1️⃣ Choose Answer Type</h3>
+        <div class="answer-type-grid">
+          <div class="type-card" data-type="long_answer" onclick="selectType('long_answer')">
+            <div class="type-header">
+              <span class="type-icon">📝</span>
+            </div>
+            <div class="type-title">Long Answer</div>
+            <div class="type-desc">Multi-space for calculations, no lines</div>
+          </div>
+
+          <div class="type-card" data-type="long_answer_lined" onclick="selectType('long_answer_lined')">
+            <div class="type-header">
+              <span class="type-icon">📄</span>
+            </div>
+            <div class="type-title">Long Answer (Lined)</div>
+            <div class="type-desc">Multiple lines for definitions and descriptions</div>
+          </div>
+
+          <div class="type-card" data-type="short_answer" onclick="selectType('short_answer')">
+            <div class="type-header">
+              <span class="type-icon">✏️</span>
+            </div>
+            <div class="type-title">Short Answer</div>
+            <div class="type-desc">Single line input</div>
+          </div>
+
+          <div class="type-card" data-type="half_line" onclick="selectType('half_line')">
+            <div class="type-header">
+              <span class="type-icon">🔢</span>
+            </div>
+            <div class="type-title">Half-Line</div>
+            <div class="type-desc">Final answer box (for table cells)</div>
+          </div>
+
+          <div class="type-card" data-type="canvas" onclick="selectType('canvas')">
+            <div class="type-header">
+              <span class="type-icon">🎨</span>
+            </div>
+            <div class="type-title">Canvas</div>
+            <div class="type-desc">Drawing: lines, angles, shapes, colors</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Answer Spaces List -->
+      <div>
+        <h3>2️⃣ Answer Spaces (<span id="spacesCount">0</span>)</h3>
+        <div class="answer-spaces-list" id="spacesList">
+          <div class="empty-state">
+            <div class="empty-state-icon">👆</div>
+            <div class="empty-state-text">
+              Select a type above, then<br>click and drag on the image
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configuration Panel -->
+      <div class="config-panel" id="configPanel">
+        <h3>3️⃣ Configure Selected Space</h3>
+        <div class="form-group">
+          <label>Label</label>
+          <input type="text" id="configLabel" placeholder="e.g., Answer (a)">
+        </div>
+        <div class="form-group">
+          <label>Marks</label>
+          <input type="number" id="configMarks" value="1" min="0" step="0.5">
+        </div>
+        <div class="form-group">
+          <label>Model Answer / Answer Key</label>
+          <textarea id="configModelAnswer" placeholder="Enter the correct answer or grading criteria"></textarea>
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="updateSelectedSpace()">
+          Update Space
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let selectedType = null;
+let answerSpaces = [];
+let selectedSpaceId = null;
+let nextId = 1;
+let zoomScale = 1;
+let isDrawing = false;
+let drawStart = null;
+let currentPlaceholder = null;
+let isDragging = false;
+let isResizing = false;
+let dragOffset = { x: 0, y: 0 };
+let resizeDirection = null;
+
+const canvas = document.getElementById('questionCanvas');
+const image = document.getElementById('questionImage');
+
+// Initialize
+function init() {
+  setupCanvasInteraction();
+  loadExistingSpaces();
+}
+
+function setupCanvasInteraction() {
+  canvas.addEventListener('mousedown', handleMouseDown);
+  canvas.addEventListener('mousemove', handleMouseMove);
+  canvas.addEventListener('mouseup', handleMouseUp);
+}
+
+function handleMouseDown(e) {
+  if (!selectedType) {
+    alert('Please select an answer type first!');
+    return;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / zoomScale;
+  const y = (e.clientY - rect.top) / zoomScale;
+
+  // Check if clicking on existing placeholder
+  const clickedPlaceholder = document.elementFromPoint(e.clientX, e.clientY);
+  if (clickedPlaceholder && clickedPlaceholder.classList.contains('answer-placeholder')) {
+    selectSpace(clickedPlaceholder.dataset.id);
+    isDragging = true;
+    const placeholderRect = clickedPlaceholder.getBoundingClientRect();
+    dragOffset.x = e.clientX - placeholderRect.left;
+    dragOffset.y = e.clientY - placeholderRect.top;
+    return;
+  }
+
+  // Check if clicking resize handle
+  if (clickedPlaceholder && clickedPlaceholder.classList.contains('resize-handle')) {
+    isResizing = true;
+    resizeDirection = clickedPlaceholder.className.split(' ')[1];
+    const parent = clickedPlaceholder.parentElement;
+    selectSpace(parent.dataset.id);
+    return;
+  }
+
+  // Start drawing new placeholder
+  isDrawing = true;
+  drawStart = { x, y };
+
+  currentPlaceholder = document.createElement('div');
+  currentPlaceholder.className = 'answer-placeholder';
+  currentPlaceholder.style.left = x + 'px';
+  currentPlaceholder.style.top = y + 'px';
+  currentPlaceholder.style.width = '0px';
+  currentPlaceholder.style.height = '0px';
+  canvas.appendChild(currentPlaceholder);
+}
+
+function handleMouseMove(e) {
+  if (isDrawing) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoomScale;
+    const y = (e.clientY - rect.top) / zoomScale;
+
+    const width = Math.abs(x - drawStart.x);
+    const height = Math.abs(y - drawStart.y);
+    const left = Math.min(x, drawStart.x);
+    const top = Math.min(y, drawStart.y);
+
+    currentPlaceholder.style.left = left + 'px';
+    currentPlaceholder.style.top = top + 'px';
+    currentPlaceholder.style.width = width + 'px';
+    currentPlaceholder.style.height = height + 'px';
+  } else if (isDragging && selectedSpaceId) {
+    const space = answerSpaces.find(s => s.id === selectedSpaceId);
+    if (space) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left - dragOffset.x) / zoomScale;
+      const y = (e.clientY - rect.top - dragOffset.y) / zoomScale;
+
+      space.x = Math.max(0, x);
+      space.y = Math.max(0, y);
+      renderPlaceholder(space);
+    }
+  } else if (isResizing && selectedSpaceId) {
+    const space = answerSpaces.find(s => s.id === selectedSpaceId);
+    if (space) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) / zoomScale;
+      const mouseY = (e.clientY - rect.top) / zoomScale;
+
+      if (resizeDirection.includes('e')) {
+        space.width = Math.max(50, mouseX - space.x);
+      }
+      if (resizeDirection.includes('s')) {
+        space.height = Math.max(30, mouseY - space.y);
+      }
+      if (resizeDirection.includes('w')) {
+        const newWidth = space.x + space.width - mouseX;
+        if (newWidth > 50) {
+          space.width = newWidth;
+          space.x = mouseX;
+        }
+      }
+      if (resizeDirection.includes('n')) {
+        const newHeight = space.y + space.height - mouseY;
+        if (newHeight > 30) {
+          space.height = newHeight;
+          space.y = mouseY;
+        }
+      }
+
+      renderPlaceholder(space);
+    }
+  }
+}
+
+function handleMouseUp(e) {
+  if (isDrawing && currentPlaceholder) {
+    const width = parseInt(currentPlaceholder.style.width);
+    const height = parseInt(currentPlaceholder.style.height);
+
+    if (width > 30 && height > 20) {
+      // Valid placeholder created
+      const space = {
+        id: 'space_' + nextId++,
+        type: selectedType,
+        x: parseInt(currentPlaceholder.style.left),
+        y: parseInt(currentPlaceholder.style.top),
+        width: width,
+        height: height,
+        label: getTypeName(selectedType),
+        marks: 1,
+        modelAnswer: ''
+      };
+
+      answerSpaces.push(space);
+      renderPlaceholder(space);
+      updateSpacesList();
+      selectSpace(space.id);
+    } else {
+      currentPlaceholder.remove();
+    }
+  }
+
+  isDrawing = false;
+  isDragging = false;
+  isResizing = false;
+  currentPlaceholder = null;
+  drawStart = null;
+  resizeDirection = null;
+}
+
+function renderPlaceholder(space) {
+  // Remove existing
+  const existing = document.querySelector(`[data-id="${space.id}"]`);
+  if (existing) existing.remove();
+
+  // Create new
+  const placeholder = document.createElement('div');
+  placeholder.className = 'answer-placeholder';
+  placeholder.dataset.id = space.id;
+  placeholder.style.left = space.x + 'px';
+  placeholder.style.top = space.y + 'px';
+  placeholder.style.width = space.width + 'px';
+  placeholder.style.height = space.height + 'px';
+
+  if (selectedSpaceId === space.id) {
+    placeholder.classList.add('selected');
+  }
+
+  placeholder.innerHTML = `
+    <div class="placeholder-label">${space.label} (${space.marks}m)</div>
+    <div class="resize-handle nw"></div>
+    <div class="resize-handle ne"></div>
+    <div class="resize-handle sw"></div>
+    <div class="resize-handle se"></div>
+  `;
+
+  canvas.appendChild(placeholder);
+}
+
+function selectType(type) {
+  selectedType = type;
+
+  // Update UI
+  document.querySelectorAll('.type-card').forEach(card => {
+    card.classList.remove('active');
+  });
+  document.querySelector(`[data-type="${type}"]`).classList.add('active');
+}
+
+function selectSpace(id) {
+  selectedSpaceId = id;
+
+  // Update placeholders
+  document.querySelectorAll('.answer-placeholder').forEach(p => {
+    p.classList.remove('selected');
+  });
+  const placeholder = document.querySelector(`[data-id="${id}"]`);
+  if (placeholder) {
+    placeholder.classList.add('selected');
+  }
+
+  // Update list
+  document.querySelectorAll('.space-item').forEach(item => {
+    item.classList.remove('selected');
+  });
+  const listItem = document.querySelector(`#list-${id}`);
+  if (listItem) {
+    listItem.classList.add('selected');
+  }
+
+  // Show config panel
+  const space = answerSpaces.find(s => s.id === id);
+  if (space) {
+    document.getElementById('configPanel').classList.add('active');
+    document.getElementById('configLabel').value = space.label;
+    document.getElementById('configMarks').value = space.marks;
+    document.getElementById('configModelAnswer').value = space.modelAnswer;
+  }
+}
+
+function updateSelectedSpace() {
+  if (!selectedSpaceId) return;
+
+  const space = answerSpaces.find(s => s.id === selectedSpaceId);
+  if (space) {
+    const oldLabel = space.label;
+    space.label = document.getElementById('configLabel').value || 'Untitled';
+    space.marks = parseFloat(document.getElementById('configMarks').value) || 1;
+    space.modelAnswer = document.getElementById('configModelAnswer').value;
+
+    renderPlaceholder(space);
+    updateSpacesList();
+    showNotification(`Updated: ${oldLabel}`, 'success');
+  }
+}
+
+function deleteSpace(id) {
+  const space = answerSpaces.find(s => s.id === id);
+  const spaceLabel = space ? space.label : 'this space';
+
+  if (confirm(`Delete "${spaceLabel}"? This cannot be undone.`)) {
+    answerSpaces = answerSpaces.filter(s => s.id !== id);
+    const placeholder = document.querySelector(`[data-id="${id}"]`);
+    if (placeholder) placeholder.remove();
+    updateSpacesList();
+
+    if (selectedSpaceId === id) {
+      selectedSpaceId = null;
+      document.getElementById('configPanel').classList.remove('active');
+    }
+
+    // Show notification
+    showNotification(`Deleted: ${spaceLabel}`, 'success');
+  }
+}
+
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10000;
+    font-weight: 600;
+    animation: slideIn 0.3s ease;
+  `;
+  notification.textContent = message;
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 2000);
+}
+
+// Add animations
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideIn {
+    from { transform: translateX(400px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(400px); opacity: 0; }
+  }
+`;
+document.head.appendChild(style);
+
+function updateSpacesList() {
+  const list = document.getElementById('spacesList');
+  document.getElementById('spacesCount').textContent = answerSpaces.length;
+
+  if (answerSpaces.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">👆</div>
+        <div class="empty-state-text">
+          Select a type above, then<br>click and drag on the image
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = answerSpaces.map(space => `
+    <div class="space-item ${selectedSpaceId === space.id ? 'selected' : ''}"
+         id="list-${space.id}"
+         onclick="selectSpace('${space.id}')">
+      <div class="space-header">
+        <div class="space-title">${space.label}</div>
+        <div class="space-badge">${getTypeName(space.type)}</div>
+      </div>
+      <div class="space-info">
+        📍 Position: (${Math.round(space.x)}, ${Math.round(space.y)}) |
+        📏 Size: ${Math.round(space.width)}×${Math.round(space.height)} |
+        ⭐ ${space.marks} marks
+      </div>
+      <div class="space-actions">
+        <button class="btn-edit" onclick="event.stopPropagation(); selectSpace('${space.id}')">
+          ✏️ Edit
+        </button>
+        <button class="btn-delete" onclick="event.stopPropagation(); deleteSpace('${space.id}')">
+          🗑️ Delete
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getTypeName(type) {
+  const names = {
+    'long_answer': 'Long Answer',
+    'long_answer_lined': 'Long (Lined)',
+    'short_answer': 'Short Answer',
+    'half_line': 'Half-Line',
+    'canvas': 'Canvas'
+  };
+  return names[type] || type;
+}
+
+function zoomIn() {
+  zoomScale = Math.min(zoomScale + 0.1, 2);
+  updateZoom();
+}
+
+function zoomOut() {
+  zoomScale = Math.max(zoomScale - 0.1, 0.5);
+  updateZoom();
+}
+
+function resetZoom() {
+  zoomScale = 1;
+  updateZoom();
+}
+
+function updateZoom() {
+  canvas.style.transform = `scale(${zoomScale})`;
+  canvas.style.transformOrigin = 'top left';
+  document.getElementById('zoomLevel').textContent = Math.round(zoomScale * 100) + '%';
+}
+
+function saveConfiguration() {
+  if (answerSpaces.length === 0) {
+    alert('Please add at least one answer space!');
+    return;
+  }
+
+  // Get image dimensions for proper scaling
+  const imgWidth = image.naturalWidth;
+  const imgHeight = image.naturalHeight;
+
+  const config = {
+    spaces: answerSpaces.map(space => ({
+      ...space,
+      // Convert to percentages for responsive rendering
+      xPercent: (space.x / image.offsetWidth) * 100,
+      yPercent: (space.y / image.offsetHeight) * 100,
+      widthPercent: (space.width / image.offsetWidth) * 100,
+      heightPercent: (space.height / image.offsetHeight) * 100
+    })),
+    imageWidth: imgWidth,
+    imageHeight: imgHeight
+  };
+
+  // Save via AJAX
+  fetch('{% url "save_answer_spaces" question.id %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify(config)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      alert('✅ Configuration saved successfully!');
+      window.location.href = '{% url "unconfigured_questions_list" %}';
+    } else {
+      alert('❌ Error: ' + (data.error || 'Failed to save'));
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert('❌ Network error. Please try again.');
+  });
+}
+
+function loadExistingSpaces() {
+  // TODO: Load existing configuration if editing
+  // For now, start empty
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  // Delete key - delete selected space
+  if (e.key === 'Delete' && selectedSpaceId) {
+    deleteSpace(selectedSpaceId);
+  }
+
+  // Escape key - deselect
+  if (e.key === 'Escape') {
+    deselectAll();
+  }
+
+  // Ctrl+Z - undo (future enhancement)
+  if (e.ctrlKey && e.key === 'z') {
+    // TODO: Implement undo
+    console.log('Undo not yet implemented');
+  }
+
+  // Arrow keys - nudge selected space
+  if (selectedSpaceId && !e.shiftKey) {
+    const space = answerSpaces.find(s => s.id === selectedSpaceId);
+    if (space) {
+      let moved = false;
+      const step = e.ctrlKey ? 1 : 10; // Ctrl for fine adjustment
+
+      if (e.key === 'ArrowLeft') {
+        space.x = Math.max(0, space.x - step);
+        moved = true;
+      } else if (e.key === 'ArrowRight') {
+        space.x = Math.min(image.offsetWidth - space.width, space.x + step);
+        moved = true;
+      } else if (e.key === 'ArrowUp') {
+        space.y = Math.max(0, space.y - step);
+        moved = true;
+      } else if (e.key === 'ArrowDown') {
+        space.y = Math.min(image.offsetHeight - space.height, space.y + step);
+        moved = true;
+      }
+
+      if (moved) {
+        e.preventDefault();
+        renderPlaceholder(space);
+        updateSpacesList();
+      }
+    }
+  }
+
+  // Ctrl+D - duplicate selected space
+  if (e.ctrlKey && e.key === 'd' && selectedSpaceId) {
+    e.preventDefault();
+    duplicateSpace(selectedSpaceId);
+  }
+});
+
+function deselectAll() {
+  selectedSpaceId = null;
+  document.querySelectorAll('.answer-placeholder').forEach(p => {
+    p.classList.remove('selected');
+  });
+  document.querySelectorAll('.space-item').forEach(item => {
+    item.classList.remove('selected');
+  });
+  document.getElementById('configPanel').classList.remove('active');
+}
+
+function duplicateSpace(id) {
+  const space = answerSpaces.find(s => s.id === id);
+  if (space) {
+    const newSpace = {
+      ...space,
+      id: 'space_' + nextId++,
+      x: space.x + 20, // Offset slightly
+      y: space.y + 20,
+      label: space.label + ' (copy)'
+    };
+    answerSpaces.push(newSpace);
+    renderPlaceholder(newSpace);
+    updateSpacesList();
+    selectSpace(newSpace.id);
+    showNotification(`Duplicated: ${space.label}`, 'success');
+  }
+}
+
+// Initialize on page load
+init();
+</script>
+
+{% endblock %}

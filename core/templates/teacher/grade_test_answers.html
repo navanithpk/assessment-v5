@@ -444,7 +444,7 @@ function toggleExpand(id) {
       </div>
 
       <div class="question-text" id="q-text-{{ gd.question.id }}">
-        {{ gd.question.question_text|linebreaksbr|safe }}
+        {{ gd.question.question_text|safe }}
       </div>
       {% if gd.question.question_text|length > 500 %}
       <div class="long-content-notice">
@@ -456,7 +456,7 @@ function toggleExpand(id) {
       {% if gd.question.answer_text %}
       <div class="answer-section">
         <div class="section-label">Model Answer</div>
-        <div class="model-answer">{{ gd.question.answer_text|linebreaksbr|safe }}</div>
+        <div class="model-answer">{{ gd.question.answer_text|safe }}</div>
       </div>
       {% endif %}
 
@@ -471,7 +471,7 @@ function toggleExpand(id) {
         </div>
         {% if gd.student_answer %}
         <div class="student-answer" id="s-ans-{{ gd.student_answer.id }}">
-          {{ gd.student_answer.answer_text|linebreaksbr|safe|default:"<em>No answer provided</em>" }}
+          {{ gd.student_answer.answer_text|safe|default:"<em>No answer provided</em>" }}
         </div>
         {% if gd.student_answer.answer_text|length > 500 %}
         <div class="long-content-notice">

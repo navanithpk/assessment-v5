@@ -1,0 +1,405 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Question Bank DLCs{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="page-header">
+        <h1>📦 Question Bank DLCs</h1>
+        <p class="subtitle">Manage modular question databases for different subjects and exams</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-value">{{ total_active }}</div>
+            <div class="stat-label">Active Modules</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📝</div>
+            <div class="stat-value">{{ total_questions }}</div>
+            <div class="stat-label">Total Questions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">💾</div>
+            <div class="stat-value">{{ total_size|floatformat:1 }} MB</div>
+            <div class="stat-label">Storage Used</div>
+        </div>
+    </div>
+
+    <!-- Active DLCs -->
+    <div class="dlc-section">
+        <h2>✅ Active Question Banks</h2>
+
+        {% if active_banks %}
+        <div class="dlc-grid">
+            {% for bank in active_banks %}
+            <div class="dlc-card active">
+                <div class="dlc-header">
+                    <h3>{{ bank.name }}</h3>
+                    {% if bank.is_core %}
+                    <span class="badge core-badge">Core</span>
+                    {% endif %}
+                </div>
+
+                <div class="dlc-info">
+                    <p><strong>Code:</strong> {{ bank.subject.code|default:"N/A" }}</p>
+                    <p><strong>Subject:</strong> {{ bank.subject.name }}</p>
+                    <p><strong>Grade:</strong> {{ bank.grade.name }}</p>
+                    <p><strong>Questions:</strong> {{ bank.question_count }}</p>
+                    <p><strong>Version:</strong> {{ bank.version }}</p>
+                </div>
+
+                <div class="dlc-actions">
+                    {% if not bank.is_core %}
+                    <form method="post" action="{% url 'deactivate_dlc' bank.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-small btn-warning"
+                                onclick="return confirm('Deactivate this question bank?')">
+                            ⏸️ Deactivate
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <div class="dlc-meta">
+                    Activated: {{ bank.activated_at|date:"d-m-Y" }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No active question banks. Create one below to get started.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Pending DLCs -->
+    {% if pending_banks %}
+    <div class="dlc-section">
+        <h2>⏳ Pending Activation</h2>
+
+        <div class="dlc-grid">
+            {% for bank in pending_banks %}
+            <div class="dlc-card pending">
+                <div class="dlc-header">
+                    <h3>{{ bank.name }}</h3>
+                    <span class="badge pending-badge">Pending</span>
+                </div>
+
+                <div class="dlc-info">
+                    <p><strong>Code:</strong> {{ bank.subject.code|default:"N/A" }}</p>
+                    <p><strong>Subject:</strong> {{ bank.subject.name }}</p>
+                    <p><strong>Grade:</strong> {{ bank.grade.name }}</p>
+                    <p><strong>Version:</strong> {{ bank.version }}</p>
+                </div>
+
+                <div class="dlc-actions">
+                    <form method="post" action="{% url 'activate_dlc' bank.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-small btn-success">
+                            ✅ Activate
+                        </button>
+                    </form>
+                </div>
+
+                <div class="dlc-meta">
+                    Created: {{ bank.created_at|date:"d-m-Y" }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Inactive DLCs -->
+    {% if inactive_banks %}
+    <div class="dlc-section">
+        <h2>⏸️ Inactive Question Banks</h2>
+
+        <div class="dlc-grid">
+            {% for bank in inactive_banks %}
+            <div class="dlc-card inactive">
+                <div class="dlc-header">
+                    <h3>{{ bank.name }}</h3>
+                    <span class="badge inactive-badge">Inactive</span>
+                </div>
+
+                <div class="dlc-info">
+                    <p><strong>Code:</strong> {{ bank.subject.code|default:"N/A" }}</p>
+                    <p><strong>Subject:</strong> {{ bank.subject.name }}</p>
+                    <p><strong>Grade:</strong> {{ bank.grade.name }}</p>
+                    <p><strong>Questions:</strong> {{ bank.question_count }}</p>
+                </div>
+
+                <div class="dlc-actions">
+                    <form method="post" action="{% url 'activate_dlc' bank.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-small btn-success">
+                            ▶️ Reactivate
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Create New DLC -->
+    <div class="dlc-section create-section">
+        <h2>➕ Create New Question Bank</h2>
+
+        <form method="post" action="{% url 'create_dlc' %}" class="create-form">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="combination_id">Select Subject-Grade Combination</label>
+                <select name="combination_id" id="combination_id" required>
+                    <option value="">-- Choose a combination --</option>
+                    {% for combo in available_combinations %}
+                    <option value="{{ combo.id }}">
+                        {{ combo.code }} - {{ combo.name }} ({{ combo.get_level_display }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                ➕ Create Question Bank
+            </button>
+        </form>
+
+        <div class="help-box">
+            <p><strong>💡 Tip:</strong> Don't see your combination?
+               <a href="{% url 'subject_grade_combinations' %}">Manage combinations</a> to add new ones.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.stat-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #1a73e8;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 14px;
+}
+
+.dlc-section {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.dlc-section h2 {
+    margin-bottom: 25px;
+    color: #333;
+    font-size: 24px;
+}
+
+.dlc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.dlc-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+.dlc-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.dlc-card.active {
+    border-color: #4caf50;
+    background: #f1f8f4;
+}
+
+.dlc-card.pending {
+    border-color: #ff9800;
+    background: #fff8f0;
+}
+
+.dlc-card.inactive {
+    border-color: #9e9e9e;
+    background: #f5f5f5;
+}
+
+.dlc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.dlc-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.core-badge {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.pending-badge {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.inactive-badge {
+    background: #e0e0e0;
+    color: #666;
+}
+
+.dlc-info p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #555;
+}
+
+.dlc-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.dlc-meta {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #999;
+}
+
+.create-form {
+    max-width: 600px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.help-box {
+    background: #e3f2fd;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+.help-box a {
+    color: #1a73e8;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.help-box a:hover {
+    text-decoration: underline;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: #1a73e8;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1557b0;
+}
+
+.btn-success {
+    background: #4caf50;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #45a049;
+}
+
+.btn-warning {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #e68900;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+</style>
+{% endblock %}

@@ -3,239 +3,374 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - Lumen</title>
+<title>Login – Lumen</title>
 <style>
-* {
+*, *::before, *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
+html, body {
+  height: 100%;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #0f0f13;
+  overflow: hidden;
+}
+
+/* ── Layout ─────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  height: 100vh;
+}
+
+/* ── Left panel – branding ───────────────────────── */
+.brand-panel {
+  position: relative;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  overflow: hidden;
+  padding: 40px;
 }
 
-.login-container {
-  background: white;
+/* Subtle animated orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  animation: drift 12s ease-in-out infinite;
+}
+.orb-1 { width: 420px; height: 420px; background: #667eea; top: -80px; left: -80px; animation-delay: 0s; }
+.orb-2 { width: 340px; height: 340px; background: #764ba2; bottom: -60px; right: -60px; animation-delay: -4s; }
+.orb-3 { width: 260px; height: 260px; background: #06b6d4; top: 45%; left: 55%; animation-delay: -8s; }
+
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(24px, -18px) scale(1.04); }
+  66%       { transform: translate(-16px, 22px) scale(0.97); }
+}
+
+.brand-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  color: white;
+}
+
+.brand-logo {
+  font-size: 72px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.brand-tagline {
+  font-size: 16px;
+  color: rgba(255,255,255,0.55);
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  max-width: 320px;
+  line-height: 1.6;
+}
+
+.brand-pills {
+  display: flex;
+  gap: 10px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.brand-pill {
+  padding: 6px 14px;
+  border: 1px solid rgba(255,255,255,0.12);
   border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  padding: 50px 40px;
-  width: 100%;
-  max-width: 420px;
-  animation: slideUp 0.5s ease;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  backdrop-filter: blur(8px);
+  background: rgba(255,255,255,0.05);
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Right panel – form ──────────────────────────── */
+.form-panel {
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 44px;
+  overflow: hidden;
 }
 
-h2 {
-  text-align: center;
-  color: #333;
-  font-size: 32px;
-  margin-bottom: 10px;
-  font-weight: 600;
+.form-header {
+  margin-bottom: 32px;
 }
 
-.subtitle {
-  text-align: center;
-  color: #888;
-  font-size: 14px;
-  margin-bottom: 35px;
-}
-
-.error-message {
-  background: #fee;
-  color: #c33;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  font-size: 14px;
-  border-left: 4px solid #c33;
-}
-
-.input-group {
-  margin-bottom: 25px;
-}
-
-.input-group label {
-  display: block;
-  color: #555;
-  font-size: 14px;
-  font-weight: 500;
+.form-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #667eea;
   margin-bottom: 8px;
 }
 
-.input-group input {
+.form-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.form-subtitle {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 6px;
+}
+
+/* Error */
+.error-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #ef4444;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+/* Inputs */
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.field input {
   width: 100%;
-  padding: 14px 16px;
-  border: 2px solid #e0e0e0;
+  padding: 11px 14px;
+  border: 1.5px solid #e5e7eb;
   border-radius: 10px;
-  font-size: 15px;
-  transition: all 0.3s ease;
+  font-size: 14px;
+  color: #111827;
+  background: #f9fafb;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   outline: none;
 }
 
-.input-group input:focus {
+.field input:focus {
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
 }
 
-.button-group {
+/* Role buttons */
+.role-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.role-btn {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 30px;
-}
-
-button {
-  padding: 14px 20px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 12px 8px;
   border: none;
-  border-radius: 10px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  color: white;
   position: relative;
   overflow: hidden;
 }
 
-button::before {
+.role-btn::after {
   content: '';
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  transition: background 0.2s;
 }
 
-button:hover::before {
-  width: 300px;
-  height: 300px;
-}
-
-button[value="teacher"] {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-button[value="teacher"]:hover {
+.role-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+  filter: brightness(1.08);
 }
 
-button[value="student"] {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
+.role-btn:hover::after {
+  background: rgba(255,255,255,0.08);
 }
 
-button[value="student"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(245, 87, 108, 0.4);
+.role-btn:active {
+  transform: translateY(0);
 }
 
-button[value="admin"] {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
+.role-btn .btn-icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
-button[value="admin"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(79, 172, 254, 0.4);
+.role-btn-teacher { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 14px rgba(102,126,234,0.3); }
+.role-btn-student  { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); box-shadow: 0 4px 14px rgba(245,87,108,0.3); }
+.role-btn-admin    { background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%); box-shadow: 0 4px 14px rgba(14,165,233,0.3); }
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: #d1d5db;
+  font-size: 12px;
+  font-weight: 500;
 }
 
-.button-icon {
-  margin-right: 8px;
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
 }
 
-@media (max-width: 480px) {
-  .login-container {
-    padding: 40px 30px;
+/* Google button */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  cursor: pointer;
+}
+
+.google-btn:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* ── Responsive: collapse to single column on narrow ── */
+@media (max-width: 700px) {
+  html, body { overflow: auto; }
+  .layout {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
   }
-  
-  h2 {
-    font-size: 28px;
-  }
+  .brand-panel { min-height: 180px; padding: 32px 24px; }
+  .brand-logo { font-size: 48px; }
+  .brand-tagline, .brand-pills { display: none; }
+  .form-panel { padding: 32px 24px; }
 }
 </style>
 </head>
 <body>
 
-<div class="login-container">
-  <div style="text-align: center; margin-bottom: 32px;">
-    <div style="font-size: 40px; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px;">
-      ✨ Lumen
-    </div>
-    <h2 style="font-size: 24px; margin-bottom: 8px;">Welcome Back</h2>
-    <p class="subtitle">Please login to continue</p>
-  </div>
-  
-  {% if error %}
-  <div class="error-message">
-    {{ error }}
-  </div>
-  {% endif %}
-  
-  <form method="post">
-    {% csrf_token %}
-    
-    <div class="input-group">
-      <label for="username">Username</label>
-      <input type="text" id="username" name="username" placeholder="Enter your username" required>
-    </div>
-    
-    <div class="input-group">
-      <label for="password">Password</label>
-      <input type="password" id="password" name="password" placeholder="Enter your password" required>
-    </div>
-    
-    <div class="button-group">
-      <button type="submit" name="role" value="teacher">
-        <span class="button-icon">👨‍🏫</span>Login as Teacher
-      </button>
-      <button type="submit" name="role" value="student">
-        <span class="button-icon">👨‍🎓</span>Login as Student
-      </button>
-      <button type="submit" name="role" value="admin">
-        <span class="button-icon">👨‍💼</span>Login as Admin
-      </button>
-    </div>
-  </form>
+<div class="layout">
 
-  <div style="margin: 30px 0; text-align: center; color: #888; font-size: 14px; position: relative;">
-    <span style="background: white; padding: 0 15px; position: relative; z-index: 1;">OR</span>
-    <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #e0e0e0; z-index: 0;"></div>
+  <!-- ── Branding ── -->
+  <div class="brand-panel">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="brand-content">
+      <div class="brand-logo">Lumen</div>
+      <p class="brand-tagline">Intelligent assessment platform for modern schools</p>
+      <div class="brand-pills">
+        <span class="brand-pill">Smart Grading</span>
+        <span class="brand-pill">Analytics</span>
+        <span class="brand-pill">Multi-school</span>
+        <span class="brand-pill">Real-time</span>
+      </div>
+    </div>
   </div>
 
-  <a href="{% url 'google_login' %}" style="display: block; text-decoration: none;">
-    <button type="button" style="width: 100%; background: white; color: #444; border: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 500;">
-      <svg width="18" height="18" viewBox="0 0 48 48">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-        <path fill="none" d="M0 0h48v48H0z"></path>
+  <!-- ── Form ── -->
+  <div class="form-panel">
+
+    <div class="form-header">
+      <div class="form-eyebrow">Welcome back</div>
+      <div class="form-title">Sign in to Lumen</div>
+      <div class="form-subtitle">Enter your credentials and select your role</div>
+    </div>
+
+    {% if error %}
+    <div class="error-box">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" autocomplete="on">
+      {% csrf_token %}
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username"
+               placeholder="your.username" required autofocus>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password"
+               placeholder="••••••••" required>
+      </div>
+
+      <div class="role-buttons">
+        <button type="submit" name="role" value="teacher" class="role-btn role-btn-teacher">
+          <span class="btn-icon">👨‍🏫</span>Teacher
+        </button>
+        <button type="submit" name="role" value="student" class="role-btn role-btn-student">
+          <span class="btn-icon">👨‍🎓</span>Student
+        </button>
+        <button type="submit" name="role" value="admin" class="role-btn role-btn-admin">
+          <span class="btn-icon">👨‍💼</span>Admin
+        </button>
+      </div>
+    </form>
+
+    <div class="divider">or</div>
+
+    <a href="{% url 'google_login' %}" class="google-btn">
+      <svg width="17" height="17" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
       </svg>
       Continue with Google
-    </button>
-  </a>
+    </a>
+
+  </div>
 </div>
 
 </body>

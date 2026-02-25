@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if test %}Edit{% else %}Create{% endif %} Structured Test | Lumen</title>
+  {% load static %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+/* ============================================
+   STRUCTURED TEST EDITOR - THREE PANEL DESIGN
+   An Epic Educational Assessment Builder
+   ============================================ */
+
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #dbeafe;
+  --primary-pale: #eff6ff;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --purple: #8b5cf6;
+  --purple-light: #ede9fe;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+* { box-sizing: border-box; }
+
+/* ========== LAYOUT ========== */
+.editor-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--gray-100);
+  overflow: hidden;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+}
+
+.title-input {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  outline: none;
+}
+
+.title-input:hover, .title-input:focus {
+  background: var(--gray-50);
+}
+
+.top-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meta-select {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 14px;
+  background: white;
+}
+
+.meta-input {
+  width: 80px;
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #059669; }
+.btn-secondary { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-300); }
+.btn-secondary:hover { background: var(--gray-200); }
+.btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+.btn-outline:hover { background: var(--primary-light); }
+.btn-purple { background: var(--purple); color: white; }
+.btn-purple:hover { background: #7c3aed; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-icon { padding: 8px; min-width: 36px; justify-content: center; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #dc2626; }
+
+/* Three Panel Layout */
+.three-panel {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  overflow: hidden;
+}
+
+/* Left Panel - Structure Navigator */
+.panel-left {
+  background: white;
+  border-right: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--gray-50);
+}
+
+.panel-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* Structure Tree */
+.structure-tree {
+  font-size: 14px;
+}
+
+.tree-item {
+  position: relative;
+}
+
+.tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+}
+
+.tree-node:hover {
+  background: var(--gray-100);
+}
+
+.tree-node.active {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.tree-node.active .tree-number {
+  color: var(--primary);
+}
+
+.tree-toggle {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  font-size: 10px;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.tree-toggle.expanded {
+  transform: rotate(90deg);
+}
+
+.tree-number {
+  font-weight: 700;
+  color: var(--gray-600);
+  min-width: 40px;
+}
+
+.tree-preview {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--gray-500);
+  font-size: 13px;
+}
+
+.tree-marks {
+  font-size: 12px;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.tree-children {
+  margin-left: 28px;
+  border-left: 2px solid var(--gray-200);
+  padding-left: 8px;
+}
+
+.add-question-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px 12px;
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius);
+  background: white;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.add-question-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-pale);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.1);
+}
+
+/* Panel Footer Stats */
+.panel-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 8px;
+  background: white;
+  border-radius: var(--radius);
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--gray-500);
+  text-transform: uppercase;
+}
+
+/* Center Panel - Editor */
+.panel-center {
+  background: var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Question Card */
+.question-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.question-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.question-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.question-number-badge {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 50px;
+}
+
+.question-type-tag {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.question-type-tag.parent { background: var(--purple-light); color: var(--purple); }
+.question-type-tag.standalone { background: var(--primary-light); color: var(--primary); }
+.question-type-tag.part { background: var(--success-light); color: var(--success); }
+
+.question-marks-input {
+  width: 60px;
+  padding: 6px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.question-card-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.question-card-body {
+  padding: 20px;
+}
+
+/* Rich Editor Container */
+.editor-container {
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.editor-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-iframe {
+  width: 100%;
+  height: 200px;
+  border: none;
+  display: block;
+}
+
+.editor-iframe.tall {
+  height: 280px;
+}
+
+.editor-iframe.short {
+  height: 120px;
+}
+
+/* Answer Configuration */
+.answer-config {
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.answer-config-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.answer-type-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.answer-pill {
+  padding: 8px 14px;
+  border: 1px solid var(--gray-300);
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.answer-pill:hover {
+  border-color: var(--primary);
+}
+
+.answer-pill.selected {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.lines-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.lines-input {
+  width: 60px;
+  padding: 6px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+/* Children Area */
+.children-area {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--gray-300);
+}
+
+.children-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.children-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+.child-card {
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--primary);
+}
+
+.child-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.child-number {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 14px;
+}
+
+/* One-line answer (inline) */
+.oneline-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.oneline-editor {
+  flex: 1;
+}
+
+.oneline-answer {
+  width: 200px;
+}
+
+/* Right Panel - Library */
+.panel-right {
+  background: white;
+  border-left: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.panel-tab {
+  flex: 1;
+  padding: 14px 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.panel-tab:hover {
+  color: var(--gray-700);
+  background: var(--gray-100);
+}
+
+.panel-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: white;
+}
+
+.tab-content {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+/* Library Filters */
+.library-filters {
+  padding: 12px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+/* Library Questions List */
+.library-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.library-item {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.library-item:hover {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.library-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.library-item-id {
+  font-size: 12px;
+  color: var(--gray-400);
+}
+
+.library-item-type {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.library-item-marks {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.library-item-preview {
+  font-size: 13px;
+  color: var(--gray-600);
+  line-height: 1.4;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.library-item-preview img {
+  max-width: 100%;
+  max-height: 50px;
+}
+
+.library-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--gray-400);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.library-empty::before {
+  content: "📚";
+  display: block;
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* Save to Library Panel */
+.save-library-form {
+  padding: 16px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 6px;
+}
+
+.form-select, .form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  text-align: center;
+  background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+  border-radius: var(--radius-lg);
+  margin: 40px;
+  border: 2px dashed var(--gray-300);
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--purple-light) 100%);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.15);
+}
+
+.empty-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin-bottom: 28px;
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+/* Drag indicator */
+.drag-handle {
+  cursor: grab;
+  color: var(--gray-400);
+  padding: 4px;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+}
+
+.toast {
+  background: var(--gray-800);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.3s ease;
+  margin-top: 8px;
+}
+
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .three-panel {
+    grid-template-columns: 240px 1fr 280px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .three-panel {
+    grid-template-columns: 1fr;
+  }
+  .panel-left, .panel-right {
+    display: none;
+  }
+}
+
+/* Keyboard shortcuts hint */
+.shortcuts-hint {
+  font-size: 11px;
+  color: var(--gray-400);
+  padding: 8px 16px;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 11px;
+}
+</style>
+</head>
+<body>
+<div class="editor-wrapper">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <input type="text" class="title-input" id="testTitle"
+           placeholder="Untitled Test"
+           value="{{ test.title|default:'Untitled Structured Test' }}">
+
+    <div class="top-bar-meta">
+      <select class="meta-select" id="subjectSelect">
+        <option value="">Subject</option>
+        {% for subject in subjects %}
+        <option value="{{ subject.id }}" {% if test.subject_id == subject.id %}selected{% endif %}>
+          {{ subject.name }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <input type="number" class="meta-input" id="durationInput"
+             placeholder="Min" title="Duration in minutes"
+             value="{{ test.duration_minutes|default:'' }}">
+
+      <span style="color: var(--gray-500); font-size: 14px;">
+        Total: <strong id="totalMarksDisplay">0</strong> marks
+      </span>
+    </div>
+
+    <button class="btn btn-secondary" onclick="window.location.href='{% url 'tests_list' %}'">
+      ← Back
+    </button>
+    <button class="btn btn-success" onclick="saveTest()">
+      💾 Save Test
+    </button>
+  </div>
+
+  <!-- Three Panel Layout -->
+  <div class="three-panel">
+    <!-- Left Panel - Structure Navigator -->
+    <div class="panel-left">
+      <div class="panel-header">
+        <span class="panel-title">📋 Structure</span>
+        <button class="btn btn-sm btn-outline" onclick="collapseAll()">Collapse</button>
+      </div>
+
+      <div class="panel-content">
+        <div class="structure-tree" id="structureTree">
+          <!-- Rendered by JS -->
+        </div>
+
+        <button class="add-question-btn" onclick="addQuestion('standalone')">
+          ➕ Add Question
+        </button>
+        <button class="add-question-btn" onclick="addQuestion('parent')" style="margin-top: 4px;">
+          📑 Add Question with Parts
+        </button>
+      </div>
+
+      <div class="panel-footer">
+        <div class="stat-item">
+          <div class="stat-value" id="statQuestions">0</div>
+          <div class="stat-label">Questions</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statMarks">0</div>
+          <div class="stat-label">Marks</div>
+        </div>
+      </div>
+
+      <div class="shortcuts-hint">
+        <kbd>Ctrl+S</kbd> Save &nbsp; <kbd>Ctrl+Q</kbd> Add Question
+      </div>
+    </div>
+
+    <!-- Center Panel - Editor -->
+    <div class="panel-center">
+      <div class="editor-scroll" id="editorScroll">
+        <div id="questionsContainer">
+          <!-- Questions rendered here -->
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary);">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="12" y1="18" x2="12" y2="12"></line>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <div class="empty-text">Start Building Your Test</div>
+          <div class="empty-hint">Add questions from the structure panel on the left, or import existing questions from your library on the right</div>
+          <button class="btn btn-primary" onclick="addQuestion('standalone')" style="padding: 12px 24px; font-size: 15px;">
+            ➕ Add First Question
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel - Library -->
+    <div class="panel-right">
+      <div class="panel-tabs">
+        <div class="panel-tab active" onclick="switchTab('import')" data-tab="import">
+          📚 Import
+        </div>
+        <div class="panel-tab" onclick="switchTab('save')" data-tab="save">
+          💾 Save to Library
+        </div>
+      </div>
+
+      <!-- Import Tab -->
+      <div class="tab-content active" id="tab-import">
+        <div class="library-filters">
+          <div class="filter-row">
+            <select class="filter-select" id="libGrade" onchange="loadLibraryQuestions()">
+              <option value="">Grade</option>
+              {% for grade in grades %}
+              <option value="{{ grade.id }}">{{ grade.name }}</option>
+              {% endfor %}
+            </select>
+            <select class="filter-select" id="libSubject" onchange="loadLibraryQuestions()">
+              <option value="">Subject</option>
+              {% for subject in subjects %}
+              <option value="{{ subject.id }}">{{ subject.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <select class="filter-select" id="libTopic" onchange="loadLibraryQuestions()">
+            <option value="">All Topics</option>
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="loadLibraryQuestions()" style="width: 100%;">
+            🔍 Search Library
+          </button>
+        </div>
+
+        <div class="library-list" id="libraryList">
+          <div class="library-empty">
+            Select grade & subject to browse questions
+          </div>
+        </div>
+      </div>
+
+      <!-- Save to Library Tab -->
+      <div class="tab-content" id="tab-save">
+        <div class="save-library-form">
+          <p style="color: var(--gray-500); font-size: 13px; margin-bottom: 16px;">
+            Save the currently selected question to the question library for reuse.
+          </p>
+
+          <div class="form-group">
+            <label class="form-label">Grade *</label>
+            <select class="form-select" id="saveGrade">
+              <option value="">Select Grade</option>
+              {% for grade in grades %}
+              <option value="{{ grade.id }}">{{ grade.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Subject *</label>
+            <select class="form-select" id="saveSubject" onchange="loadSaveTopics()">
+              <option value="">Select Subject</option>
+              {% for subject in subjects %}
+              <option value="{{ subject.id }}">{{ subject.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Topic *</label>
+            <select class="form-select" id="saveTopic">
+              <option value="">Select Topic</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <select class="form-select" id="saveType">
+                <option value="structured">Structured</option>
+                <option value="theory">Theory</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Year</label>
+              <input type="number" class="form-input" id="saveYear" placeholder="2024">
+            </div>
+          </div>
+
+          <button class="btn btn-purple" onclick="saveToLibrary()" style="width: 100%;">
+            📚 Save to Question Library
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ============================================
+// STATE
+// ============================================
+let questions = [];
+let activeQuestionId = null;
+let questionCounter = 0;
+let editorFrames = {};
+
+// Load existing data
+{% if test and test.descriptive_structure %}
+try {
+  questions = JSON.parse('{{ test.descriptive_structure|escapejs }}');
+  questionCounter = findMaxId(questions);
+} catch (e) {
+  console.error('Error loading:', e);
+}
+{% endif %}
+
+function findMaxId(items) {
+  let max = 0;
+  items.forEach(item => {
+    const num = parseInt(item.id.replace('q-', ''));
+    if (num > max) max = num;
+    if (item.children) {
+      const childMax = findMaxId(item.children);
+      if (childMax > max) max = childMax;
+    }
+  });
+  return max;
+}
+
+// ============================================
+// QUESTION OPERATIONS
+// ============================================
+function generateId() {
+  return `q-${++questionCounter}`;
+}
+
+function addQuestion(type, parentId = null) {
+  const question = {
+    id: generateId(),
+    type: type,
+    level: parentId ? getLevel(parentId) + 1 : 0,
+    content: '',
+    marks: type === 'parent' ? 0 : 1,
+    answerType: 'multiline',
+    answerLines: 4,
+    children: []
+  };
+
+  if (parentId) {
+    const parent = findById(parentId);
+    if (parent) {
+      parent.children.push(question);
+    }
+  } else {
+    questions.push(question);
+  }
+
+  activeQuestionId = question.id;
+  render();
+
+  setTimeout(() => scrollToQuestion(question.id), 100);
+  return question;
+}
+
+function deleteQuestion(id) {
+  if (!confirm('Delete this question?')) return;
+
+  const parent = findParent(id);
+  if (parent) {
+    parent.children = parent.children.filter(q => q.id !== id);
+  } else {
+    questions = questions.filter(q => q.id !== id);
+  }
+
+  if (activeQuestionId === id) {
+    activeQuestionId = questions.length > 0 ? questions[0].id : null;
+  }
+
+  render();
+  showToast('Question deleted');
+}
+
+function findById(id, items = questions) {
+  for (const q of items) {
+    if (q.id === id) return q;
+    if (q.children) {
+      const found = findById(id, q.children);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function findParent(id, items = questions, parent = null) {
+  for (const q of items) {
+    if (q.id === id) return parent;
+    if (q.children) {
+      const found = findParent(id, q.children, q);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+}
+
+function getLevel(id) {
+  const q = findById(id);
+  return q ? q.level : -1;
+}
+
+function updateQuestion(id, field, value) {
+  const q = findById(id);
+  if (q) {
+    q[field] = value;
+    updateStats();
+    renderTree();
+  }
+}
+
+// ============================================
+// NUMBERING
+// ============================================
+function getNumber(question) {
+  if (question.level === 0) {
+    const idx = questions.indexOf(question);
+    return (idx + 1).toString();
+  } else if (question.level === 1) {
+    const parent = findParent(question.id);
+    const idx = parent.children.indexOf(question);
+    return `(${String.fromCharCode(97 + idx)})`;
+  } else {
+    const parent = findParent(question.id);
+    const idx = parent.children.indexOf(question);
+    const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+    return `(${roman[idx] || idx + 1})`;
+  }
+}
+
+function getFullNumber(question) {
+  const parts = [];
+  let current = question;
+  while (current) {
+    parts.unshift(getNumber(current));
+    current = findParent(current.id);
+  }
+  return parts.join('');
+}
+
+// ============================================
+// RENDERING
+// ============================================
+function render() {
+  renderTree();
+  renderQuestions();
+  updateStats();
+
+  const empty = document.getElementById('emptyState');
+  const container = document.getElementById('questionsContainer');
+
+  if (questions.length === 0) {
+    empty.style.display = 'flex';
+    container.style.display = 'none';
+  } else {
+    empty.style.display = 'none';
+    container.style.display = 'block';
+  }
+}
+
+function renderTree() {
+  const tree = document.getElementById('structureTree');
+
+  function renderNode(q, depth = 0) {
+    const num = getFullNumber(q);
+    const preview = getPreview(q.content);
+    const hasChildren = q.children && q.children.length > 0;
+    const isActive = activeQuestionId === q.id;
+
+    let html = `
+      <div class="tree-item">
+        <div class="tree-node ${isActive ? 'active' : ''}" onclick="selectQuestion('${q.id}')" style="padding-left: ${12 + depth * 16}px">
+          ${hasChildren ? `<span class="tree-toggle expanded">▶</span>` : '<span style="width: 20px;"></span>'}
+          <span class="tree-number">${num}</span>
+          <span class="tree-preview">${escapeHtml(preview)}</span>
+          <span class="tree-marks">${q.marks}m</span>
+        </div>
+        ${hasChildren ? `<div class="tree-children">${q.children.map(c => renderNode(c, depth + 1)).join('')}</div>` : ''}
+      </div>
+    `;
+    return html;
+  }
+
+  tree.innerHTML = questions.map(q => renderNode(q)).join('');
+}
+
+function renderQuestions() {
+  const container = document.getElementById('questionsContainer');
+  editorFrames = {};
+
+  let html = '';
+  questions.forEach((q, idx) => {
+    html += renderQuestionCard(q, idx);
+  });
+
+  container.innerHTML = html;
+
+  // Initialize editors after DOM update
+  setTimeout(initializeEditors, 100);
+}
+
+function renderQuestionCard(q, index) {
+  const num = getFullNumber(q);
+  const isActive = activeQuestionId === q.id;
+  const hasChildren = q.children && q.children.length > 0;
+  const isParent = q.type === 'parent' || hasChildren;
+  const typeTag = isParent ? 'parent' : (q.level > 0 ? 'part' : 'standalone');
+
+  let childrenHtml = '';
+  if (hasChildren) {
+    childrenHtml = `
+      <div class="children-area">
+        <div class="children-header">
+          <span class="children-title">Parts (${q.children.length})</span>
+          <button class="btn btn-sm btn-outline" onclick="addQuestion('child', '${q.id}')">➕ Add Part</button>
+        </div>
+        ${q.children.map((child, idx) => renderChildCard(child, q, idx)).join('')}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="question-card ${isActive ? 'active' : ''}" data-id="${q.id}" onclick="selectQuestion('${q.id}')">
+      <div class="question-card-header">
+        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
+        <span class="question-number-badge">${num}</span>
+        <span class="question-type-tag ${typeTag}">${typeTag}</span>
+
+        <label style="font-size: 13px; color: var(--gray-500);">Marks:</label>
+        <input type="number" class="question-marks-input" value="${q.marks}" min="0"
+               onchange="updateQuestion('${q.id}', 'marks', parseInt(this.value) || 0)"
+               onclick="event.stopPropagation()">
+
+        <div class="question-card-actions">
+          ${q.level < 2 ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); addQuestion('child', '${q.id}')">➕ Part</button>` : ''}
+          <button class="btn btn-sm btn-icon btn-secondary" onclick="event.stopPropagation(); deleteQuestion('${q.id}')" title="Delete">🗑️</button>
+        </div>
+      </div>
+
+      <div class="question-card-body" onclick="event.stopPropagation()">
+        <div class="editor-label">Question Content</div>
+        <div class="editor-container">
+          <iframe id="editor-${q.id}"
+                  class="editor-iframe ${isParent ? '' : 'tall'}"
+                  src="{% static 'editors/richtext_editor.html' %}"
+                  data-question-id="${q.id}"></iframe>
+        </div>
+
+        ${!isParent ? `
+          <div class="answer-config">
+            <div class="answer-config-header">📝 Answer Space</div>
+            <div class="answer-type-pills">
+              <span class="answer-pill ${q.answerType === 'oneline' ? 'selected' : ''}"
+                    onclick="setAnswerType('${q.id}', 'oneline')">One Line</span>
+              <span class="answer-pill ${q.answerType === 'multiline' ? 'selected' : ''}"
+                    onclick="setAnswerType('${q.id}', 'multiline')">Multiple Lines</span>
+              <span class="answer-pill ${q.answerType === 'calculation' ? 'selected' : ''}"
+                    onclick="setAnswerType('${q.id}', 'calculation')">Calculation</span>
+              <span class="answer-pill ${q.answerType === 'drawing' ? 'selected' : ''}"
+                    onclick="setAnswerType('${q.id}', 'drawing')">Drawing</span>
+            </div>
+            ${q.answerType === 'multiline' ? `
+              <div class="lines-config">
+                <span style="font-size: 13px; color: var(--gray-600);">Number of lines:</span>
+                <input type="number" class="lines-input" value="${q.answerLines || 4}" min="1" max="20"
+                       onchange="updateQuestion('${q.id}', 'answerLines', parseInt(this.value) || 4)">
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
+
+        ${childrenHtml}
+
+        ${isParent && !hasChildren ? `
+          <button class="btn btn-outline" onclick="addQuestion('child', '${q.id}')" style="margin-top: 12px;">
+            ➕ Add First Part
+          </button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderChildCard(child, parent, index) {
+  const num = getFullNumber(child);
+  const isOneLine = child.answerType === 'oneline';
+
+  return `
+    <div class="child-card" data-id="${child.id}">
+      <div class="child-header">
+        <span class="child-number">${num}</span>
+        <input type="number" class="question-marks-input" value="${child.marks}" min="0" style="width: 50px;"
+               onchange="updateQuestion('${child.id}', 'marks', parseInt(this.value) || 0)">
+        <span style="font-size: 12px; color: var(--gray-500);">marks</span>
+
+        <div style="margin-left: auto; display: flex; gap: 4px;">
+          <select class="filter-select" style="width: auto; padding: 4px 8px; font-size: 12px;"
+                  onchange="setAnswerType('${child.id}', this.value)">
+            <option value="oneline" ${child.answerType === 'oneline' ? 'selected' : ''}>One-line</option>
+            <option value="multiline" ${child.answerType === 'multiline' ? 'selected' : ''}>Multi-line</option>
+            <option value="calculation" ${child.answerType === 'calculation' ? 'selected' : ''}>Calculation</option>
+          </select>
+          ${child.level < 2 ? `<button class="btn btn-sm btn-icon btn-secondary" onclick="addQuestion('subchild', '${child.id}')" title="Add sub-part">➕</button>` : ''}
+          <button class="btn btn-sm btn-icon btn-secondary" onclick="deleteQuestion('${child.id}')" title="Delete">🗑️</button>
+        </div>
+      </div>
+
+      ${isOneLine ? `
+        <div class="oneline-row">
+          <div class="oneline-editor">
+            <div class="editor-container">
+              <iframe id="editor-${child.id}" class="editor-iframe short"
+                      src="{% static 'editors/richtext_editor.html' %}"
+                      data-question-id="${child.id}"></iframe>
+            </div>
+          </div>
+        </div>
+      ` : `
+        <div class="editor-container">
+          <iframe id="editor-${child.id}" class="editor-iframe"
+                  src="{% static 'editors/richtext_editor.html' %}"
+                  data-question-id="${child.id}"></iframe>
+        </div>
+        ${child.answerType === 'multiline' ? `
+          <div class="lines-config" style="margin-top: 8px;">
+            <span style="font-size: 12px; color: var(--gray-500);">Lines:</span>
+            <input type="number" class="lines-input" value="${child.answerLines || 4}" min="1" max="20" style="width: 50px;"
+                   onchange="updateQuestion('${child.id}', 'answerLines', parseInt(this.value) || 4)">
+          </div>
+        ` : ''}
+      `}
+
+      ${child.children && child.children.length > 0 ? `
+        <div style="margin-top: 12px; margin-left: 20px; padding-left: 12px; border-left: 3px solid var(--gray-200);">
+          ${child.children.map((sub, i) => renderChildCard(sub, child, i)).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function initializeEditors() {
+  document.querySelectorAll('.editor-iframe').forEach(iframe => {
+    const qId = iframe.dataset.questionId;
+    const q = findById(qId);
+
+    if (!q) return;
+
+    iframe.onload = () => {
+      try {
+        if (q.content && iframe.contentWindow.setEditorHTML) {
+          iframe.contentWindow.setEditorHTML(q.content);
+        }
+        editorFrames[qId] = iframe;
+      } catch (e) {
+        console.error('Editor init error:', e);
+      }
+    };
+  });
+}
+
+function syncEditorContent() {
+  Object.keys(editorFrames).forEach(qId => {
+    const iframe = editorFrames[qId];
+    const q = findById(qId);
+    if (q && iframe.contentWindow && iframe.contentWindow.getEditorHTML) {
+      try {
+        q.content = iframe.contentWindow.getEditorHTML();
+      } catch (e) {
+        console.error('Sync error:', e);
+      }
+    }
+  });
+}
+
+// ============================================
+// UI ACTIONS
+// ============================================
+function selectQuestion(id) {
+  syncEditorContent();
+  activeQuestionId = id;
+  renderTree();
+
+  document.querySelectorAll('.question-card').forEach(card => {
+    card.classList.toggle('active', card.dataset.id === id);
+  });
+}
+
+function scrollToQuestion(id) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function setAnswerType(id, type) {
+  updateQuestion(id, 'answerType', type);
+  syncEditorContent();
+  renderQuestions();
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.panel-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.toggle('active', content.id === `tab-${tabName}`);
+  });
+}
+
+function collapseAll() {
+  // Just re-render - could add collapse state later
+  render();
+}
+
+function updateStats() {
+  let totalQ = 0;
+  let totalMarks = 0;
+
+  function count(items) {
+    items.forEach(q => {
+      totalQ++;
+      totalMarks += q.marks || 0;
+      if (q.children) count(q.children);
+    });
+  }
+
+  count(questions);
+
+  document.getElementById('statQuestions').textContent = totalQ;
+  document.getElementById('statMarks').textContent = totalMarks;
+  document.getElementById('totalMarksDisplay').textContent = totalMarks;
+}
+
+// ============================================
+// LIBRARY FUNCTIONS
+// ============================================
+async function loadLibraryQuestions() {
+  const grade = document.getElementById('libGrade').value;
+  const subject = document.getElementById('libSubject').value;
+  const topic = document.getElementById('libTopic').value;
+
+  if (!grade || !subject) {
+    document.getElementById('libraryList').innerHTML = '<div class="library-empty">Select grade & subject</div>';
+    return;
+  }
+
+  // Load topics for filter
+  if (grade && subject) {
+    const topicResp = await fetch(`/ajax/topics/?grade_id=${grade}&subject_id=${subject}`);
+    const topicData = await topicResp.json();
+    const topicSelect = document.getElementById('libTopic');
+    topicSelect.innerHTML = '<option value="">All Topics</option>';
+    topicData.topics.forEach(t => {
+      topicSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+    });
+  }
+
+  // Load questions
+  let url = `/questions/api/search/?grade=${grade}&subject=${subject}`;
+  if (topic) url += `&topic=${topic}`;
+
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (data.questions && data.questions.length > 0) {
+      let html = '';
+      data.questions.forEach(q => {
+        const preview = q.question_text.includes('data:image') ?
+          '<em>📷 Image question</em>' :
+          stripHtml(q.question_text).substring(0, 100);
+
+        html += `
+          <div class="library-item" onclick="importFromLibrary(${q.id})">
+            <div class="library-item-header">
+              <span class="library-item-id">#${q.id}</span>
+              <span class="library-item-type">${q.question_type}</span>
+              <span class="library-item-marks">${q.marks} marks</span>
+            </div>
+            <div class="library-item-preview">${preview}</div>
+          </div>
+        `;
+      });
+      document.getElementById('libraryList').innerHTML = html;
+    } else {
+      document.getElementById('libraryList').innerHTML = '<div class="library-empty">No questions found</div>';
+    }
+  } catch (e) {
+    console.error('Library load error:', e);
+    document.getElementById('libraryList').innerHTML = '<div class="library-empty">Error loading questions</div>';
+  }
+}
+
+async function importFromLibrary(questionId) {
+  try {
+    const resp = await fetch(`/questions/api/${questionId}/`);
+    const data = await resp.json();
+
+    if (!data.success) {
+      showToast(data.error || 'Failed to load question', 'error');
+      return;
+    }
+
+    const q = data.question;
+    const newQ = addQuestion('standalone');
+    newQ.content = q.question_text;
+    newQ.marks = q.marks;
+
+    render();
+    showToast('Question imported!', 'success');
+  } catch (e) {
+    console.error('Import error:', e);
+    showToast('Failed to import', 'error');
+  }
+}
+
+async function loadSaveTopics() {
+  const grade = document.getElementById('saveGrade').value;
+  const subject = document.getElementById('saveSubject').value;
+
+  if (!grade || !subject) return;
+
+  const resp = await fetch(`/ajax/topics/?grade_id=${grade}&subject_id=${subject}`);
+  const data = await resp.json();
+
+  const select = document.getElementById('saveTopic');
+  select.innerHTML = '<option value="">Select Topic</option>';
+  data.topics.forEach(t => {
+    select.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+  });
+}
+
+async function saveToLibrary() {
+  if (!activeQuestionId) {
+    showToast('Select a question first', 'error');
+    return;
+  }
+
+  syncEditorContent();
+
+  const q = findById(activeQuestionId);
+  const grade = document.getElementById('saveGrade').value;
+  const subject = document.getElementById('saveSubject').value;
+  const topic = document.getElementById('saveTopic').value;
+  const type = document.getElementById('saveType').value;
+  const year = document.getElementById('saveYear').value;
+
+  if (!grade || !subject || !topic) {
+    showToast('Fill in Grade, Subject, and Topic', 'error');
+    return;
+  }
+
+  try {
+    const resp = await fetch('/questions/api/create/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+        grade_id: grade,
+        subject_id: subject,
+        topic_id: topic,
+        question_type: type,
+        question_text: q.content,
+        marks: q.marks,
+        year: year || null
+      })
+    });
+
+    const data = await resp.json();
+    if (data.success) {
+      showToast('Saved to library!', 'success');
+    } else {
+      showToast(data.error || 'Save failed', 'error');
+    }
+  } catch (e) {
+    console.error('Save error:', e);
+    showToast('Failed to save', 'error');
+  }
+}
+
+// ============================================
+// SAVE TEST
+// ============================================
+async function saveTest() {
+  syncEditorContent();
+
+  const title = document.getElementById('testTitle').value.trim();
+  const subject = document.getElementById('subjectSelect').value;
+  const duration = document.getElementById('durationInput').value;
+
+  if (!title) {
+    showToast('Enter a test title', 'error');
+    return;
+  }
+
+  if (questions.length === 0) {
+    showToast('Add at least one question', 'error');
+    return;
+  }
+
+  const data = {
+    title,
+    subject_id: subject || null,
+    duration_minutes: duration ? parseInt(duration) : null,
+    questions,
+    test_type: 'descriptive'
+  };
+
+  try {
+    const url = {% if test %}'{% url "edit_descriptive_test" test.id %}'{% else %}'{% url "create_descriptive_test" %}'{% endif %};
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify(data)
+    });
+
+    const result = await resp.json();
+
+    if (result.success) {
+      showToast('Test saved!', 'success');
+      setTimeout(() => {
+        window.location.href = '{% url "tests_list" %}';
+      }, 1000);
+    } else {
+      showToast(result.error || 'Save failed', 'error');
+    }
+  } catch (e) {
+    console.error('Save error:', e);
+    showToast('Failed to save test', 'error');
+  }
+}
+
+// ============================================
+// UTILITIES
+// ============================================
+function getCookie(name) {
+  let v = null;
+  if (document.cookie) {
+    document.cookie.split(';').forEach(c => {
+      const [k, val] = c.trim().split('=');
+      if (k === name) v = decodeURIComponent(val);
+    });
+  }
+  return v;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function stripHtml(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || div.innerText || '';
+}
+
+function getPreview(content) {
+  if (!content) return 'Empty';
+  const text = stripHtml(content);
+  return text.length > 30 ? text.substring(0, 30) + '...' : text;
+}
+
+function showToast(message, type = 'default') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ============================================
+// KEYBOARD SHORTCUTS
+// ============================================
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    saveTest();
+  }
+  if (e.ctrlKey && e.key === 'q') {
+    e.preventDefault();
+    addQuestion('standalone');
+  }
+});
+
+// ============================================
+// INIT
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  render();
+});
+</script>
+</body>
+</html>

@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Google+Sans:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
 
-    <!-- jsPDF Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
@@ -32,10 +31,7 @@
             padding: 24px;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1400px; margin: 0 auto; }
 
         header {
             display: flex;
@@ -44,17 +40,8 @@
             margin-bottom: 32px;
         }
 
-        h1 {
-            font-family: 'Google Sans', sans-serif;
-            font-size: 32px;
-            font-weight: 500;
-        }
-
-        .subtitle {
-            color: #5f6368;
-            font-size: 14px;
-            margin-top: 4px;
-        }
+        h1 { font-family: 'Google Sans', sans-serif; font-size: 32px; font-weight: 500; }
+        .subtitle { color: #5f6368; font-size: 14px; margin-top: 4px; }
 
         /* Filter Panel */
         .filter-panel {
@@ -79,11 +66,8 @@
         }
 
         .filter-group label {
-            font-size: 12px;
-            font-weight: 500;
-            color: #5f6368;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 12px; font-weight: 500; color: #5f6368;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
 
         input, select {
@@ -100,59 +84,76 @@
             box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
         }
 
-        .search-box {
-            position: relative;
-        }
-
-        .search-box input {
-            padding-left: 40px;
-        }
-
+        .search-box { position: relative; }
+        .search-box input { padding-left: 40px; }
         .search-box .material-symbols-rounded {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #5f6368;
-            pointer-events: none;
+            position: absolute; left: 12px; top: 50%;
+            transform: translateY(-50%); color: #5f6368; pointer-events: none;
         }
 
-        .filter-actions {
-            display: flex;
-            gap: 12px;
-        }
+        .filter-actions { display: flex; gap: 12px; }
 
         .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
+            padding: 10px 20px; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;
         }
 
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1557b0; box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3); }
+        .btn-secondary { background: white; color: var(--on-surface); border: 1px solid var(--outline); }
+        .btn-secondary:hover { background: var(--surface); }
 
-        .btn-primary:hover {
-            background: #1557b0;
-            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
-        }
-
-        .btn-secondary {
+        /* Test Selector */
+        .test-selector {
             background: white;
-            color: var(--on-surface);
-            border: 1px solid var(--outline);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: none;
         }
 
-        .btn-secondary:hover {
-            background: var(--surface);
+        .test-selector.visible { display: block; }
+
+        .test-selector h3 {
+            font-family: 'Google Sans', sans-serif;
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .test-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .test-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--outline);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .test-checkbox-item:hover { background: #f0f4ff; border-color: var(--primary); }
+        .test-checkbox-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+
+        .test-checkbox-item .test-label {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .test-checkbox-item .test-meta {
+            font-size: 11px;
+            color: #5f6368;
         }
 
         /* Students Table */
@@ -163,181 +164,89 @@
             overflow: hidden;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background: var(--surface);
-        }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: var(--surface); }
 
         th {
-            padding: 16px;
-            text-align: left;
-            font-size: 12px;
-            font-weight: 600;
-            color: #5f6368;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            padding: 16px; text-align: left; font-size: 12px; font-weight: 600;
+            color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px;
         }
 
-        td {
-            padding: 16px;
-            border-top: 1px solid var(--outline);
-        }
-
-        tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        .student-name {
-            font-weight: 500;
-            color: var(--on-surface);
-        }
-
-        .student-id {
-            font-size: 12px;
-            color: #5f6368;
-            margin-top: 2px;
-        }
+        td { padding: 16px; border-top: 1px solid var(--outline); }
+        tbody tr:hover { background: #f8f9fa; }
+        .student-name { font-weight: 500; color: var(--on-surface); }
+        .student-id { font-size: 12px; color: #5f6368; margin-top: 2px; }
 
         .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
+            display: inline-block; padding: 4px 12px;
+            border-radius: 12px; font-size: 12px; font-weight: 500;
         }
 
-        .badge-success {
-            background: #ceead6;
-            color: #137333;
-        }
-
-        .badge-warning {
-            background: #feefc3;
-            color: #b06000;
-        }
-
-        .badge-error {
-            background: #fad2cf;
-            color: #c5221f;
-        }
+        .badge-success { background: #ceead6; color: #137333; }
+        .badge-warning { background: #feefc3; color: #b06000; }
+        .badge-error { background: #fad2cf; color: #c5221f; }
 
         .btn-icon {
-            padding: 8px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            border-radius: 50%;
-            transition: all 0.2s;
-            color: var(--primary);
+            padding: 8px; border: none; background: none;
+            cursor: pointer; border-radius: 50%; transition: all 0.2s; color: var(--primary);
         }
 
-        .btn-icon:hover {
-            background: rgba(26, 115, 232, 0.1);
-        }
+        .btn-icon:hover { background: rgba(26, 115, 232, 0.1); }
 
         /* Pagination */
         .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            margin-top: 24px;
+            display: flex; justify-content: center; align-items: center;
+            gap: 8px; margin-top: 24px;
         }
 
         .pagination-btn {
-            padding: 8px 16px;
-            border: 1px solid var(--outline);
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
+            padding: 8px 16px; border: 1px solid var(--outline);
+            background: white; border-radius: 8px; cursor: pointer; font-size: 14px;
         }
 
-        .pagination-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .page-info { font-size: 14px; color: #5f6368; }
 
-        .pagination-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
+        .empty-state { text-align: center; padding: 64px 24px; color: #5f6368; }
+        .empty-state .material-symbols-rounded { font-size: 64px; color: #dadce0; margin-bottom: 16px; }
 
-        .page-info {
-            font-size: 14px;
-            color: #5f6368;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 64px 24px;
-            color: #5f6368;
-        }
-
-        .empty-state .material-symbols-rounded {
-            font-size: 64px;
-            color: #dadce0;
-            margin-bottom: 16px;
-        }
-
-        /* Loading Overlay */
         .loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            align-items: center; justify-content: center;
         }
 
-        .loading-overlay.active {
-            display: flex;
-        }
+        .loading-overlay.active { display: flex; }
 
-        .loading-content {
-            background: white;
-            padding: 32px;
-            border-radius: 12px;
-            text-align: center;
-        }
+        .loading-content { background: white; padding: 32px; border-radius: 12px; text-align: center; }
 
         .spinner {
-            border: 3px solid var(--outline);
-            border-top: 3px solid var(--primary);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
+            border: 3px solid var(--outline); border-top: 3px solid var(--primary);
+            border-radius: 50%; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; margin: 0 auto 16px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <div>
-                <h1>📋 Report Cards</h1>
+                <h1>Report Cards</h1>
                 <p class="subtitle">Generate comprehensive student performance reports</p>
             </div>
-            <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">
-                <span class="material-symbols-rounded">arrow_back</span>
-                Back to Dashboard
-            </a>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn btn-primary" onclick="toggleTestSelector()">
+                    <span class="material-symbols-rounded">checklist</span>
+                    Select Tests
+                </button>
+                <a href="{% url 'teacher_dashboard' %}" class="btn btn-secondary">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                    Back to Dashboard
+                </a>
+            </div>
         </header>
 
         <!-- Filter Panel -->
@@ -347,13 +256,7 @@
                     <div class="filter-group search-box">
                         <label for="search">Search Student</label>
                         <span class="material-symbols-rounded">search</span>
-                        <input
-                            type="text"
-                            id="search"
-                            name="search"
-                            placeholder="Name, Roll No, Admission ID..."
-                            value="{{ filters.search }}"
-                        >
+                        <input type="text" id="search" name="search" placeholder="Name, Roll No, Admission ID..." value="{{ filters.search }}">
                     </div>
 
                     <div class="filter-group">
@@ -361,9 +264,7 @@
                         <select id="grade" name="grade">
                             <option value="">All Grades</option>
                             {% for grade in grades %}
-                            <option value="{{ grade.id }}" {% if filters.grade == grade.id|stringformat:"s" %}selected{% endif %}>
-                                {{ grade.name }}
-                            </option>
+                            <option value="{{ grade.id }}" {% if filters.grade == grade.id|stringformat:"s" %}selected{% endif %}>{{ grade.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -373,9 +274,7 @@
                         <select id="cohort" name="cohort">
                             <option value="">All Students</option>
                             {% for cohort in cohorts %}
-                            <option value="{{ cohort.id }}" {% if filters.cohort == cohort.id|stringformat:"s" %}selected{% endif %}>
-                                {{ cohort.name }}
-                            </option>
+                            <option value="{{ cohort.id }}" {% if filters.cohort == cohort.id|stringformat:"s" %}selected{% endif %}>{{ cohort.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -385,9 +284,7 @@
                         <select id="subject" name="subject">
                             <option value="">All Subjects</option>
                             {% for subject in subjects %}
-                            <option value="{{ subject.id }}" {% if filters.subject == subject.id|stringformat:"s" %}selected{% endif %}>
-                                {{ subject.name }}
-                            </option>
+                            <option value="{{ subject.id }}" {% if filters.subject == subject.id|stringformat:"s" %}selected{% endif %}>{{ subject.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -405,15 +302,42 @@
 
                 <div class="filter-actions">
                     <button type="submit" class="btn btn-primary">
-                        <span class="material-symbols-rounded">filter_list</span>
-                        Apply Filters
+                        <span class="material-symbols-rounded">filter_list</span> Apply Filters
                     </button>
                     <button type="button" class="btn btn-secondary" onclick="clearFilters()">
-                        <span class="material-symbols-rounded">clear</span>
-                        Clear All
+                        <span class="material-symbols-rounded">clear</span> Clear All
                     </button>
                 </div>
             </form>
+        </div>
+
+        <!-- Test Selector Panel -->
+        <div class="test-selector" id="testSelector">
+            <h3>
+                <span class="material-symbols-rounded" style="vertical-align: middle; margin-right: 8px;">checklist</span>
+                Select Tests to Include
+            </h3>
+            <p style="font-size: 13px; color: #5f6368; margin-bottom: 16px;">
+                Check the tests you want included in the report card. Leave all unchecked to include all tests.
+            </p>
+            <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+                <button class="btn btn-secondary" onclick="selectAllTests(true)" style="padding: 6px 12px; font-size: 12px;">Select All</button>
+                <button class="btn btn-secondary" onclick="selectAllTests(false)" style="padding: 6px 12px; font-size: 12px;">Deselect All</button>
+                <span id="testCount" style="font-size: 12px; color: #5f6368; align-self: center; margin-left: 8px;">0 selected</span>
+            </div>
+            <div class="test-checkboxes" id="testCheckboxes">
+                {% for t in available_tests %}
+                <label class="test-checkbox-item">
+                    <input type="checkbox" value="{{ t.id }}" class="test-check" onchange="updateTestCount()">
+                    <div>
+                        <div class="test-label">{{ t.title }}</div>
+                        <div class="test-meta">{{ t.subject }} &bull; {{ t.date }}</div>
+                    </div>
+                </label>
+                {% empty %}
+                <p style="color: #5f6368; font-size: 13px; grid-column: 1 / -1;">No tests available. Adjust your date/subject filters first.</p>
+                {% endfor %}
+            </div>
         </div>
 
         <!-- Students Table -->
@@ -423,7 +347,7 @@
                 <thead>
                     <tr>
                         <th>Student</th>
-                        <th>Grade & Section</th>
+                        <th>Grade &amp; Section</th>
                         <th>Tests Taken</th>
                         <th>Average Score</th>
                         <th>Status</th>
@@ -444,16 +368,12 @@
                         <td>{{ data.test_count }}</td>
                         <td><strong>{{ data.avg_score }}%</strong></td>
                         <td>
-                            <span class="badge {% if data.avg_score >= 80 %}badge-success{% elif data.avg_score >= 60 %}badge-warning{% else %}badge-error{% endif %}">
+                            <span class="badge {% if data.status == 'Excellent' %}badge-success{% elif data.status == 'Good' %}badge-success{% elif data.status == 'Moderate' %}badge-warning{% elif data.status == 'No Data' %}{% else %}badge-error{% endif %}">
                                 {{ data.status }}
                             </span>
                         </td>
                         <td>
-                            <button
-                                class="btn-icon"
-                                onclick="generateReportCard({{ data.student.id }}, '{{ data.student.full_name }}')"
-                                title="Generate PDF Report Card"
-                            >
+                            <button class="btn-icon" onclick="generateReportCard({{ data.student.id }}, '{{ data.student.full_name }}')" title="Generate PDF Report Card">
                                 <span class="material-symbols-rounded">picture_as_pdf</span>
                             </button>
                         </td>
@@ -462,18 +382,13 @@
                 </tbody>
             </table>
 
-            <!-- Pagination -->
             {% if page_obj.has_other_pages %}
             <div class="pagination">
                 {% if page_obj.has_previous %}
                 <button class="pagination-btn" onclick="goToPage(1)">First</button>
                 <button class="pagination-btn" onclick="goToPage({{ page_obj.previous_page_number }})">Previous</button>
                 {% endif %}
-
-                <span class="page-info">
-                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                </span>
-
+                <span class="page-info">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
                 {% if page_obj.has_next %}
                 <button class="pagination-btn" onclick="goToPage({{ page_obj.next_page_number }})">Next</button>
                 <button class="pagination-btn" onclick="goToPage({{ page_obj.paginator.num_pages }})">Last</button>
@@ -499,7 +414,7 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <div class="spinner"></div>
-            <p>Generating report card...</p>
+            <p id="loadingText">Generating report card...</p>
         </div>
     </div>
 
@@ -515,199 +430,813 @@
         }
 
         function goToPage(pageNum) {
-            const url = new URL(window.location);
+            var url = new URL(window.location);
             url.searchParams.set('page', pageNum);
             window.location = url;
         }
 
+        function toggleTestSelector() {
+            var el = document.getElementById('testSelector');
+            el.classList.toggle('visible');
+        }
+
+        function selectAllTests(checked) {
+            var boxes = document.querySelectorAll('.test-check');
+            for (var i = 0; i < boxes.length; i++) {
+                boxes[i].checked = checked;
+            }
+            updateTestCount();
+        }
+
+        function updateTestCount() {
+            var checked = document.querySelectorAll('.test-check:checked').length;
+            document.getElementById('testCount').textContent = checked + ' selected';
+        }
+
+        function getSelectedTestIds() {
+            var checked = document.querySelectorAll('.test-check:checked');
+            var ids = [];
+            for (var i = 0; i < checked.length; i++) {
+                ids.push(checked[i].value);
+            }
+            return ids.join(',');
+        }
+
+        // ══════════════════════════════════════════════════════
+        // COMPREHENSIVE PDF REPORT CARD GENERATION
+        // ══════════════════════════════════════════════════════
         async function generateReportCard(studentId, studentName) {
-            // Show loading overlay
             document.getElementById('loadingOverlay').classList.add('active');
+            document.getElementById('loadingText').textContent = 'Fetching data for ' + studentName + '...';
 
             try {
-                // Get current filters
-                const subject = document.getElementById('subject').value;
-                const dateFrom = document.getElementById('date_from').value;
-                const dateTo = document.getElementById('date_to').value;
+                var subject = document.getElementById('subject').value;
+                var dateFrom = document.getElementById('date_from').value;
+                var dateTo = document.getElementById('date_to').value;
+                var selectedTests = getSelectedTestIds();
 
-                // Build API URL with filters
-                const url = new URL(`/teacher/report-cards/${studentId}/data/`, window.location.origin);
+                var url = new URL('/teacher/report-cards/' + studentId + '/data/', window.location.origin);
                 if (subject) url.searchParams.set('subject', subject);
                 if (dateFrom) url.searchParams.set('date_from', dateFrom);
                 if (dateTo) url.searchParams.set('date_to', dateTo);
+                if (selectedTests) url.searchParams.set('tests', selectedTests);
 
-                // Fetch report card data
-                const response = await fetch(url);
-                const data = await response.json();
+                var response = await fetch(url);
+                var data = await response.json();
 
-                // Generate PDF
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
+                document.getElementById('loadingText').textContent = 'Generating PDF...';
 
-                // Page dimensions
-                const pageWidth = doc.internal.pageSize.getWidth();
-                const pageHeight = doc.internal.pageSize.getHeight();
-                const margin = 20;
-                let yPos = margin;
+                var jsPDF = window.jspdf.jsPDF;
+                var doc = new jsPDF();
+                var pageWidth = doc.internal.pageSize.getWidth();
+                var pageHeight = doc.internal.pageSize.getHeight();
+                var margin = 18;
+                var contentWidth = pageWidth - 2 * margin;
+                var y = margin;
 
-                // Header - School Info
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text(data.school.name, margin, yPos);
-                yPos += 5;
-                if (data.school.address) {
-                    doc.text(data.school.address, margin, yPos);
-                    yPos += 5;
+                // Color palette
+                var blue = [26, 115, 232];
+                var green = [30, 142, 62];
+                var orange = [249, 171, 0];
+                var red = [217, 48, 37];
+                var gray = [95, 99, 104];
+
+                function checkPageBreak(needed) {
+                    if (y + needed > pageHeight - 25) {
+                        doc.addPage();
+                        y = margin;
+                        return true;
+                    }
+                    return false;
                 }
-                yPos += 10;
+
+                function drawSectionHeader(title) {
+                    checkPageBreak(20);
+                    doc.setFontSize(14);
+                    doc.setTextColor(blue[0], blue[1], blue[2]);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(title, margin, y);
+                    y += 2;
+                    doc.setDrawColor(blue[0], blue[1], blue[2]);
+                    doc.setLineWidth(0.5);
+                    doc.line(margin, y, margin + contentWidth, y);
+                    y += 8;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(32, 33, 36);
+                }
+
+                function drawBar(x, barY, width, maxWidth, color) {
+                    // Background
+                    doc.setFillColor(240, 240, 240);
+                    doc.roundedRect(x, barY, maxWidth, 5, 2, 2, 'F');
+                    // Filled portion
+                    if (width > 0) {
+                        doc.setFillColor(color[0], color[1], color[2]);
+                        doc.roundedRect(x, barY, Math.max(2, width), 5, 2, 2, 'F');
+                    }
+                }
+
+                function getBandColor(band) {
+                    if (band === 'Mastered') return green;
+                    if (band === 'Good') return blue;
+                    if (band === 'Developing') return orange;
+                    return red;
+                }
+
+                function getLevelColor(level) {
+                    if (level === 'Excellent') return green;
+                    if (level === 'Good') return blue;
+                    if (level === 'Moderate') return orange;
+                    if (level === 'Needs Improvement') return [230, 126, 34];
+                    return red; // At Risk
+                }
+
+                // ── PAGE 1: COVER & SUMMARY ──
+                // School header
+                doc.setFontSize(10);
+                doc.setTextColor(gray[0], gray[1], gray[2]);
+                doc.text(data.school.name, margin, y);
+                y += 5;
+                if (data.school.address) {
+                    doc.text(data.school.address, margin, y);
+                    y += 5;
+                }
+                y += 8;
 
                 // Title
-                doc.setFontSize(22);
-                doc.setTextColor(26, 115, 232); // Primary blue
-                doc.text('ACADEMIC REPORT CARD', pageWidth / 2, yPos, { align: 'center' });
-                yPos += 15;
+                doc.setFontSize(24);
+                doc.setTextColor(blue[0], blue[1], blue[2]);
+                doc.setFont('helvetica', 'bold');
+                doc.text('ACADEMIC REPORT CARD', pageWidth / 2, y, { align: 'center' });
+                y += 12;
 
-                // Student Info Box
+                // Student info box
                 doc.setDrawColor(218, 220, 224);
                 doc.setFillColor(248, 249, 250);
-                doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 35, 3, 3, 'FD');
-
+                doc.roundedRect(margin, y, contentWidth, 30, 3, 3, 'FD');
                 doc.setFontSize(11);
                 doc.setTextColor(60, 60, 60);
-                yPos += 8;
+                doc.setFont('helvetica', 'normal');
+                y += 8;
+                doc.text('Name: ' + data.student.name, margin + 5, y);
+                doc.text('Grade: ' + data.student.grade + ' | Section: ' + data.student.section, pageWidth / 2, y);
+                y += 7;
+                doc.text('Roll Number: ' + data.student.roll_number, margin + 5, y);
+                doc.text('Admission ID: ' + (data.student.admission_id || 'N/A'), pageWidth / 2, y);
+                y += 7;
+                doc.setFontSize(9);
+                doc.setTextColor(gray[0], gray[1], gray[2]);
+                doc.text('Period: ' + data.period.from + ' to ' + data.period.to, margin + 5, y);
+                y += 12;
 
-                doc.text(`Name: ${data.student.name}`, margin + 5, yPos);
-                yPos += 7;
-                doc.text(`Grade: ${data.student.grade}  |  Section: ${data.student.section}`, margin + 5, yPos);
-                yPos += 7;
-                doc.text(`Roll Number: ${data.student.roll_number}`, margin + 5, yPos);
-                yPos += 7;
-                doc.text(`Admission ID: ${data.student.admission_id}`, margin + 5, yPos);
-                yPos += 15;
-
-                // Period
-                doc.setFontSize(10);
-                doc.setTextColor(100, 100, 100);
-                doc.text(`Period: ${data.period.from} to ${data.period.to}`, margin, yPos);
-                yPos += 15;
-
-                // Overall Performance Summary
-                doc.setFontSize(14);
-                doc.setTextColor(32, 33, 36);
-                doc.text('Overall Performance', margin, yPos);
-                yPos += 10;
-
-                const summaryData = [
-                    ['Total Tests', data.overall.total_tests],
-                    ['Average Score', `${data.overall.average_percentage}%`],
-                    ['Grade', data.overall.grade]
+                // Overall summary boxes
+                var boxW = contentWidth / 4 - 4;
+                var boxes = [
+                    { label: 'Overall Average', value: data.overall.average_percentage + '%', grade: data.overall.grade },
+                    { label: 'Tests Taken', value: String(data.overall.total_tests), grade: '' },
+                    { label: 'Topics Mastered', value: data.overall.mastered_topics + ' / ' + data.overall.total_topics, grade: '' },
+                    { label: 'Competence', value: data.competence ? data.competence.level : 'N/A', grade: data.competence ? data.competence.score + '%' : '' },
                 ];
 
-                doc.autoTable({
-                    startY: yPos,
-                    head: [['Metric', 'Value']],
-                    body: summaryData,
-                    theme: 'grid',
-                    headStyles: { fillColor: [26, 115, 232], fontSize: 10 },
-                    margin: { left: margin, right: margin },
-                    tableWidth: pageWidth - 2 * margin
-                });
+                for (var b = 0; b < boxes.length; b++) {
+                    var bx = margin + b * (boxW + 5);
+                    var boxBorderColor = (b === 3 && data.competence) ? getLevelColor(data.competence.level) : [218, 220, 224];
+                    doc.setFillColor(248, 249, 250);
+                    doc.setDrawColor(boxBorderColor[0], boxBorderColor[1], boxBorderColor[2]);
+                    doc.roundedRect(bx, y, boxW, 22, 3, 3, 'FD');
+                    doc.setFontSize(8);
+                    doc.setTextColor(gray[0], gray[1], gray[2]);
+                    doc.text(boxes[b].label, bx + boxW / 2, y + 7, { align: 'center' });
+                    doc.setFontSize(12);
+                    var valColor = (b === 3 && data.competence) ? getLevelColor(data.competence.level) : blue;
+                    doc.setTextColor(valColor[0], valColor[1], valColor[2]);
+                    doc.setFont('helvetica', 'bold');
+                    var valText = boxes[b].value + (boxes[b].grade ? ' (' + boxes[b].grade + ')' : '');
+                    doc.text(valText, bx + boxW / 2, y + 17, { align: 'center' });
+                    doc.setFont('helvetica', 'normal');
+                }
+                doc.setDrawColor(218, 220, 224);
+                y += 30;
 
-                yPos = doc.lastAutoTable.finalY + 15;
-
-                // Subject-wise Performance
+                // ── SUBJECT-WISE PERFORMANCE ──
                 if (data.subjects.length > 0) {
-                    // Check if we need a new page
-                    if (yPos > pageHeight - 80) {
-                        doc.addPage();
-                        yPos = margin;
-                    }
+                    drawSectionHeader('Subject-wise Performance');
 
-                    doc.setFontSize(14);
-                    doc.setTextColor(32, 33, 36);
-                    doc.text('Subject-wise Performance', margin, yPos);
-                    yPos += 10;
-
-                    const subjectData = data.subjects.map(s => [
-                        s.name,
-                        s.test_count,
-                        `${s.average}%`,
-                        s.grade
-                    ]);
-
-                    doc.autoTable({
-                        startY: yPos,
-                        head: [['Subject', 'Tests', 'Average', 'Grade']],
-                        body: subjectData,
-                        theme: 'grid',
-                        headStyles: { fillColor: [26, 115, 232], fontSize: 10 },
-                        margin: { left: margin, right: margin },
-                        tableWidth: pageWidth - 2 * margin
+                    var subjectRows = data.subjects.map(function(s) {
+                        return [s.name, s.test_count, s.average + '%', s.grade];
                     });
 
-                    yPos = doc.lastAutoTable.finalY + 15;
-                }
-
-                // Individual Test Performance
-                if (data.tests.length > 0) {
-                    // New page for test details
-                    doc.addPage();
-                    yPos = margin;
-
-                    doc.setFontSize(14);
-                    doc.setTextColor(32, 33, 36);
-                    doc.text('Individual Test Performance', margin, yPos);
-                    yPos += 10;
-
-                    const testData = data.tests.map(t => [
-                        t.title,
-                        t.subject,
-                        t.date,
-                        `${t.earned_marks}/${t.total_marks}`,
-                        `${t.percentage}%`,
-                        t.grade
-                    ]);
-
                     doc.autoTable({
-                        startY: yPos,
-                        head: [['Test', 'Subject', 'Date', 'Marks', 'Score', 'Grade']],
-                        body: testData,
+                        startY: y,
+                        head: [['Subject', 'Tests', 'Average', 'Grade']],
+                        body: subjectRows,
                         theme: 'grid',
-                        headStyles: { fillColor: [26, 115, 232], fontSize: 9 },
-                        bodyStyles: { fontSize: 8 },
+                        headStyles: { fillColor: blue, fontSize: 10, font: 'helvetica' },
+                        bodyStyles: { fontSize: 10 },
                         margin: { left: margin, right: margin },
-                        tableWidth: pageWidth - 2 * margin,
-                        columnStyles: {
-                            0: { cellWidth: 'auto' },
-                            1: { cellWidth: 30 },
-                            2: { cellWidth: 25 },
-                            3: { cellWidth: 25 },
-                            4: { cellWidth: 20 },
-                            5: { cellWidth: 20 }
+                        tableWidth: contentWidth,
+                        didParseCell: function(hookData) {
+                            if (hookData.section === 'body' && hookData.column.index === 3) {
+                                var grade = hookData.cell.raw;
+                                if (grade === 'A+' || grade === 'A') hookData.cell.styles.textColor = green;
+                                else if (grade === 'D' || grade === 'F') hookData.cell.styles.textColor = red;
+                            }
                         }
                     });
+                    y = doc.lastAutoTable.finalY + 12;
+
+                    // Subject comparison bar chart
+                    if (data.subjects.length > 1) {
+                        checkPageBreak(10 + data.subjects.length * 12);
+                        doc.setFontSize(11);
+                        doc.setTextColor(32, 33, 36);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('Subject Comparison', margin, y);
+                        doc.setFont('helvetica', 'normal');
+                        y += 8;
+
+                        var barMaxW = contentWidth - 60;
+                        for (var si = 0; si < data.subjects.length; si++) {
+                            var subj = data.subjects[si];
+                            checkPageBreak(12);
+                            doc.setFontSize(9);
+                            doc.setTextColor(60, 60, 60);
+                            doc.text(subj.name, margin, y + 4);
+                            var barW = (subj.average / 100) * barMaxW;
+                            var barColor = subj.average >= 80 ? green : subj.average >= 60 ? blue : subj.average >= 40 ? orange : red;
+                            drawBar(margin + 55, y, barW, barMaxW, barColor);
+                            doc.setFontSize(8);
+                            doc.setTextColor(gray[0], gray[1], gray[2]);
+                            doc.text(subj.average + '%', margin + 55 + barMaxW + 3, y + 4);
+                            y += 10;
+                        }
+                        y += 8;
+                    }
                 }
 
-                // Footer on last page
-                const totalPages = doc.internal.getNumberOfPages();
-                for (let i = 1; i <= totalPages; i++) {
-                    doc.setPage(i);
+                // ── STUDENT COMPETENCE ASSESSMENT ──
+                if (data.competence && data.competence.level !== 'Not Assessed') {
+                    drawSectionHeader('Student Competence Assessment');
+
+                    var comp = data.competence;
+                    var levelColor = getLevelColor(comp.level);
+
+                    // Competence summary box
+                    checkPageBreak(55);
+                    doc.setFillColor(248, 249, 250);
+                    doc.setDrawColor(levelColor[0], levelColor[1], levelColor[2]);
+                    doc.setLineWidth(1);
+                    doc.roundedRect(margin, y, contentWidth, 24, 3, 3, 'FD');
+                    doc.setLineWidth(0.2);
+
+                    // Level badge
+                    doc.setFontSize(16);
+                    doc.setTextColor(levelColor[0], levelColor[1], levelColor[2]);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(comp.level, margin + 8, y + 10);
+
+                    // Composite score
+                    doc.setFontSize(11);
+                    doc.setTextColor(60, 60, 60);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Composite Score: ' + comp.score + '%', margin + 8, y + 19);
+
+                    // Competence gauge on right
+                    var gaugeX = margin + contentWidth - 70;
+                    var gaugeW = 60;
+                    doc.setFillColor(230, 230, 230);
+                    doc.roundedRect(gaugeX, y + 6, gaugeW, 8, 3, 3, 'F');
+                    var filledW = (comp.score / 100) * gaugeW;
+                    doc.setFillColor(levelColor[0], levelColor[1], levelColor[2]);
+                    doc.roundedRect(gaugeX, y + 6, Math.max(3, filledW), 8, 3, 3, 'F');
+                    doc.setFontSize(8);
+                    doc.setTextColor(levelColor[0], levelColor[1], levelColor[2]);
+                    doc.text(comp.score + '%', gaugeX + gaugeW / 2, y + 20, { align: 'center' });
+
+                    y += 30;
+
+                    // Signal breakdown
+                    var signals = comp.signals;
+                    if (signals) {
+                        doc.setFontSize(10);
+                        doc.setTextColor(60, 60, 60);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('Competence Breakdown', margin, y);
+                        doc.setFont('helvetica', 'normal');
+                        y += 7;
+
+                        var signalItems = [
+                            { label: 'Average Score', value: signals.average + '%', weight: signals.average_weight + '%', barPct: signals.average },
+                            { label: 'Consistency', value: signals.consistency + '% (SD: ' + signals.std_dev + ')', weight: signals.consistency_weight + '%', barPct: signals.consistency },
+                            { label: 'Trend', value: signals.trend + ' (' + (signals.trend_diff >= 0 ? '+' : '') + signals.trend_diff + '%)', weight: signals.trend_weight + '%', barPct: Math.max(0, Math.min(100, 50 + signals.trend_diff)) },
+                            { label: 'Topic Mastery Breadth', value: signals.mastery_breadth + '%', weight: signals.mastery_breadth_weight + '%', barPct: signals.mastery_breadth },
+                        ];
+
+                        var sigBarMax = contentWidth - 110;
+                        for (var si2 = 0; si2 < signalItems.length; si2++) {
+                            checkPageBreak(10);
+                            var sig = signalItems[si2];
+                            doc.setFontSize(8);
+                            doc.setTextColor(80, 80, 80);
+                            doc.text(sig.label + ' (' + sig.weight + ')', margin, y + 3);
+                            var sigBarW = (Math.max(0, Math.min(100, sig.barPct)) / 100) * sigBarMax;
+                            var sigColor = sig.barPct >= 75 ? green : sig.barPct >= 50 ? blue : sig.barPct >= 30 ? orange : red;
+                            drawBar(margin + 70, y, sigBarW, sigBarMax, sigColor);
+                            doc.setFontSize(7);
+                            doc.setTextColor(gray[0], gray[1], gray[2]);
+                            doc.text(sig.value, margin + 70 + sigBarMax + 3, y + 3);
+                            y += 9;
+                        }
+                        y += 6;
+                    }
+                }
+
+                // ── COMPETENCE OVER TIME GRAPH ──
+                if (data.competence_timeline && data.competence_timeline.length >= 2) {
+                    drawSectionHeader('Competence Over Time');
+                    checkPageBreak(60);
+
+                    var timeline = data.competence_timeline;
+                    var ctChartW = contentWidth;
+                    var ctChartH = 40;
+                    var ctStepX = ctChartW / (timeline.length - 1);
+
+                    // Draw competence band backgrounds
+                    var bands = [
+                        { min: 80, max: 100, color: [230, 244, 234], label: 'Excellent' },
+                        { min: 65, max: 80, color: [227, 242, 253], label: 'Good' },
+                        { min: 50, max: 65, color: [255, 243, 224], label: 'Moderate' },
+                        { min: 35, max: 50, color: [255, 234, 210], label: 'Needs Imp.' },
+                        { min: 0, max: 35, color: [252, 228, 226], label: 'At Risk' },
+                    ];
+
+                    for (var bi = 0; bi < bands.length; bi++) {
+                        var band = bands[bi];
+                        var bandTop = y + ctChartH - (band.max / 100) * ctChartH;
+                        var bandHeight = ((band.max - band.min) / 100) * ctChartH;
+                        doc.setFillColor(band.color[0], band.color[1], band.color[2]);
+                        doc.rect(margin, bandTop, ctChartW, bandHeight, 'F');
+                        // Band label on right
+                        doc.setFontSize(5);
+                        doc.setTextColor(150, 150, 150);
+                        doc.text(band.label, margin + ctChartW + 1, bandTop + bandHeight / 2 + 1.5);
+                    }
+
+                    // Grid lines
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.1);
+                    for (var gl2 = 0; gl2 <= 4; gl2++) {
+                        var gridY2 = y + ctChartH - (gl2 * ctChartH / 4);
+                        doc.line(margin, gridY2, margin + ctChartW, gridY2);
+                        doc.setFontSize(6);
+                        doc.setTextColor(gray[0], gray[1], gray[2]);
+                        doc.text((gl2 * 25) + '%', margin - 2, gridY2 + 1, { align: 'right' });
+                    }
+
+                    // Plot running average line (competence)
+                    doc.setDrawColor(26, 115, 232);
+                    doc.setLineWidth(1.2);
+                    for (var ci = 0; ci < timeline.length - 1; ci++) {
+                        var cx1 = margin + ci * ctStepX;
+                        var cy1 = y + ctChartH - (timeline[ci].score / 100) * ctChartH;
+                        var cx2 = margin + (ci + 1) * ctStepX;
+                        var cy2 = y + ctChartH - (timeline[ci + 1].score / 100) * ctChartH;
+                        doc.line(cx1, cy1, cx2, cy2);
+
+                        // Points
+                        doc.setFillColor(26, 115, 232);
+                        doc.circle(cx1, cy1, 1.5, 'F');
+                        if (ci === timeline.length - 2) {
+                            doc.circle(cx2, cy2, 1.5, 'F');
+                        }
+                    }
+
+                    // Plot individual test scores as lighter dots
+                    doc.setDrawColor(180, 200, 230);
+                    doc.setLineWidth(0.5);
+                    for (var di = 0; di < timeline.length; di++) {
+                        var dx = margin + di * ctStepX;
+                        var dy = y + ctChartH - (timeline[di].test_score / 100) * ctChartH;
+                        var dotColor = getLevelColor(timeline[di].level);
+                        doc.setFillColor(dotColor[0], dotColor[1], dotColor[2]);
+                        doc.circle(dx, dy, 1, 'F');
+                    }
+
+                    // Date labels
+                    doc.setFontSize(6);
+                    doc.setTextColor(gray[0], gray[1], gray[2]);
+                    for (var tli = 0; tli < timeline.length; tli++) {
+                        var tlx = margin + tli * ctStepX;
+                        // Show date below chart, skip some if too many points
+                        if (timeline.length <= 10 || tli % Math.ceil(timeline.length / 10) === 0 || tli === timeline.length - 1) {
+                            doc.text(timeline[tli].date.substring(0, 5), tlx, y + ctChartH + 5, { align: 'center' });
+                        }
+                    }
+
+                    // Legend
+                    y += ctChartH + 10;
+                    doc.setFontSize(7);
+                    doc.setTextColor(gray[0], gray[1], gray[2]);
+                    doc.setFillColor(26, 115, 232);
+                    doc.circle(margin + 2, y, 1.5, 'F');
+                    doc.text('Running Average (Competence)', margin + 6, y + 1);
+                    doc.setFillColor(180, 200, 230);
+                    doc.circle(margin + 72, y, 1, 'F');
+                    doc.text('Individual Test Score', margin + 75, y + 1);
+                    y += 10;
+                }
+
+                // ── PER-SUBJECT COMPETENCE OVER TIME ──
+                if (data.subject_competence_timeline && Object.keys(data.subject_competence_timeline).length > 0) {
+                    drawSectionHeader('Subject-wise Competence Trends');
+
+                    var subjectColors = [
+                        [26, 115, 232],   // blue
+                        [30, 142, 62],    // green
+                        [217, 48, 37],    // red
+                        [249, 171, 0],    // orange
+                        [142, 36, 170],   // purple
+                        [0, 150, 136],    // teal
+                    ];
+                    var sColorIdx = 0;
+
+                    for (var sctSubj in data.subject_competence_timeline) {
+                        var sctData = data.subject_competence_timeline[sctSubj];
+                        if (sctData.length < 2) continue;
+
+                        checkPageBreak(55);
+                        doc.setFontSize(10);
+                        doc.setTextColor(60, 60, 60);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(sctSubj, margin, y);
+                        doc.setFont('helvetica', 'normal');
+                        y += 6;
+
+                        var sctChartW = contentWidth;
+                        var sctChartH = 32;
+                        var sctStepX = sctChartW / (sctData.length - 1);
+                        var lineColor = subjectColors[sColorIdx % subjectColors.length];
+                        sColorIdx++;
+
+                        // Band backgrounds
+                        for (var sbi = 0; sbi < bands.length; sbi++) {
+                            var sBand = bands[sbi];
+                            var sBandTop = y + sctChartH - (sBand.max / 100) * sctChartH;
+                            var sBandH = ((sBand.max - sBand.min) / 100) * sctChartH;
+                            doc.setFillColor(sBand.color[0], sBand.color[1], sBand.color[2]);
+                            doc.rect(margin, sBandTop, sctChartW, sBandH, 'F');
+                        }
+
+                        // Grid
+                        doc.setDrawColor(200, 200, 200);
+                        doc.setLineWidth(0.1);
+                        for (var sgl = 0; sgl <= 4; sgl++) {
+                            var sgridY = y + sctChartH - (sgl * sctChartH / 4);
+                            doc.line(margin, sgridY, margin + sctChartW, sgridY);
+                        }
+
+                        // Plot competence line
+                        doc.setDrawColor(lineColor[0], lineColor[1], lineColor[2]);
+                        doc.setLineWidth(1);
+                        for (var sci = 0; sci < sctData.length - 1; sci++) {
+                            var sx1 = margin + sci * sctStepX;
+                            var sy1 = y + sctChartH - (sctData[sci].score / 100) * sctChartH;
+                            var sx2 = margin + (sci + 1) * sctStepX;
+                            var sy2 = y + sctChartH - (sctData[sci + 1].score / 100) * sctChartH;
+                            doc.line(sx1, sy1, sx2, sy2);
+                            doc.setFillColor(lineColor[0], lineColor[1], lineColor[2]);
+                            doc.circle(sx1, sy1, 1.2, 'F');
+                            if (sci === sctData.length - 2) {
+                                doc.circle(sx2, sy2, 1.2, 'F');
+                            }
+                        }
+
+                        // Score labels
+                        doc.setFontSize(6);
+                        doc.setTextColor(lineColor[0], lineColor[1], lineColor[2]);
+                        for (var sli = 0; sli < sctData.length; sli++) {
+                            var slx = margin + sli * sctStepX;
+                            var slyVal = y + sctChartH - (sctData[sli].score / 100) * sctChartH;
+                            if (sctData.length <= 8 || sli % Math.ceil(sctData.length / 8) === 0 || sli === sctData.length - 1) {
+                                doc.text(sctData[sli].score + '%', slx, slyVal - 2, { align: 'center' });
+                            }
+                        }
+
+                        // Date labels
+                        doc.setTextColor(gray[0], gray[1], gray[2]);
+                        for (var sdli = 0; sdli < sctData.length; sdli++) {
+                            var sdlx = margin + sdli * sctStepX;
+                            if (sctData.length <= 8 || sdli % Math.ceil(sctData.length / 8) === 0 || sdli === sctData.length - 1) {
+                                doc.text(sctData[sdli].date.substring(0, 5), sdlx, y + sctChartH + 5, { align: 'center' });
+                            }
+                        }
+
+                        // Final level indicator
+                        var lastPt = sctData[sctData.length - 1];
+                        doc.setFontSize(7);
+                        var lastColor = getLevelColor(lastPt.level);
+                        doc.setTextColor(lastColor[0], lastColor[1], lastColor[2]);
+                        doc.text('Current: ' + lastPt.level + ' (' + lastPt.score + '%)', margin + sctChartW - 1, y - 1, { align: 'right' });
+
+                        y += sctChartH + 12;
+                    }
+                    y += 4;
+                }
+
+                // ── PER-SUBJECT TREND OVER TIME ──
+                if (Object.keys(data.subject_trends).length > 0) {
+                    drawSectionHeader('Performance Trends Over Time');
+
+                    for (var trendSubj in data.subject_trends) {
+                        var trend = data.subject_trends[trendSubj];
+                        if (trend.length < 2) continue;
+
+                        checkPageBreak(50);
+                        doc.setFontSize(10);
+                        doc.setTextColor(60, 60, 60);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(trendSubj, margin, y);
+                        doc.setFont('helvetica', 'normal');
+                        y += 6;
+
+                        // Draw mini line chart
+                        var chartW = contentWidth;
+                        var chartH = 30;
+                        var stepX = chartW / (trend.length - 1);
+
+                        // Grid lines
+                        doc.setDrawColor(230, 230, 230);
+                        doc.setLineWidth(0.2);
+                        for (var gl = 0; gl <= 4; gl++) {
+                            var gridY = y + chartH - (gl * chartH / 4);
+                            doc.line(margin, gridY, margin + chartW, gridY);
+                        }
+
+                        // Plot line
+                        doc.setDrawColor(blue[0], blue[1], blue[2]);
+                        doc.setLineWidth(1);
+                        for (var pi = 0; pi < trend.length - 1; pi++) {
+                            var x1 = margin + pi * stepX;
+                            var y1 = y + chartH - (trend[pi].percentage / 100) * chartH;
+                            var x2 = margin + (pi + 1) * stepX;
+                            var y2 = y + chartH - (trend[pi + 1].percentage / 100) * chartH;
+                            doc.line(x1, y1, x2, y2);
+
+                            // Points
+                            doc.setFillColor(blue[0], blue[1], blue[2]);
+                            doc.circle(x1, y1, 1.5, 'F');
+                            if (pi === trend.length - 2) {
+                                doc.circle(x2, y2, 1.5, 'F');
+                            }
+                        }
+
+                        // Labels
+                        doc.setFontSize(7);
+                        doc.setTextColor(gray[0], gray[1], gray[2]);
+                        for (var li = 0; li < trend.length; li++) {
+                            var lx = margin + li * stepX;
+                            doc.text(trend[li].date.substring(5), lx, y + chartH + 5, { align: 'center' });
+                            doc.text(trend[li].percentage + '%', lx, y - 2, { align: 'center' });
+                        }
+
+                        y += chartH + 14;
+                    }
+                }
+
+                // ── TOPIC MASTERY ──
+                if (data.topic_mastery.length > 0) {
+                    doc.addPage();
+                    y = margin;
+                    drawSectionHeader('Topic Mastery Analysis');
+
+                    var barMaxWT = contentWidth - 100;
+                    for (var ti = 0; ti < data.topic_mastery.length; ti++) {
+                        var topic = data.topic_mastery[ti];
+                        checkPageBreak(18);
+
+                        doc.setFontSize(9);
+                        doc.setTextColor(60, 60, 60);
+                        // Truncate long topic names
+                        var topicLabel = topic.name.length > 25 ? topic.name.substring(0, 25) + '...' : topic.name;
+                        doc.text(topicLabel, margin, y + 4);
+
+                        var tBarW = (topic.mastery / 100) * barMaxWT;
+                        var tBarColor = getBandColor(topic.band);
+                        drawBar(margin + 70, y, tBarW, barMaxWT, tBarColor);
+
+                        // Show mastery% and LO coverage
+                        doc.setFontSize(8);
+                        doc.setTextColor(gray[0], gray[1], gray[2]);
+                        var coverageText = topic.mastery + '% (' + topic.band + ')';
+                        if (topic.total_los > 0) {
+                            coverageText += '  LOs: ' + topic.tested_los + '/' + topic.total_los;
+                        }
+                        doc.text(coverageText, margin + 70 + barMaxWT + 3, y + 4);
+                        y += 10;
+                    }
+                    y += 8;
+                }
+
+                // ── LEARNING OBJECTIVE MASTERY (Tested Only) ──
+                if (data.lo_mastery.length > 0) {
+                    drawSectionHeader('Learning Objective Mastery (Tested Only)');
+
+                    var loRows = data.lo_mastery.map(function(lo) {
+                        return [lo.code, lo.description.substring(0, 50) + (lo.description.length > 50 ? '...' : ''), lo.topic, lo.mastery + '%', lo.band];
+                    });
+
+                    doc.autoTable({
+                        startY: y,
+                        head: [['LO Code', 'Description', 'Topic', 'Mastery', 'Band']],
+                        body: loRows,
+                        theme: 'grid',
+                        headStyles: { fillColor: blue, fontSize: 8, font: 'helvetica' },
+                        bodyStyles: { fontSize: 8 },
+                        margin: { left: margin, right: margin },
+                        tableWidth: contentWidth,
+                        columnStyles: {
+                            0: { cellWidth: 22 },
+                            1: { cellWidth: 'auto' },
+                            2: { cellWidth: 35 },
+                            3: { cellWidth: 18 },
+                            4: { cellWidth: 22 }
+                        },
+                        didParseCell: function(hookData) {
+                            if (hookData.section === 'body' && hookData.column.index === 4) {
+                                var band = hookData.cell.raw;
+                                if (band === 'Mastered') hookData.cell.styles.textColor = green;
+                                else if (band === 'Good') hookData.cell.styles.textColor = blue;
+                                else if (band === 'Developing') hookData.cell.styles.textColor = orange;
+                                else hookData.cell.styles.textColor = red;
+                            }
+                        }
+                    });
+                    y = doc.lastAutoTable.finalY + 12;
+                }
+
+                // ── STRENGTHS & WEAKNESSES ──
+                drawSectionHeader('Strengths & Weaknesses');
+                checkPageBreak(60);
+
+                // Two-column layout
+                var colW = (contentWidth - 10) / 2;
+
+                // Strengths
+                doc.setFillColor(230, 244, 234);
+                doc.roundedRect(margin, y, colW, 6, 2, 2, 'F');
+                doc.setFontSize(10);
+                doc.setTextColor(green[0], green[1], green[2]);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Strengths', margin + 4, y + 4.5);
+                doc.setFont('helvetica', 'normal');
+                var sY = y + 10;
+
+                if (data.strengths.topics.length > 0) {
+                    doc.setFontSize(8);
+                    doc.setTextColor(60, 60, 60);
+                    for (var sti = 0; sti < data.strengths.topics.length; sti++) {
+                        var st = data.strengths.topics[sti];
+                        doc.text('+ ' + st.name + ' (' + st.mastery + '%)', margin + 4, sY);
+                        sY += 5;
+                    }
+                } else {
+                    doc.setFontSize(8);
+                    doc.setTextColor(gray[0], gray[1], gray[2]);
+                    doc.text('No strong topics identified yet.', margin + 4, sY);
+                    sY += 5;
+                }
+
+                // Weaknesses
+                doc.setFillColor(252, 232, 230);
+                doc.roundedRect(margin + colW + 10, y, colW, 6, 2, 2, 'F');
+                doc.setFontSize(10);
+                doc.setTextColor(red[0], red[1], red[2]);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Areas for Improvement', margin + colW + 14, y + 4.5);
+                doc.setFont('helvetica', 'normal');
+                var wY = y + 10;
+
+                if (data.weaknesses.topics.length > 0) {
+                    doc.setFontSize(8);
+                    doc.setTextColor(60, 60, 60);
+                    for (var wi = 0; wi < data.weaknesses.topics.length; wi++) {
+                        var wt = data.weaknesses.topics[wi];
+                        doc.text('- ' + wt.name + ' (' + wt.mastery + '%)', margin + colW + 14, wY);
+                        wY += 5;
+                    }
+                } else {
+                    doc.setFontSize(8);
+                    doc.setTextColor(gray[0], gray[1], gray[2]);
+                    doc.text('No weak areas identified. Great work!', margin + colW + 14, wY);
+                    wY += 5;
+                }
+
+                y = Math.max(sY, wY) + 10;
+
+                // ── TEACHER RECOMMENDATIONS ──
+                if (data.recommendations && data.recommendations.length > 0) {
+                    drawSectionHeader('Teacher Recommendations');
+                    checkPageBreak(30);
+
+                    doc.setFontSize(8);
+                    doc.setTextColor(gray[0], gray[1], gray[2]);
+                    doc.text('The following topics need attention. Untested LOs should not be assumed as weak.', margin, y);
+                    y += 6;
+
+                    for (var ri = 0; ri < data.recommendations.length; ri++) {
+                        var rec = data.recommendations[ri];
+                        checkPageBreak(20);
+
+                        // Topic name + mastery
+                        doc.setFontSize(9);
+                        doc.setFont('helvetica', 'bold');
+                        var recColor = rec.band === 'Weak' ? red : orange;
+                        doc.setTextColor(recColor[0], recColor[1], recColor[2]);
+                        doc.text(rec.topic + ' (' + rec.current_mastery + '% - ' + rec.band + ')', margin + 4, y);
+                        y += 5;
+
+                        // Action
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(8);
+                        doc.setTextColor(60, 60, 60);
+                        doc.text('Action: ' + rec.action, margin + 4, y);
+                        y += 4;
+
+                        // Message
+                        var msgLines = doc.splitTextToSize(rec.message, contentWidth - 10);
+                        for (var ml = 0; ml < msgLines.length; ml++) {
+                            doc.text(msgLines[ml], margin + 4, y);
+                            y += 4;
+                        }
+
+                        // List untested LOs if any
+                        if (rec.untested_los && rec.untested_los.length > 0) {
+                            doc.setTextColor(gray[0], gray[1], gray[2]);
+                            doc.text('Untested LOs:', margin + 4, y);
+                            y += 4;
+                            for (var ul = 0; ul < Math.min(rec.untested_los.length, 5); ul++) {
+                                var ulo = rec.untested_los[ul];
+                                doc.text('  - ' + ulo.code + ': ' + ulo.description.substring(0, 60), margin + 8, y);
+                                y += 4;
+                            }
+                            if (rec.untested_los.length > 5) {
+                                doc.text('  ... and ' + (rec.untested_los.length - 5) + ' more', margin + 8, y);
+                                y += 4;
+                            }
+                        }
+
+                        y += 4;
+                    }
+                    y += 6;
+                }
+
+                // ── INDIVIDUAL TEST RESULTS ──
+                if (data.tests.length > 0) {
+                    drawSectionHeader('Individual Test Results');
+
+                    var testRows = data.tests.map(function(t) {
+                        return [t.title, t.subject, t.date, t.earned_marks + '/' + t.total_marks, t.percentage + '%', t.grade];
+                    });
+
+                    doc.autoTable({
+                        startY: y,
+                        head: [['Test', 'Subject', 'Date', 'Marks', 'Score', 'Grade']],
+                        body: testRows,
+                        theme: 'grid',
+                        headStyles: { fillColor: blue, fontSize: 9 },
+                        bodyStyles: { fontSize: 8 },
+                        margin: { left: margin, right: margin },
+                        tableWidth: contentWidth,
+                        columnStyles: {
+                            0: { cellWidth: 'auto' },
+                            1: { cellWidth: 28 },
+                            2: { cellWidth: 22 },
+                            3: { cellWidth: 22 },
+                            4: { cellWidth: 18 },
+                            5: { cellWidth: 16 }
+                        }
+                    });
+                    y = doc.lastAutoTable.finalY + 12;
+                }
+
+                // ── FOOTER ON ALL PAGES ──
+                var totalPages = doc.internal.getNumberOfPages();
+                for (var p = 1; p <= totalPages; p++) {
+                    doc.setPage(p);
                     doc.setFontSize(8);
                     doc.setTextColor(150, 150, 150);
-                    doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+                    doc.text('Page ' + p + ' of ' + totalPages, pageWidth - margin, pageHeight - 10, { align: 'right' });
                     doc.text('Generated by Lumen Analytics', margin, pageHeight - 10);
-                    doc.text(new Date().toLocaleDateString(), pageWidth / 2, pageHeight - 10, { align: 'center' });
+                    doc.text(new Date().toLocaleDateString('en-GB'), pageWidth / 2, pageHeight - 10, { align: 'center' });
                 }
 
-                // Save PDF
-                const filename = `ReportCard_${studentName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+                var filename = 'ReportCard_' + studentName.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.pdf';
                 doc.save(filename);
 
             } catch (error) {
                 console.error('Error generating report card:', error);
-                alert('Failed to generate report card. Please try again.');
+                alert('Failed to generate report card: ' + error.message);
             } finally {
-                // Hide loading overlay
                 document.getElementById('loadingOverlay').classList.remove('active');
             }
         }

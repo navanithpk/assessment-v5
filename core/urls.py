@@ -4,10 +4,15 @@ from . import google_oauth
 from . import import_sessions_views
 from . import analytics_views
 from . import pdf_tasks_views
-from . import descriptive_pdf_slicer_views
 from . import answer_space_designer_views
 from . import report_card_views
+from . import bulk_import_views
+from . import dlc_views
+from . import qp_ms_ingester_views
+from . import descriptive_pdf_slicer_views
+from . import ai_tagging_views
 from core import analytics_api
+from . import resource_views
 
 urlpatterns = [
     # Root
@@ -31,6 +36,8 @@ urlpatterns = [
     # Tests (teacher)
     path("teacher/tests/", views.tests_list, name="tests_list"),
     path("teacher/tests/create/", views.create_test, name="create_test"),
+    path("teacher/tests/create-descriptive/", views.create_descriptive_test, name="create_descriptive_test"),
+    path("teacher/tests/<int:test_id>/edit-descriptive/", views.edit_descriptive_test, name="edit_descriptive_test"),
     path("teacher/tests/<int:test_id>/edit/", views.test_editor, name="edit_test"),
     path("teacher/tests/<int:test_id>/delete/", views.delete_test, name="delete_test"),
     path("teacher/tests/<int:test_id>/toggle/", views.toggle_publish, name="toggle_publish"),
@@ -49,12 +56,24 @@ urlpatterns = [
     path("questions/", views.question_library, name="question_library"),
     path("questions/add/", views.add_edit_question, name="add_question"),
     path("questions/edit/<int:question_id>/", views.add_edit_question, name="edit_question"),
+    path("questions/<int:question_id>/edit-v2/", views.edit_question_v2, name="edit_question_v2"),
     path("questions/<int:question_id>/edit-spaces/", views.edit_structured_question, name="edit_structured_question"),
     path("questions/delete/<int:question_id>/", views.delete_question, name="delete_question"),
     path("questions/import-mcq-images/", views.import_mcq_images, name="import_mcq_images"),
     path("questions/import-mcq-pdf/", views.import_mcq_pdf, name="import_mcq_pdf"),
-    path("questions/import-descriptive-pdf/", descriptive_pdf_slicer_views.descriptive_pdf_slicer, name="descriptive_pdf_slicer"),
+    path("questions/qp-slicer/", views.qp_slicer_workstation, name="qp_slicer_workstation"),
+    path("questions/import-qp-slices/", views.import_qp_slices, name="import_qp_slices"),
+    path("questions/descriptive-pdf-slicer/", descriptive_pdf_slicer_views.descriptive_pdf_slicer, name="descriptive_pdf_slicer"),
+    path("questions/qp-ms-ingester/", qp_ms_ingester_views.qp_ms_ingester, name="qp_ms_ingester"),
+    path("questions/qp-ms-ingester/save/", qp_ms_ingester_views.qp_ms_ingester_save, name="qp_ms_ingester_save"),
+    path("questions/qp-ms-ingester/update-tree/", qp_ms_ingester_views.qp_ms_ingester_update_tree, name="qp_ms_ingester_update_tree"),
     path("questions/<int:pk>/exists/", views.question_exists),
+
+    # Question Library API (for test editors)
+    path("questions/api/search/", views.question_library_api_search, name="question_library_api_search"),
+    path("questions/api/<int:question_id>/", views.question_library_api_get, name="question_library_api_get"),
+    path("questions/api/create/", views.question_library_api_create, name="question_library_api_create"),
+    path("questions/add-structured/", views.structured_question_editor, name="structured_question_editor"),
 
 
     # Answer Space Designer (Step 2 of two-step non-MCQ import)
@@ -116,9 +135,7 @@ urlpatterns = [
     
     
     path("teacher/groups/", views.groups_list, name="groups_list"),
-    path("teacher/tests/create-descriptive/", views.create_descriptive_test, name="create_descriptive_test"),
-    path("teacher/tests/<int:test_id>/edit-descriptive/", views.edit_descriptive_test, name="edit_descriptive_test"),
-    
+
     # Student Test Taking
     path("student/tests/<int:test_id>/take/", views.take_test, name="take_test"),
     path("student/tests/<int:test_id>/autosave/", views.autosave_test_answers, name="autosave_test_answers"),
@@ -128,6 +145,12 @@ urlpatterns = [
     # Student Results
     path("student/results/", views.student_results, name="student_results"),
     path("student/tests/<int:test_id>/review/", views.student_test_review, name="student_test_review"),
+    path("student/practice/<int:topic_id>/", views.student_practice, name="student_practice"),
+
+    # Resources (shared between teachers & students)
+    path("resources/", resource_views.resource_list, name="resource_list"),
+    path("resources/upload/", resource_views.resource_upload, name="resource_upload"),
+    path("resources/<int:resource_id>/delete/", resource_views.resource_delete, name="resource_delete"),
 
     # Analytics
     path("student/analytics/", analytics_views.student_analytics_dashboard, name="student_analytics"),
@@ -161,7 +184,39 @@ urlpatterns = [
     # Report Cards
     path("teacher/report-cards/", report_card_views.report_card_dashboard, name="report_card_dashboard"),
     path("teacher/report-cards/<int:student_id>/data/", report_card_views.report_card_detail, name="report_card_detail"),
+    path("teacher/report-cards/reissue-suggestions/", report_card_views.topic_reissue_suggestions, name="topic_reissue_suggestions"),
+    path("teacher/reissue-dashboard/", report_card_views.reissue_dashboard, name="reissue_dashboard"),
+    path("teacher/assign-practice/", report_card_views.assign_practice, name="assign_practice"),
+
+    # Smart Test Generator
+    path("teacher/smart-test/", report_card_views.smart_test_generator, name="smart_test_generator"),
+    path("teacher/smart-test/analyse/", report_card_views.smart_test_analyse, name="smart_test_analyse"),
+    path("teacher/smart-test/create/", report_card_views.smart_test_create, name="smart_test_create"),
     path("teacher/tests/<int:test_id>/analytics/risk/", analytics_api.risk_prediction),
     path("teacher/tests/<int:test_id>/analytics/summary/", analytics_api.lmstudio_summary),
+
+    # AI Tagging Export/Import
+    path("teacher/ai-tagging/export/", ai_tagging_views.ai_tagging_export, name="ai_tagging_export"),
+    path("teacher/ai-tagging/export-text/", ai_tagging_views.ai_tagging_export_text, name="ai_tagging_export_text"),
+    path("teacher/ai-tagging/import/", ai_tagging_views.ai_tagging_import, name="ai_tagging_import"),
+
+    # Bulk Import
+    path("teacher/users/bulk-import/", bulk_import_views.bulk_import_users, name="bulk_import_users"),
+    path("teacher/users/download-template/", bulk_import_views.download_user_template, name="download_user_template"),
+
+    # School Settings
+    path("teacher/school-settings/", views.edit_school_settings, name="edit_school_settings"),
+
+    # Teacher Assignment API
+    path("teacher/tests/assign-teachers/", views.assign_teachers_to_test, name="assign_teachers_to_test"),
+    path("teacher/tests/<int:test_id>/teachers/", views.get_test_teachers, name="get_test_teachers"),
+
+    # DLC Management
+    path("teacher/dlc/", dlc_views.dlc_dashboard, name="dlc_dashboard"),
+    path("teacher/dlc/<int:bank_id>/activate/", dlc_views.activate_dlc, name="activate_dlc"),
+    path("teacher/dlc/<int:bank_id>/deactivate/", dlc_views.deactivate_dlc, name="deactivate_dlc"),
+    path("teacher/dlc/create/", dlc_views.create_dlc, name="create_dlc"),
+    path("teacher/subject-grade-combinations/", dlc_views.subject_grade_combinations, name="subject_grade_combinations"),
+    path("teacher/subject-grade-combinations/add/", dlc_views.add_combination, name="add_combination"),
 
 ]

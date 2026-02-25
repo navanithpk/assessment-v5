@@ -1,7 +1,6 @@
 {% extends "student/student_base.html" %}
 
-{% block title %}{{ test.title }} - Review{% endblock %}
-
+{% block title %}{{ test.title }} — Review{% endblock %}
 {% block header_title %}{{ test.title }}{% endblock %}
 {% block header_subtitle %}Review your submitted answers{% endblock %}
 
@@ -9,195 +8,11 @@
 <style>
   .review-container {
     padding: 32px;
-    max-width: 1000px;
+    max-width: 1040px;
     margin: 0 auto;
   }
 
-  .summary-card {
-    background: white;
-    border-radius: 16px;
-    padding: 32px;
-    margin-bottom: 32px;
-    border: 2px solid var(--gray-200);
-  }
-
-  .summary-header {
-    text-align: center;
-    margin-bottom: 32px;
-  }
-
-  .summary-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--gray-900);
-    margin-bottom: 8px;
-  }
-
-  .submission-time {
-    font-size: 14px;
-    color: var(--gray-500);
-  }
-
-  .summary-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-  }
-
-  .summary-stat {
-    text-align: center;
-    padding: 20px;
-    background: var(--gray-50);
-    border-radius: 12px;
-  }
-
-  .summary-stat-value {
-    font-size: 36px;
-    font-weight: 700;
-    color: var(--primary);
-    display: block;
-    margin-bottom: 8px;
-  }
-
-  .summary-stat-label {
-    font-size: 13px;
-    color: var(--gray-600);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .question-review-card {
-    background: white;
-    border: 2px solid var(--gray-200);
-    border-radius: 16px;
-    padding: 28px;
-    margin-bottom: 24px;
-  }
-
-  .question-review-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid var(--gray-200);
-  }
-
-  .question-number {
-    background: var(--primary);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 15px;
-  }
-
-  .question-marks {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--gray-600);
-    background: var(--gray-100);
-    padding: 8px 16px;
-    border-radius: 10px;
-  }
-
-  .question-text {
-    font-size: 16px;
-    line-height: 1.8;
-    color: var(--gray-900);
-    margin-bottom: 24px;
-    padding: 20px;
-    background: var(--gray-50);
-    border-radius: 12px;
-  }
-
-  .question-text img,
-  .your-answer img,
-  .correct-answer img {
-    max-width: 100%;
-    height: auto;
-    margin: 12px 0;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  }
-
-  .answer-section {
-    margin-top: 24px;
-  }
-
-  .answer-label {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--gray-700);
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .your-answer {
-    padding: 20px;
-    background: #f0f9ff;
-    border: 2px solid #bfdbfe;
-    border-radius: 12px;
-    min-height: 80px;
-    font-size: 15px;
-    line-height: 1.8;
-  }
-
-  .no-answer {
-    color: var(--gray-400);
-    font-style: italic;
-  }
-
-  .correct-answer {
-    padding: 20px;
-    background: #f0fdf4;
-    border: 2px solid #bbf7d0;
-    border-radius: 12px;
-    margin-top: 16px;
-    font-size: 15px;
-    line-height: 1.8;
-  }
-
-  .score-display {
-    margin-top: 16px;
-    padding: 12px 20px;
-    background: var(--gray-100);
-    border-radius: 10px;
-    display: inline-block;
-    font-weight: 600;
-  }
-
-  .score-display.evaluated {
-    background: #dcfce7;
-    color: #166534;
-  }
-
-  .score-display.pending {
-    background: #fef3c7;
-    color: #92400e;
-  }
-
-  .back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: var(--gray-200);
-    color: var(--gray-700);
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s;
-    margin-bottom: 24px;
-  }
-
-  .back-btn:hover {
-    background: var(--gray-300);
-  }
-
+  /* ── Action buttons ─────────────────────────────── */
   .action-buttons {
     display: flex;
     gap: 12px;
@@ -205,30 +20,248 @@
     flex-wrap: wrap;
   }
 
-  .print-btn {
+  .back-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 24px;
+    padding: 11px 22px;
+    background: var(--gray-200);
+    color: var(--gray-700);
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .back-btn:hover { background: var(--gray-300); }
+
+  .pdf-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
     background: #10b981;
     color: white;
     border: none;
     border-radius: 10px;
     font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s;
+    font-size: 14px;
     cursor: pointer;
+    transition: background 0.2s;
+  }
+  .pdf-btn:hover    { background: #059669; }
+  .pdf-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+  /* ── Summary card ───────────────────────────────── */
+  .summary-card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 28px;
+    border: 2px solid var(--gray-200);
   }
 
-  .print-btn:hover {
-    background: #059669;
+  .summary-header { text-align: center; margin-bottom: 28px; }
+  .summary-title  { font-size: 26px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
+
+  .score-display {
+    font-size: 52px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 8px 0;
   }
 
-  .print-btn:disabled {
-    background: #9ca3af;
-    cursor: not-allowed;
+  .score-sub { font-size: 15px; color: var(--gray-500); }
+
+  .summary-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
   }
 
+  .summary-stat {
+    text-align: center;
+    padding: 18px;
+    background: var(--gray-50);
+    border-radius: 12px;
+  }
+
+  .summary-stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--primary);
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .summary-stat-label {
+    font-size: 12px;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  /* Performance counters */
+  .perf-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .perf-stat {
+    text-align: center;
+    padding: 14px 8px;
+    border-radius: 10px;
+  }
+
+  .perf-stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    display: block;
+    line-height: 1.1;
+  }
+
+  .perf-stat-label {
+    font-size: 11px;
+    color: inherit;
+    opacity: 0.75;
+    margin-top: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  /* ── Topic Performance Section ──────────────────── */
+  .topic-section {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 28px;
+    border: 2px solid var(--gray-200);
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topic-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gray-100);
+  }
+  .topic-row:last-child { border-bottom: none; }
+
+  .topic-name {
+    width: 160px;
+    min-width: 160px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-800);
+    line-height: 1.3;
+  }
+
+  .topic-bar-track {
+    flex: 1;
+    height: 16px;
+    background: #f1f5f9;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .topic-bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.6s ease;
+  }
+
+  .topic-pct {
+    width: 44px;
+    min-width: 44px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+    color: var(--gray-700);
+  }
+
+  .mastery-badge {
+    min-width: 120px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .mastery-mastered   { background: #dcfce7; color: #166534; }
+  .mastery-good       { background: #dbeafe; color: #1e40af; }
+  .mastery-needs      { background: #fef3c7; color: #92400e; }
+  .mastery-weak       { background: #fee2e2; color: #991b1b; }
+  .mastery-pending    { background: #f3f4f6; color: #6b7280; }
+
+  /* Practice recommendation card */
+  .practice-card {
+    background: linear-gradient(135deg, #ede9fe, #dbeafe);
+    border: 2px solid #c7d2fe;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-top: 20px;
+  }
+
+  .practice-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #3730a3;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .practice-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .practice-tag {
+    display: inline-block;
+    padding: 5px 12px;
+    background: white;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4338ca;
+    border: 1px solid #c7d2fe;
+  }
+
+  a.practice-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  a.practice-link:hover {
+    background: #4338ca;
+    color: white;
+    border-color: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(67,56,202,0.3);
+  }
+
+  /* ── Question Navigation ────────────────────────── */
   .questions-navigation {
     background: white;
     border-radius: 12px;
@@ -238,15 +271,15 @@
   }
 
   .nav-title {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
     color: var(--gray-700);
     margin-bottom: 12px;
   }
 
   .question-nav-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
     gap: 8px;
   }
 
@@ -255,149 +288,189 @@
     border: 2px solid var(--gray-300);
     border-radius: 8px;
     background: white;
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 700;
+    font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
     text-decoration: none;
     color: var(--gray-700);
-  }
-
-  .question-nav-btn:hover {
-    border-color: var(--primary);
-    background: #f0f9ff;
-  }
-
-  .question-nav-btn.correct {
-    background: #dcfce7;
-    border-color: #10b981;
-    color: #065f46;
-  }
-
-  .question-nav-btn.partial {
-    background: #fef3c7;
-    border-color: #f59e0b;
-    color: #92400e;
-  }
-
-  .question-nav-btn.incorrect {
-    background: #fee2e2;
-    border-color: #ef4444;
-    color: #991b1b;
-  }
-
-  .question-nav-btn.pending {
-    background: var(--gray-100);
-    border-color: var(--gray-300);
-    color: var(--gray-600);
-  }
-
-  .performance-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-top: 16px;
-  }
-
-  .perf-stat {
-    text-align: center;
-    padding: 12px;
-    border-radius: 8px;
-    background: var(--gray-50);
-  }
-
-  .perf-stat-value {
-    font-size: 24px;
-    font-weight: 700;
     display: block;
   }
 
-  .perf-stat-label {
-    font-size: 11px;
-    color: var(--gray-600);
-    margin-top: 4px;
+  .question-nav-btn:hover  { border-color: var(--primary); background: #eff6ff; }
+  .question-nav-btn.correct   { background: #dcfce7; border-color: #10b981; color: #065f46; }
+  .question-nav-btn.partial   { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+  .question-nav-btn.incorrect { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+  .question-nav-btn.pending   { background: var(--gray-100); border-color: var(--gray-300); color: var(--gray-500); }
+
+  /* ── Question Review Cards ──────────────────────── */
+  .question-review-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: 16px;
+    padding: 26px;
+    margin-bottom: 22px;
+    scroll-margin-top: 24px;
   }
 
+  .question-review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--gray-200);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .question-number-badge {
+    background: var(--primary);
+    color: white;
+    padding: 7px 14px;
+    border-radius: 9px;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .question-marks {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-600);
+    background: var(--gray-100);
+    padding: 7px 14px;
+    border-radius: 9px;
+  }
+
+  .question-text {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--gray-900);
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--gray-50);
+    border-radius: 10px;
+  }
+
+  .question-text img,
+  .your-answer img,
+  .correct-answer img {
+    max-width: 100%;
+    height: auto;
+    margin: 10px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .answer-section { margin-top: 20px; }
+
+  .answer-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gray-700);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .your-answer {
+    padding: 16px;
+    background: #f0f9ff;
+    border: 2px solid #bfdbfe;
+    border-radius: 10px;
+    min-height: 60px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .no-answer { color: var(--gray-400); font-style: italic; }
+
+  .correct-answer {
+    padding: 16px;
+    background: #f0fdf4;
+    border: 2px solid #bbf7d0;
+    border-radius: 10px;
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .score-display {
+    margin-top: 14px;
+    padding: 10px 18px;
+    border-radius: 9px;
+    display: inline-block;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .score-display.evaluated { background: #dcfce7; color: #166534; }
+  .score-display.pending   { background: #fef3c7; color: #92400e; }
+
+  /* ── Scroll-to-top ──────────────────────────────── */
   .scroll-to-top {
     position: fixed;
     bottom: 24px;
     right: 24px;
-    width: 50px;
-    height: 50px;
+    width: 46px;
+    height: 46px;
     background: var(--primary);
     color: white;
     border: none;
     border-radius: 50%;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
     display: none;
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    z-index: 50;
   }
+  .scroll-to-top:hover    { background: #1d4ed8; transform: translateY(-2px); }
+  .scroll-to-top.visible  { display: flex; }
 
-  .scroll-to-top:hover {
-    background: #1d4ed8;
-    transform: translateY(-2px);
-  }
-
-  .scroll-to-top.visible {
-    display: flex;
-  }
-
+  /* ── Responsive ─────────────────────────────────── */
   @media (max-width: 768px) {
-    .summary-stats {
-      grid-template-columns: 1fr;
-    }
-
-    .review-container {
-      padding: 20px;
-    }
-
-    .question-nav-grid {
-      grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
-    }
+    .review-container { padding: 16px; }
+    .summary-stats    { grid-template-columns: 1fr; }
+    .perf-grid        { grid-template-columns: repeat(2, 1fr); }
+    .topic-name       { width: 110px; min-width: 110px; font-size: 12px; }
+    .mastery-badge    { min-width: 90px; font-size: 10px; }
+    .question-nav-grid { grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); }
   }
 
   @media print {
-    .action-buttons,
-    .back-btn,
-    .questions-navigation,
-    .scroll-to-top {
-      display: none !important;
-    }
+    .action-buttons, .questions-navigation, .scroll-to-top { display: none !important; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="review-container">
+
+  <!-- ── Action buttons ─────────────────────────────── -->
   <div class="action-buttons">
-    <a href="{% url 'student_results' %}" class="back-btn">
-      ← Back to Results
-    </a>
-    <button id="downloadPdfBtn" class="print-btn" onclick="generatePDF()">
-      📄 Download PDF Report
-    </button>
+    <a href="{% url 'student_results' %}" class="back-btn">← Back to Results</a>
+    <button id="downloadPdfBtn" class="pdf-btn" onclick="generatePDF()">📄 Download PDF Report</button>
   </div>
 
   {% if not is_fully_graded %}
-  <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 24px 0; color: #92400e;">
-    <strong>⚠️ Grading In Progress:</strong> Some questions haven't been graded yet. Your final score may change.
+  <div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 18px;border-radius:8px;margin-bottom:20px;color:#92400e;font-size:14px;">
+    <strong>⚠️ Grading In Progress:</strong> Some answers haven't been evaluated yet. Your final score may change once all answers are graded.
   </div>
   {% endif %}
 
-  <div class="summary-card" id="summary-card">
+  <!-- ── Summary Card ───────────────────────────────── -->
+  <div class="summary-card" id="summaryCard">
     <div class="summary-header">
       <h2 class="summary-title">{{ test.title }}</h2>
-      <h3 style="font-size: 32px; font-weight: 700; color: {% if percentage >= 80 %}#16a34a{% elif percentage >= 60 %}#2563eb{% elif percentage >= 40 %}#ca8a04{% else %}#dc2626{% endif %}; margin: 12px 0;">
+      <div class="score-display" style="color: {% if percentage >= 80 %}#16a34a{% elif percentage >= 60 %}#2563eb{% elif percentage >= 40 %}#ca8a04{% else %}#dc2626{% endif %};">
         {{ percentage }}%
-      </h3>
-      <p class="submission-time">
-        {{ scored_marks|floatformat:1 }} out of {{ total_marks }} marks
-      </p>
+      </div>
+      <p class="score-sub">{{ scored_marks|floatformat:1 }} out of {{ total_marks }} marks</p>
     </div>
 
     <div class="summary-stats">
@@ -411,36 +484,96 @@
       </div>
       <div class="summary-stat">
         <span class="summary-stat-value">{{ review_data|length }}</span>
-        <span class="summary-stat-label">Total Questions</span>
+        <span class="summary-stat-label">Questions</span>
       </div>
     </div>
 
-    <div class="performance-summary">
-      <div class="perf-stat" style="background: #dcfce7;">
-        <span class="perf-stat-value" style="color: #16a34a;" id="correct-count">0</span>
-        <span class="perf-stat-label">Correct</span>
+    <!-- Performance counters -->
+    <div class="perf-grid">
+      <div class="perf-stat" style="background:#dcfce7;color:#16a34a;">
+        <span class="perf-stat-value" id="correctCount">0</span>
+        <div class="perf-stat-label">Correct</div>
       </div>
-      <div class="perf-stat" style="background: #fef3c7;">
-        <span class="perf-stat-value" style="color: #ca8a04;" id="partial-count">0</span>
-        <span class="perf-stat-label">Partial</span>
+      <div class="perf-stat" style="background:#fef3c7;color:#ca8a04;">
+        <span class="perf-stat-value" id="partialCount">0</span>
+        <div class="perf-stat-label">Partial</div>
       </div>
-      <div class="perf-stat" style="background: #fee2e2;">
-        <span class="perf-stat-value" style="color: #dc2626;" id="incorrect-count">0</span>
-        <span class="perf-stat-label">Incorrect</span>
+      <div class="perf-stat" style="background:#fee2e2;color:#dc2626;">
+        <span class="perf-stat-value" id="incorrectCount">0</span>
+        <div class="perf-stat-label">Incorrect</div>
       </div>
-      <div class="perf-stat" style="background: #f3f4f6;">
-        <span class="perf-stat-value" style="color: #6b7280;" id="pending-count">0</span>
-        <span class="perf-stat-label">Pending</span>
+      <div class="perf-stat" style="background:#f3f4f6;color:#6b7280;">
+        <span class="perf-stat-value" id="pendingCount">0</span>
+        <div class="perf-stat-label">Pending</div>
       </div>
     </div>
   </div>
 
+  <!-- ── Topic Performance ──────────────────────────── -->
+  {% if topic_stats %}
+  <div class="topic-section">
+    <div class="section-title">📚 Topic Performance</div>
+
+    {% for topic in topic_stats %}
+    <div class="topic-row">
+      <div class="topic-name">{{ topic.name }}</div>
+      <div class="topic-bar-track">
+        {% if topic.percentage is not None %}
+        <div class="topic-bar-fill" style="width: {{ topic.percentage }}%; background:
+          {% if topic.percentage >= 80 %}#16a34a
+          {% elif topic.percentage >= 60 %}#2563eb
+          {% elif topic.percentage >= 40 %}#f59e0b
+          {% else %}#ef4444
+          {% endif %};"></div>
+        {% else %}
+        <div class="topic-bar-fill" style="width:0%;background:#d1d5db;"></div>
+        {% endif %}
+      </div>
+      <div class="topic-pct">
+        {% if topic.percentage is not None %}{{ topic.percentage }}%{% else %}—{% endif %}
+      </div>
+      <div class="mastery-badge
+        {% if topic.mastery == 'Mastered' %}mastery-mastered
+        {% elif topic.mastery == 'Good' %}mastery-good
+        {% elif topic.mastery == 'Needs Improvement' %}mastery-needs
+        {% elif topic.mastery == 'Weak' %}mastery-weak
+        {% else %}mastery-pending{% endif %}">
+        {{ topic.mastery }}
+      </div>
+    </div>
+    {% endfor %}
+
+    {% if weak_topics %}
+    <div class="practice-card">
+      <div class="practice-title">💡 Recommended Practice Areas</div>
+      <div class="practice-list">
+        {% for topic in weak_topics %}
+        {% if topic.topic_id %}
+        <a href="{% url 'student_practice' topic.topic_id %}" class="practice-tag practice-link" title="Practice {{ topic.name }}">
+          📝 {{ topic.name }} ({{ topic.percentage }}%)
+        </a>
+        {% else %}
+        <span class="practice-tag">{{ topic.name }} ({{ topic.percentage }}%)</span>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <p style="font-size:12px;color:#4338ca;margin-top:10px;margin-bottom:0;">
+        Click on any topic above to start a targeted practice session with 5 questions. You can also download or print the practice sheet as a PDF.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ── Question Jump Navigation ──────────────────── -->
   {% if review_data|length > 3 %}
   <div class="questions-navigation">
     <div class="nav-title">Jump to Question:</div>
     <div class="question-nav-grid">
       {% for rd in review_data %}
-      <a href="#question-{{ forloop.counter }}" class="question-nav-btn" data-question-id="{{ forloop.counter }}" data-awarded="{{ rd.awarded_marks|default:'null' }}" data-max="{{ rd.max_marks }}">
+      <a href="#question-{{ forloop.counter }}" class="question-nav-btn"
+         data-awarded="{% if rd.awarded_marks is not None %}{{ rd.awarded_marks }}{% else %}null{% endif %}"
+         data-max="{{ rd.max_marks }}">
         Q{{ forloop.counter }}
       </a>
       {% endfor %}
@@ -448,342 +581,414 @@
   </div>
   {% endif %}
 
-  <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 20px; color: var(--gray-900);">
-    Question-wise Review
-  </h3>
+  <!-- ── Question-wise Review ───────────────────────── -->
+  <h3 style="font-size:19px;font-weight:700;margin-bottom:18px;color:var(--gray-900);">Question-wise Review</h3>
 
   {% for rd in review_data %}
   <div class="question-review-card" id="question-{{ forloop.counter }}">
     <div class="question-review-header">
-      <span class="question-number">Question {{ forloop.counter }}</span>
+      <span class="question-number-badge">Question {{ forloop.counter }}</span>
       <span class="question-marks">
-        {% if rd.awarded_marks is not None %}
-          {{ rd.awarded_marks|floatformat:1 }} / {{ rd.max_marks }} marks
-        {% else %}
-          {{ rd.max_marks }} marks
-        {% endif %}
+        {% if rd.awarded_marks is not None %}{{ rd.awarded_marks|floatformat:1 }} / {{ rd.max_marks }} marks
+        {% else %}{{ rd.max_marks }} marks{% endif %}
       </span>
     </div>
 
-    <div class="question-text">
-      {{ rd.question.question_text|linebreaksbr|safe }}
-    </div>
+    <div class="question-text">{{ rd.question.question_text|safe }}</div>
 
     <div class="answer-section">
-      <div class="answer-label">
-        📝 Your Answer:
-      </div>
+      <div class="answer-label">📝 Your Answer:</div>
       <div class="your-answer">
         {% if rd.student_answer and rd.student_answer.answer_text %}
-          {{ rd.student_answer.answer_text|linebreaksbr|safe }}
+          {{ rd.student_answer.answer_text|safe }}
         {% else %}
           <span class="no-answer">No answer provided</span>
         {% endif %}
       </div>
 
       {% if rd.awarded_marks is not None %}
-        <div class="score-display evaluated">
-          Score: {{ rd.awarded_marks|floatformat:1 }} / {{ rd.max_marks }}
-        </div>
+        <div class="score-display evaluated">Score: {{ rd.awarded_marks|floatformat:1 }} / {{ rd.max_marks }}</div>
       {% else %}
-        <div class="score-display pending">
-          ⏳ Awaiting teacher evaluation
-        </div>
+        <div class="score-display pending">⏳ Awaiting teacher evaluation</div>
       {% endif %}
 
       {% if rd.question.answer_text %}
-      <div style="margin-top: 20px;">
-        <div class="answer-label">
-          ✅ Model Answer:
-        </div>
-        <div class="correct-answer">
-          {{ rd.question.answer_text|linebreaksbr|safe }}
-        </div>
+      <div style="margin-top:16px;">
+        <div class="answer-label">✅ Model Answer:</div>
+        <div class="correct-answer">{{ rd.question.answer_text|safe }}</div>
       </div>
       {% endif %}
     </div>
   </div>
   {% endfor %}
 
-  <div style="text-align: center; margin-top: 40px;">
-    <a href="{% url 'student_results' %}" class="back-btn" style="font-size: 16px; padding: 14px 32px;">
-      ← Return to My Results
-    </a>
+  <div style="text-align:center;margin-top:36px;">
+    <a href="{% url 'student_results' %}" class="back-btn" style="font-size:15px;padding:13px 30px;">← Return to My Results</a>
   </div>
+
 </div>
 
-<button class="scroll-to-top" id="scrollToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-  ↑
-</button>
+<button class="scroll-to-top" id="scrollToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
+<!-- jsPDF + AutoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
 <script>
-// Calculate performance stats
+// ── Embed server data for PDF generation ──────────────────────────────
+const reviewDataJS = [
+  {% for rd in review_data %}
+  {
+    number:  {{ forloop.counter }},
+    awarded: {% if rd.awarded_marks is not None %}{{ rd.awarded_marks|floatformat:1 }}{% else %}null{% endif %},
+    max:     {{ rd.max_marks }}
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+];
+
+const topicDataJS = [
+  {% for t in topic_stats %}
+  {
+    name:       "{{ t.name|escapejs }}",
+    percentage: {% if t.percentage is not None %}{{ t.percentage }}{% else %}null{% endif %},
+    awarded:    {{ t.awarded_marks|floatformat:1 }},
+    total:      {{ t.total_marks }},
+    mastery:    "{{ t.mastery|escapejs }}"
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+];
+
+const weakTopicsJS = [
+  {% for t in weak_topics %}"{{ t.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}
+];
+
+// ── Performance counter calculation (fix: 0-marks = Incorrect, not Pending) ──
 document.addEventListener('DOMContentLoaded', function() {
-  const navButtons = document.querySelectorAll('.question-nav-btn');
-  let correctCount = 0;
-  let partialCount = 0;
-  let incorrectCount = 0;
-  let pendingCount = 0;
+  let correct = 0, partial = 0, incorrect = 0, pending = 0;
 
-  navButtons.forEach(btn => {
-    const awarded = btn.dataset.awarded;
-    const max = parseFloat(btn.dataset.max);
+  const navBtns = document.querySelectorAll('.question-nav-btn');
+  navBtns.forEach(function(btn) {
+    const rawAwarded = btn.dataset.awarded;
+    const max        = parseFloat(btn.dataset.max);
 
-    if (awarded === 'null' || awarded === 'None') {
+    // "null" string → truly ungraded; otherwise it's a number (including 0)
+    if (rawAwarded === 'null' || rawAwarded === undefined) {
       btn.classList.add('pending');
-      pendingCount++;
+      pending++;
     } else {
-      const awardedNum = parseFloat(awarded);
-      const percentage = (awardedNum / max) * 100;
-
-      if (percentage >= 90) {
-        btn.classList.add('correct');
-        correctCount++;
-      } else if (percentage >= 40) {
-        btn.classList.add('partial');
-        partialCount++;
-      } else {
-        btn.classList.add('incorrect');
-        incorrectCount++;
-      }
+      const awarded = parseFloat(rawAwarded);
+      const pct     = (awarded / max) * 100;
+      if (pct >= 90)      { btn.classList.add('correct');   correct++;   }
+      else if (pct >= 40) { btn.classList.add('partial');   partial++;   }
+      else                { btn.classList.add('incorrect'); incorrect++; }
     }
   });
 
-  document.getElementById('correct-count').textContent = correctCount;
-  document.getElementById('partial-count').textContent = partialCount;
-  document.getElementById('incorrect-count').textContent = incorrectCount;
-  document.getElementById('pending-count').textContent = pendingCount;
+  document.getElementById('correctCount').textContent   = correct;
+  document.getElementById('partialCount').textContent   = partial;
+  document.getElementById('incorrectCount').textContent = incorrect;
+  document.getElementById('pendingCount').textContent   = pending;
 
-  // Scroll to top button
+  // Scroll-to-top visibility
   const scrollBtn = document.getElementById('scrollToTop');
   window.addEventListener('scroll', function() {
-    if (window.scrollY > 300) {
-      scrollBtn.classList.add('visible');
-    } else {
-      scrollBtn.classList.remove('visible');
-    }
+    scrollBtn.classList.toggle('visible', window.scrollY > 300);
   });
 
-  // Smooth scroll for navigation
-  document.querySelectorAll('a[href^="#question-"]').forEach(anchor => {
-    anchor.addEventListener('click', function(e) {
+  // Smooth anchor scroll
+  document.querySelectorAll('a[href^="#question-"]').forEach(function(a) {
+    a.addEventListener('click', function(e) {
       e.preventDefault();
       const target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
 });
 
+// ── PDF Generation ──────────────────────────────────────────────────────
 function generatePDF() {
   const btn = document.getElementById('downloadPdfBtn');
-  btn.disabled = true;
-  btn.textContent = '⏳ Generating PDF...';
+  btn.disabled    = true;
+  btn.textContent = '⏳ Generating…';
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  // Extract data from the page
-  const testTitle = "{{ test.title }}";
-  const studentName = "{{ request.user.get_full_name|default:request.user.username }}";
-  const percentage = {{ percentage }};
-  const scoredMarks = {{ scored_marks|floatformat:1 }};
-  const totalMarks = {{ total_marks }};
-  const totalQuestions = {{ review_data|length }};
+    const pageW  = doc.internal.pageSize.getWidth();
+    const pageH  = doc.internal.pageSize.getHeight();
+    const margin = 18;
+    const cw     = pageW - margin * 2;
+    let   y      = 0;
 
-  const correctCount = parseInt(document.getElementById('correct-count').textContent);
-  const partialCount = parseInt(document.getElementById('partial-count').textContent);
-  const incorrectCount = parseInt(document.getElementById('incorrect-count').textContent);
-  const pendingCount = parseInt(document.getElementById('pending-count').textContent);
+    // Colour palette
+    const C = {
+      primary:   [37,  99,  235],
+      success:   [22,  163, 74],
+      warning:   [202, 138, 4],
+      danger:    [220, 38,  38],
+      gray:      [107, 114, 128],
+      lightGray: [243, 244, 246],
+      white:     [255, 255, 255],
+    };
 
-  // Set colors
-  const primaryColor = [37, 99, 235];
-  const successColor = [22, 163, 74];
-  const warningColor = [202, 138, 4];
-  const dangerColor = [220, 38, 38];
-  const grayColor = [107, 114, 128];
+    const pct      = {{ percentage }};
+    const scored   = {{ scored_marks|floatformat:1 }};
+    const totalM   = {{ total_marks }};
+    const student  = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+    const testTitle= "{{ test.title|escapejs }}";
 
-  let scoreColor = primaryColor;
-  if (percentage >= 80) scoreColor = successColor;
-  else if (percentage >= 60) scoreColor = primaryColor;
-  else if (percentage >= 40) scoreColor = warningColor;
-  else scoreColor = dangerColor;
+    // Score colour
+    const scoreCol = pct >= 80 ? C.success : pct >= 60 ? C.primary : pct >= 40 ? C.warning : C.danger;
 
-  // Page setup
-  let yPos = 20;
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const contentWidth = pageWidth - (2 * margin);
-
-  // Header
-  doc.setFillColor(37, 99, 235);
-  doc.rect(0, 0, pageWidth, 40, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont(undefined, 'bold');
-  doc.text('Test Results Report', pageWidth / 2, 25, { align: 'center' });
-
-  yPos = 55;
-
-  // Student and Test Info
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(12);
-  doc.setFont(undefined, 'normal');
-  doc.text(`Student: ${studentName}`, margin, yPos);
-  yPos += 7;
-  doc.text(`Test: ${testTitle}`, margin, yPos);
-  yPos += 7;
-  doc.text(`Date: ${new Date().toLocaleDateString()}`, margin, yPos);
-  yPos += 15;
-
-  // Score Box
-  doc.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2]);
-  doc.roundedRect(margin, yPos, contentWidth, 35, 3, 3, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(32);
-  doc.setFont(undefined, 'bold');
-  doc.text(`${percentage}%`, pageWidth / 2, yPos + 15, { align: 'center' });
-
-  doc.setFontSize(12);
-  doc.setFont(undefined, 'normal');
-  doc.text(`${scoredMarks} out of ${totalMarks} marks`, pageWidth / 2, yPos + 27, { align: 'center' });
-
-  yPos += 45;
-
-  // Performance Summary
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.text('Performance Summary', margin, yPos);
-  yPos += 10;
-
-  const boxWidth = (contentWidth - 15) / 4;
-  const boxHeight = 30;
-
-  // Correct box
-  doc.setFillColor(220, 252, 231);
-  doc.roundedRect(margin, yPos, boxWidth, boxHeight, 2, 2, 'F');
-  doc.setTextColor(22, 163, 74);
-  doc.setFontSize(20);
-  doc.setFont(undefined, 'bold');
-  doc.text(correctCount.toString(), margin + boxWidth / 2, yPos + 15, { align: 'center' });
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
-  doc.text('Correct', margin + boxWidth / 2, yPos + 23, { align: 'center' });
-
-  // Partial box
-  doc.setFillColor(254, 243, 199);
-  doc.roundedRect(margin + boxWidth + 5, yPos, boxWidth, boxHeight, 2, 2, 'F');
-  doc.setTextColor(202, 138, 4);
-  doc.setFontSize(20);
-  doc.setFont(undefined, 'bold');
-  doc.text(partialCount.toString(), margin + boxWidth * 1.5 + 5, yPos + 15, { align: 'center' });
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
-  doc.text('Partial', margin + boxWidth * 1.5 + 5, yPos + 23, { align: 'center' });
-
-  // Incorrect box
-  doc.setFillColor(254, 226, 226);
-  doc.roundedRect(margin + boxWidth * 2 + 10, yPos, boxWidth, boxHeight, 2, 2, 'F');
-  doc.setTextColor(220, 38, 38);
-  doc.setFontSize(20);
-  doc.setFont(undefined, 'bold');
-  doc.text(incorrectCount.toString(), margin + boxWidth * 2.5 + 10, yPos + 15, { align: 'center' });
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
-  doc.text('Incorrect', margin + boxWidth * 2.5 + 10, yPos + 23, { align: 'center' });
-
-  // Pending box
-  doc.setFillColor(243, 244, 246);
-  doc.roundedRect(margin + boxWidth * 3 + 15, yPos, boxWidth, boxHeight, 2, 2, 'F');
-  doc.setTextColor(107, 114, 128);
-  doc.setFontSize(20);
-  doc.setFont(undefined, 'bold');
-  doc.text(pendingCount.toString(), margin + boxWidth * 3.5 + 15, yPos + 15, { align: 'center' });
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'normal');
-  doc.text('Pending', margin + boxWidth * 3.5 + 15, yPos + 23, { align: 'center' });
-
-  yPos += 45;
-
-  // Question-wise breakdown
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.text('Question-wise Breakdown', margin, yPos);
-  yPos += 10;
-
-  const reviewData = [
-    {% for rd in review_data %}
-    {
-      number: {{ forloop.counter }},
-      awarded: {% if rd.awarded_marks is not None %}{{ rd.awarded_marks|floatformat:1 }}{% else %}null{% endif %},
-      max: {{ rd.max_marks }}
-    }{% if not forloop.last %},{% endif %}
-    {% endfor %}
-  ];
-
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
-
-  reviewData.forEach((q, index) => {
-    if (yPos > pageHeight - 30) {
-      doc.addPage();
-      yPos = margin;
-    }
-
-    let status = 'Pending';
-    let statusColor = grayColor;
-
-    if (q.awarded !== null) {
-      const perc = (q.awarded / q.max) * 100;
-      if (perc >= 90) {
-        status = 'Correct';
-        statusColor = successColor;
-      } else if (perc >= 40) {
-        status = 'Partial';
-        statusColor = warningColor;
-      } else {
-        status = 'Incorrect';
-        statusColor = dangerColor;
+    // ── Helper: add page if needed ──────────────────────────────
+    function ensureSpace(needed) {
+      if (y + needed > pageH - 20) {
+        addPageNumber();
+        doc.addPage();
+        y = 18;
       }
     }
 
-    doc.setDrawColor(229, 231, 235);
-    doc.setFillColor(249, 250, 251);
-    doc.roundedRect(margin, yPos, contentWidth, 12, 2, 2, 'FD');
+    function addPageNumber() {
+      const n = doc.internal.getNumberOfPages();
+      doc.setPage(n);
+      doc.setFontSize(8);
+      doc.setTextColor(...C.gray);
+      doc.text('Page ' + n, pageW / 2, pageH - 8, { align: 'center' });
+    }
 
-    doc.setTextColor(0, 0, 0);
+    // ── Helper: draw horizontal bar chart ──────────────────────
+    function drawTopicBar(topic, barY, labelW, barW) {
+      const trackH = 10;
+      // Track
+      doc.setFillColor(229, 231, 235);
+      doc.roundedRect(margin + labelW, barY, barW, trackH, 2, 2, 'F');
+      // Fill
+      if (topic.percentage !== null) {
+        const fillW = Math.max((topic.percentage / 100) * barW, 1);
+        const col   = topic.percentage >= 80 ? C.success
+                    : topic.percentage >= 60 ? C.primary
+                    : topic.percentage >= 40 ? C.warning : C.danger;
+        doc.setFillColor(...col);
+        doc.roundedRect(margin + labelW, barY, fillW, trackH, 2, 2, 'F');
+      }
+      // Topic name
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(30, 41, 59);
+      const maxChars = Math.floor(labelW / 2.1);
+      const label    = topic.name.length > maxChars ? topic.name.slice(0, maxChars - 1) + '…' : topic.name;
+      doc.text(label, margin, barY + trackH / 2 + 3);
+      // Percentage / mastery label
+      const rightX = margin + labelW + barW + 3;
+      if (topic.percentage !== null) {
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(8);
+        const col = topic.percentage >= 80 ? C.success
+                  : topic.percentage >= 60 ? C.primary
+                  : topic.percentage >= 40 ? C.warning : C.danger;
+        doc.setTextColor(...col);
+        doc.text(topic.percentage + '%', rightX, barY + trackH / 2 + 3);
+      } else {
+        doc.setTextColor(...C.gray);
+        doc.setFontSize(7);
+        doc.text('Pending', rightX, barY + trackH / 2 + 3);
+      }
+    }
+
+    // ═════════════════════════════════════════════════════
+    //  PAGE 1 — Header & summary
+    // ═════════════════════════════════════════════════════
+
+    // Header banner
+    doc.setFillColor(...C.primary);
+    doc.rect(0, 0, pageW, 36, 'F');
+    doc.setTextColor(...C.white);
+    doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text(`Q${q.number}`, margin + 3, yPos + 8);
+    doc.text('Test Results Report', pageW / 2, 22, { align: 'center' });
+    y = 46;
 
+    // Student / test info
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
-    const marksText = q.awarded !== null ? `${q.awarded} / ${q.max}` : `- / ${q.max}`;
-    doc.text(`Marks: ${marksText}`, margin + 25, yPos + 8);
+    doc.text('Student : ' + student,   margin, y); y += 7;
+    doc.text('Test    : ' + testTitle, margin, y); y += 7;
+    doc.text('Date    : ' + new Date().toLocaleDateString('en-GB'), margin, y); y += 12;
 
-    doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
-    doc.text(status, pageWidth - margin - 20, yPos + 8);
+    // Score box
+    doc.setFillColor(...scoreCol);
+    doc.roundedRect(margin, y, cw, 32, 3, 3, 'F');
+    doc.setTextColor(...C.white);
+    doc.setFontSize(28);
+    doc.setFont(undefined, 'bold');
+    doc.text(pct + '%', pageW / 2, y + 14, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    doc.text(scored + ' out of ' + totalM + ' marks', pageW / 2, y + 25, { align: 'center' });
+    y += 40;
 
-    yPos += 15;
-  });
+    // ── Performance summary boxes ────────────────────────────────
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.text('Performance Summary', margin, y); y += 9;
 
-  // Footer
-  yPos = pageHeight - 20;
-  doc.setTextColor(107, 114, 128);
-  doc.setFontSize(8);
-  doc.text('Generated on ' + new Date().toLocaleString(), pageWidth / 2, yPos, { align: 'center' });
+    const bw    = (cw - 15) / 4;
+    const bh    = 28;
+    const boxes = [
+      { label: 'Correct',   count: parseInt(document.getElementById('correctCount').textContent),   bg: [220,252,231], fg: C.success },
+      { label: 'Partial',   count: parseInt(document.getElementById('partialCount').textContent),   bg: [254,243,199], fg: C.warning },
+      { label: 'Incorrect', count: parseInt(document.getElementById('incorrectCount').textContent), bg: [254,226,226], fg: C.danger  },
+      { label: 'Pending',   count: parseInt(document.getElementById('pendingCount').textContent),   bg: [243,244,246], fg: C.gray   },
+    ];
 
-  // Save PDF
-  doc.save(`${testTitle.replace(/[^a-z0-9]/gi, '_')}_Results.pdf`);
+    boxes.forEach(function(box, i) {
+      const bx = margin + i * (bw + 5);
+      doc.setFillColor(...box.bg);
+      doc.roundedRect(bx, y, bw, bh, 2, 2, 'F');
+      doc.setTextColor(...box.fg);
+      doc.setFontSize(18);
+      doc.setFont(undefined, 'bold');
+      doc.text(String(box.count), bx + bw / 2, y + 14, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'normal');
+      doc.text(box.label, bx + bw / 2, y + 22, { align: 'center' });
+    });
+    y += bh + 14;
 
-  // Reset button
-  btn.disabled = false;
-  btn.textContent = '📄 Download PDF Report';
+    // ── Topic Performance Bar Chart ──────────────────────────────
+    if (topicDataJS.length > 0) {
+      ensureSpace(20 + topicDataJS.length * 16 + 20);
+
+      doc.setTextColor(30, 41, 59);
+      doc.setFontSize(13);
+      doc.setFont(undefined, 'bold');
+      doc.text('Topic Performance', margin, y); y += 10;
+
+      const labelW = 58;
+      const pctW   = 16;
+      const barW   = cw - labelW - pctW - 4;
+
+      topicDataJS.forEach(function(t) {
+        ensureSpace(16);
+        drawTopicBar(t, y, labelW, barW);
+        y += 16;
+      });
+      y += 6;
+
+      // Mastery legend
+      ensureSpace(12);
+      doc.setFontSize(7.5);
+      doc.setFont(undefined, 'normal');
+      const legendItems = [
+        { label: '≥80% Mastered', col: C.success },
+        { label: '60–79% Good',   col: C.primary },
+        { label: '40–59% Needs Improvement', col: C.warning },
+        { label: '<40% Weak',     col: C.danger  },
+      ];
+      let lx = margin;
+      legendItems.forEach(function(li) {
+        doc.setFillColor(...li.col);
+        doc.rect(lx, y, 5, 5, 'F');
+        doc.setTextColor(...li.col);
+        doc.text(li.label, lx + 7, y + 4);
+        lx += 42;
+      });
+      y += 12;
+    }
+
+    // ── Practice Recommendations ─────────────────────────────────
+    if (weakTopicsJS.length > 0) {
+      ensureSpace(30);
+      doc.setFillColor(237, 233, 254);
+      doc.roundedRect(margin, y, cw, 6 + weakTopicsJS.length * 6 + 10, 3, 3, 'F');
+      doc.setTextColor(55, 48, 163);
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('💡 Recommended Practice', margin + 4, y + 8);
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(9);
+      weakTopicsJS.forEach(function(name, i) {
+        doc.text('• ' + name, margin + 6, y + 16 + i * 6);
+      });
+      y += 16 + weakTopicsJS.length * 6 + 8;
+    }
+
+    // ═════════════════════════════════════════════════════
+    //  PAGE 2+ — Question-wise Breakdown (auto-table)
+    // ═════════════════════════════════════════════════════
+    ensureSpace(30);
+
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.text('Question-wise Breakdown', margin, y); y += 8;
+
+    const tableRows = reviewDataJS.map(function(q) {
+      let status, statusColor;
+      if (q.awarded === null) {
+        status = 'Pending';
+        statusColor = C.gray;
+      } else {
+        const qPct = (q.awarded / q.max) * 100;
+        if      (qPct >= 90) { status = 'Correct';   statusColor = C.success; }
+        else if (qPct >= 40) { status = 'Partial';   statusColor = C.warning; }
+        else                 { status = 'Incorrect'; statusColor = C.danger;  }
+      }
+      return {
+        num: 'Q' + q.number,
+        marks: q.awarded !== null ? q.awarded + ' / ' + q.max : '— / ' + q.max,
+        status: status,
+        statusColor: statusColor,
+      };
+    });
+
+    doc.autoTable({
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Question', 'Marks', 'Status']],
+      body: tableRows.map(function(r) { return [r.num, r.marks, r.status]; }),
+      headStyles: { fillColor: C.primary, textColor: C.white, fontStyle: 'bold', fontSize: 10 },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: {
+        0: { cellWidth: 24, fontStyle: 'bold' },
+        1: { cellWidth: 36 },
+        2: { cellWidth: 'auto' },
+      },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.column.index === 2) {
+          const row = tableRows[data.row.index];
+          data.cell.styles.textColor = row.statusColor;
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
+      alternateRowStyles: { fillColor: [249, 250, 251] },
+    });
+
+    // Page numbers on all pages
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFontSize(8);
+      doc.setTextColor(...C.gray);
+      doc.text('Page ' + p + ' of ' + totalPages, pageW / 2, pageH - 8, { align: 'center' });
+      doc.text('Generated: ' + new Date().toLocaleString('en-GB'), margin, pageH - 8);
+    }
+
+    // Save
+    const safeName = testTitle.replace(/[^a-z0-9]/gi, '_').slice(0, 40);
+    doc.save(safeName + '_Results.pdf');
+
+  } catch (err) {
+    console.error('PDF error:', err);
+    alert('PDF generation failed. Please try again.');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '📄 Download PDF Report';
+  }
 }
 </script>
 {% endblock %}

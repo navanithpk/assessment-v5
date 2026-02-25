@@ -1,0 +1,239 @@
+{% extends "student/student_base.html" %}
+
+{% block title %}Practice: {{ topic.name }}{% endblock %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+  .practice-page { max-width: 900px; margin: 0 auto; }
+
+  .practice-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+  }
+
+  .practice-header h1 { font-size: 24px; font-weight: 700; color: #1e293b; margin: 0; }
+  .practice-header .sub { font-size: 14px; color: #64748b; margin-top: 4px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .btn-primary { background: #2563eb; color: white; }
+  .btn-secondary { background: #e2e8f0; color: #475569; }
+  .btn-green { background: #059669; color: white; }
+
+  .practice-info {
+    background: linear-gradient(135deg, #ede9fe, #dbeafe);
+    border-radius: 14px; padding: 20px; margin-bottom: 24px;
+    border: 1px solid #c7d2fe;
+  }
+  .practice-info p { margin: 4px 0; font-size: 14px; color: #4338ca; }
+
+  .question-card {
+    background: white; border-radius: 14px; padding: 24px;
+    margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-left: 4px solid #2563eb; page-break-inside: avoid;
+  }
+
+  .question-card .q-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;
+  }
+  .q-num { font-weight: 700; font-size: 15px; color: #2563eb; }
+  .q-marks { font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 10px; border-radius: 6px; }
+
+  .question-card .q-body { font-size: 14px; line-height: 1.7; color: #334155; }
+  .question-card .q-body img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
+
+  .answer-space {
+    margin-top: 16px; padding: 16px; background: #fafbfc; border: 1px dashed #d1d5db;
+    border-radius: 8px; min-height: 80px;
+  }
+  .answer-space-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+  .empty-state { text-align: center; padding: 60px; color: #94a3b8; }
+  .empty-state p { font-size: 18px; margin-top: 12px; }
+
+  @media print {
+    .no-print { display: none !important; }
+    .question-card { box-shadow: none; border: 1px solid #ddd; }
+    .practice-info { background: #f8fafc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<div class="practice-page">
+  <div class="practice-header no-print">
+    <div>
+      <h1>Practice: {{ topic.name }}</h1>
+      <div class="sub">{{ topic.grade.name }} &bull; {{ topic.subject.name }} &bull; {{ question_count }} question{{ question_count|pluralize }}</div>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-green" onclick="generatePracticePDF()">📄 Download PDF</button>
+      <button class="btn btn-secondary" onclick="window.print()">🖨️ Print</button>
+      <button class="btn btn-secondary" onclick="history.back()">← Back</button>
+    </div>
+  </div>
+
+  <div class="practice-info">
+    <p><strong>Targeted Practice Session</strong></p>
+    <p>These {{ question_count }} questions are from <strong>{{ topic.name }}</strong> — a topic identified as needing more practice. Work through each question carefully and check your understanding.</p>
+  </div>
+
+  {% if practice_questions %}
+    <div id="practiceContent">
+      {% for q in practice_questions %}
+      <div class="question-card">
+        <div class="q-header">
+          <span class="q-num">Question {{ forloop.counter }}</span>
+          <span class="q-marks">{{ q.marks }} mark{{ q.marks|pluralize }}</span>
+        </div>
+        <div class="q-body">{{ q.question_text|safe }}</div>
+        <div class="answer-space">
+          <div class="answer-space-label">Your Answer</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <p>No practice questions available for this topic right now.</p>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function generatePracticePDF() {
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF();
+  var pageW = doc.internal.pageSize.getWidth();
+  var pageH = doc.internal.pageSize.getHeight();
+  var margin = 18;
+  var contentW = pageW - 2 * margin;
+  var y = margin;
+
+  // Header
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Targeted Practice Session', margin, y);
+  y += 10;
+
+  doc.setFontSize(18);
+  doc.setTextColor(37, 99, 235);
+  doc.setFont('helvetica', 'bold');
+  doc.text('{{ topic.name }}', margin, y);
+  y += 8;
+
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont('helvetica', 'normal');
+  doc.text('{{ topic.grade.name }} | {{ topic.subject.name }} | {{ question_count }} Questions', margin, y);
+  y += 6;
+
+  // Date
+  var today = new Date();
+  var dateStr = today.getDate().toString().padStart(2, '0') + '-' +
+                (today.getMonth() + 1).toString().padStart(2, '0') + '-' +
+                today.getFullYear();
+  doc.text('Date: ' + dateStr, margin, y);
+  y += 4;
+
+  // Student name
+  doc.text('Student: {{ student.full_name }}', margin, y);
+  y += 10;
+
+  // Divider
+  doc.setDrawColor(37, 99, 235);
+  doc.setLineWidth(0.5);
+  doc.line(margin, y, margin + contentW, y);
+  y += 10;
+
+  // Questions
+  var questions = [
+    {% for q in practice_questions %}
+    {
+      num: {{ forloop.counter }},
+      marks: {{ q.marks }},
+      text: {{ q.question_text|escapejs|safe }},
+      hasImage: {% if 'data:image' in q.question_text %}true{% else %}false{% endif %}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  for (var i = 0; i < questions.length; i++) {
+    var q = questions[i];
+
+    // Check page break
+    if (y > pageH - 80) {
+      doc.addPage();
+      y = margin;
+    }
+
+    // Question number
+    doc.setFontSize(12);
+    doc.setTextColor(37, 99, 235);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Question ' + q.num + '  (' + q.marks + ' mark' + (q.marks !== 1 ? 's' : '') + ')', margin, y);
+    y += 7;
+
+    // Question text (strip HTML for PDF)
+    doc.setFontSize(10);
+    doc.setTextColor(51, 65, 85);
+    doc.setFont('helvetica', 'normal');
+
+    var plainText = q.text.replace(/<img[^>]*>/g, '[Image - see printed version]').replace(/<[^>]+>/g, '').trim();
+    if (plainText.length > 0) {
+      var lines = doc.splitTextToSize(plainText, contentW);
+      for (var l = 0; l < lines.length; l++) {
+        if (y > pageH - 30) { doc.addPage(); y = margin; }
+        doc.text(lines[l], margin, y);
+        y += 5;
+      }
+    }
+
+    if (q.hasImage) {
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('[This question contains an image - see the online or printed version]', margin, y);
+      y += 5;
+    }
+
+    // Answer space (dotted box)
+    if (y > pageH - 50) { doc.addPage(); y = margin; }
+    y += 4;
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    var boxH = 40;
+    for (var d = 0; d < boxH; d += 2) {
+      doc.line(margin, y + d, margin + 1, y + d);
+      doc.line(margin + contentW - 1, y + d, margin + contentW, y + d);
+    }
+    for (var d2 = 0; d2 < contentW; d2 += 2) {
+      doc.line(margin + d2, y, margin + d2 + 1, y);
+      doc.line(margin + d2, y + boxH, margin + d2 + 1, y + boxH);
+    }
+    doc.setFontSize(7);
+    doc.setTextColor(180, 180, 180);
+    doc.text('Answer Space', margin + 4, y + 5);
+    y += boxH + 10;
+  }
+
+  // Footer on all pages
+  var total = doc.internal.getNumberOfPages();
+  for (var p = 1; p <= total; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Page ' + p + ' of ' + total, pageW - margin, pageH - 8, { align: 'right' });
+    doc.text('Lumen Practice Session | ' + dateStr, margin, pageH - 8);
+  }
+
+  doc.save('Practice_{{ topic.name|slugify }}_' + dateStr + '.pdf');
+}
+</script>
+
+{% endblock %}

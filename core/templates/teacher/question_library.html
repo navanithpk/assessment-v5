@@ -14,6 +14,8 @@ h1 { margin-top: 0; }
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .btn {
@@ -22,11 +24,106 @@ h1 { margin-top: 0; }
   border-radius: 8px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn.green { background: #7cb342; color: white; }
-.btn.gray { background: #9e9e9e; color: white; }
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.btn.green { background: #10b981; color: white; }
+.btn.gray { background: #6b7280; color: white; }
 .btn.blue { background: #2563eb; color: white; }
+.btn.red { background: #ef4444; color: white; }
+
+/* Dropdown styles */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-btn {
+  background: #2563eb;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-btn:hover {
+  background: #1d4ed8;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: white;
+  min-width: 240px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  border-radius: 12px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.dropdown-content.show {
+  display: block;
+}
+
+.dropdown-content a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  text-decoration: none;
+  color: #374151;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.dropdown-content a:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-content a .icon {
+  width: 20px;
+  text-align: center;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 4px 0;
+}
+
+.dropdown-header {
+  padding: 8px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Button group */
+.btn-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
 .filters {
   background: white;
@@ -172,30 +269,81 @@ th.sortable.desc::after {
 <div class="action-bar">
   <h1>Question Library</h1>
 
-  <div style="display: flex; gap: 10px;">
+  <div class="btn-group">
     {% if import_mode %}
-      <button class="btn blue" onclick="importSelected()">⬇ Import Selected</button>
+      <button class="btn blue" onclick="importSelected()">⬇️ Import Selected to Test</button>
+    {% else %}
+      <!-- Add Question Dropdown -->
+      <div class="dropdown">
+        <button class="dropdown-btn" onclick="toggleDropdown('addDropdown')">
+          ➕ Add Question
+          <span style="font-size: 10px;">▼</span>
+        </button>
+        <div id="addDropdown" class="dropdown-content">
+          <a href="{% url 'add_question' %}" target="_blank">
+            <span class="icon">📝</span>
+            Single Question
+          </a>
+          <a href="{% url 'structured_question_editor' %}" target="_blank">
+            <span class="icon">📑</span>
+            Structured Question (with parts)
+          </a>
+        </div>
+      </div>
+
+      <!-- Import from PDF Dropdown -->
+      <div class="dropdown">
+        <button class="dropdown-btn" onclick="toggleDropdown('importDropdown')" style="background: #7c3aed;">
+          📄 Import from PDF
+          <span style="font-size: 10px;">▼</span>
+        </button>
+        <div id="importDropdown" class="dropdown-content">
+          <div class="dropdown-header">Import Options</div>
+          <a href="{% url 'import_mcq_pdf' %}" target="_blank">
+            <span class="icon">🔘</span>
+            MCQ Paper (auto-extract)
+          </a>
+          <a href="{% url 'qp_slicer_workstation' %}" target="_blank">
+            <span class="icon">✂️</span>
+            QP Slicer (draw lines)
+          </a>
+          <a href="{% url 'descriptive_pdf_slicer' %}" target="_blank">
+            <span class="icon">📋</span>
+            Theory Paper (auto-detect lines)
+          </a>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-header">Configure</div>
+          <a href="{% url 'unconfigured_questions_list' %}" target="_blank">
+            <span class="icon">🎨</span>
+            Configure Answer Spaces
+          </a>
+        </div>
+      </div>
+
+      <!-- AI Tagging Export -->
+      <div class="dropdown">
+        <button class="dropdown-btn" onclick="toggleDropdown('aiTagDropdown')" style="background: #059669;">
+          🏷️ AI Tagging
+          <span style="font-size: 10px;">▼</span>
+        </button>
+        <div id="aiTagDropdown" class="dropdown-content">
+          <div class="dropdown-header">AI-Assisted Tagging</div>
+          <a href="{% url 'ai_tagging_export' %}">
+            <span class="icon">📤</span>
+            Export for ChatGPT
+          </a>
+          <a href="{% url 'ai_tagging_import' %}">
+            <span class="icon">📥</span>
+            Import CSV Results
+          </a>
+        </div>
+      </div>
+
+      <!-- Delete Button -->
+      <button class="btn red" onclick="bulkDelete()" id="bulkDeleteBtn" disabled>
+        🗑️ Delete (<span id="selectedCount">0</span>)
+      </button>
     {% endif %}
-	{% if not import_mode %}
-    <a href="{% url 'import_mcq_pdf' %}" target="_blank">
-      <button class="btn blue">📄 Import MCQ from PDF</button>
-    </a>
-
-    <a href="{% url 'descriptive_pdf_slicer' %}" target="_blank">
-      <button class="btn blue">📋 Import Structured/Theory PDF (Step 1)</button>
-    </a>
-
-    <a href="{% url 'unconfigured_questions_list' %}" target="_blank">
-      <button class="btn" style="background: #8b5cf6; color: white;">🎨 Configure Answer Spaces (Step 2)</button>
-    </a>
-
-    <a href="{% url 'add_question' %}" target="_blank">
-      <button class="btn green">➕ Add Question</button>
-    </a>
-    <button class="btn" style="background: #ef4444; color: white;" onclick="bulkDelete()" id="bulkDeleteBtn" disabled>
-      🗑️ Delete Selected (<span id="selectedCount">0</span>)
-    </button>
-	{% endif %}
   </div>
 </div>
 
@@ -252,8 +400,16 @@ th.sortable.desc::after {
     <em>Select topic</em>
   </div>
 
-  <div style="margin-top:14px;">
+  <div style="margin-top:14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
     <button class="btn gray" type="submit">Apply Filters</button>
+
+    <label style="font-size: 13px; font-weight: 600; margin-left: 12px;">Usage:</label>
+    <select name="usage" style="padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 13px;">
+      <option value="">All Questions</option>
+      <option value="most" {% if current_usage == 'most' %}selected{% endif %}>Most Used First</option>
+      <option value="least" {% if current_usage == 'least' %}selected{% endif %}>Least Used First</option>
+      <option value="unused" {% if current_usage == 'unused' %}selected{% endif %}>Never Used</option>
+    </select>
   </div>
 </form>
 
@@ -261,15 +417,16 @@ th.sortable.desc::after {
   <table>
     <thead>
       <tr>
-        <th><input type="checkbox" id="selectAllDelete" onchange="toggleAllDelete()"></th>
+        <th><input type="checkbox" id="selectAllCb" onchange="toggleAll()"></th>
         <th class="sortable {% if current_sort == 'id' %}{{ current_order }}{% endif %}" onclick="sortBy('id')">ID</th>
-        <th>Question</th>
-        <th class="sortable {% if current_sort == 'marks' %}{{ current_order }}{% endif %}" onclick="sortBy('marks')">Marks</th>
-        <th class="sortable {% if current_sort == 'question_type' %}{{ current_order }}{% endif %}" onclick="sortBy('question_type')">Type</th>
-        <th class="sortable {% if current_sort == 'grade__name' %}{{ current_order }}{% endif %}" onclick="sortBy('grade__name')">Grade</th>
         <th class="sortable {% if current_sort == 'subject__name' %}{{ current_order }}{% endif %}" onclick="sortBy('subject__name')">Subject</th>
         <th class="sortable {% if current_sort == 'topic__name' %}{{ current_order }}{% endif %}" onclick="sortBy('topic__name')">Topic</th>
+        <th class="sortable {% if current_sort == 'question_type' %}{{ current_order }}{% endif %}" onclick="sortBy('question_type')">Type</th>
+        <th class="sortable {% if current_sort == 'marks' %}{{ current_order }}{% endif %}" onclick="sortBy('marks')">Marks</th>
+        <th class="sortable {% if current_sort == 'grade__name' %}{{ current_order }}{% endif %}" onclick="sortBy('grade__name')">Grade</th>
         <th class="sortable {% if current_sort == 'year' %}{{ current_order }}{% endif %}" onclick="sortBy('year')">Year</th>
+        <th class="sortable {% if current_sort == 'usage_count' %}{{ current_order }}{% endif %}" onclick="sortBy('usage_count')" title="Number of tests using this question">Used In</th>
+        <th>Preview</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -281,21 +438,37 @@ th.sortable.desc::after {
           <input  type="checkbox" value="{{ q.id }}" class="{% if import_mode %}import-check{% else %}delete-check{% endif %}"{% if not import_mode %}onchange="updateDeleteCount()"{% endif %}>
         </td>
         <td>{{ q.id }}</td>
-        <td>{{ q.question_text|striptags|truncatewords:18 }}</td>
+        <td><strong>{{ q.subject.name }}</strong></td>
+        <td>{{ q.topic.name|default:"—" }}</td>
+        <td><span style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;">{{ q.question_type|upper }}</span></td>
         <td>{{ q.marks }}</td>
-        <td>{{ q.question_type }}</td>
         <td>{{ q.grade.name }}</td>
-        <td>{{ q.subject.name }}</td>
-        <td>{{ q.topic.name }}</td>
         <td>{{ q.year|default:"—" }}</td>
+        <td style="text-align: center;">
+          {% if q.usage_count > 0 %}
+            <span style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">{{ q.usage_count }} test{{ q.usage_count|pluralize }}</span>
+          {% else %}
+            <span style="color: #d1d5db; font-size: 12px;">—</span>
+          {% endif %}
+        </td>
         <td>
-          <a href="{% url 'edit_question' q.id %}" target="_blank" style="margin-right: 10px;">Edit</a>
+          {% if 'data:image' in q.question_text %}
+            <span style="color: #6b7280; font-size: 12px;">📷 Image Question</span>
+          {% else %}
+            <span style="color: #6b7280; font-size: 12px;">{{ q.question_text|striptags|truncatewords:8 }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'edit_question_v2' q.id %}"
+             style="margin-right:6px;background:#667eea;color:white;padding:4px 10px;border-radius:4px;font-size:12px;text-decoration:none;display:inline-block;font-weight:600;">
+            ✏️ Edit
+          </a>
           <button onclick="deleteQuestion({{ q.id }})" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>
         </td>
       </tr>
       {% empty %}
       <tr>
-        <td colspan="11"><em>No questions found</em></td>
+        <td colspan="11" style="text-align: center; padding: 40px; color: #9ca3af;"><em>No questions found</em></td>
       </tr>
       {% endfor %}
     </tbody>
@@ -444,10 +617,7 @@ document.getElementById("filterForm").addEventListener("submit", e => {
 });
 
 {% if import_mode %}
-// Select all checkbox
-document.getElementById("selectAll").onclick = function () {
-  document.querySelectorAll(".q-check").forEach(cb => cb.checked = this.checked);
-};
+// Select all checkbox (import mode) is handled by toggleAll() below
 
 // Import selected questions
 function importSelected() {
@@ -518,20 +688,24 @@ function deleteQuestion(questionId) {
   });
 }
 
-// Toggle all checkboxes
-function toggleAllDelete() {
-  const selectAll = document.getElementById('selectAllDelete');
-  const checkboxes = document.querySelectorAll('.delete-check');
+// Toggle all checkboxes (works for both import and delete modes)
+function toggleAll() {
+  const selectAll = document.getElementById('selectAllCb');
+  const selector = '{% if import_mode %}.import-check{% else %}.delete-check{% endif %}';
+  const checkboxes = document.querySelectorAll(selector);
   checkboxes.forEach(cb => cb.checked = selectAll.checked);
   updateDeleteCount();
 }
 
 // Update selected count
 function updateDeleteCount() {
-  const checked = document.querySelectorAll('.delete-check:checked');
+  const selector = '{% if import_mode %}.import-check:checked{% else %}.delete-check:checked{% endif %}';
+  const checked = document.querySelectorAll(selector);
   const count = checked.length;
-  document.getElementById('selectedCount').textContent = count;
-  document.getElementById('bulkDeleteBtn').disabled = count === 0;
+  var countEl = document.getElementById('selectedCount');
+  if (countEl) countEl.textContent = count;
+  var bulkBtn = document.getElementById('bulkDeleteBtn');
+  if (bulkBtn) bulkBtn.disabled = count === 0;
 }
 
 // Bulk delete selected questions
@@ -585,6 +759,29 @@ async function bulkDelete() {
 
   window.location.reload();
 }
+
+// Dropdown toggle function
+function toggleDropdown(dropdownId) {
+  // Close all other dropdowns first
+  document.querySelectorAll('.dropdown-content').forEach(dd => {
+    if (dd.id !== dropdownId) {
+      dd.classList.remove('show');
+    }
+  });
+
+  // Toggle the clicked dropdown
+  const dropdown = document.getElementById(dropdownId);
+  dropdown.classList.toggle('show');
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(event) {
+  if (!event.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown-content').forEach(dd => {
+      dd.classList.remove('show');
+    });
+  }
+});
 </script>
 
 {% endwith %}

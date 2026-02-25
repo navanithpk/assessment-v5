@@ -1,1 +1,63 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ──────────────────────────────────
+venv/
+env/
+.venv/
+.env/
+
+# ── Django ────────────────────────────────────────────────
+*.sqlite3
+*.sqlite3.backup
+db.sqlite3-journal
+media/
+staticfiles/
+static_collected/
+
+# ── Environment / secrets ─────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Logs ─────────────────────────────────────────────────
+logs/
+*.log
 server.log
+
+# ── Question databases (empty scaffolds) ─────────────────
+question_databases/
+
+# ── Data files ───────────────────────────────────────────
+*.xlsx
+*.xls
+*.csv
+
+# ── Windows artifacts ────────────────────────────────────
+nul
+Thumbs.db
+desktop.ini
+
+# ── macOS ────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── IDE / editors ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Deployment config (local overrides) ──────────────────
+*.pem
+*.key

@@ -28,7 +28,7 @@ def ai_tagging_logs(request):
                     date_str = date_match.group(1)
                     time_str = date_match.group(2)
                     dt = datetime.strptime(f"{date_str}{time_str}", "%Y%m%d%H%M%S")
-                    display_date = dt.strftime("%Y-%m-%d %H:%M:%S")
+                    display_date = dt.strftime("%d-%m-%Y %H:%M:%S")
                 else:
                     display_date = "Unknown date"
 

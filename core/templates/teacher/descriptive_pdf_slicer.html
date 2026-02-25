@@ -154,6 +154,11 @@
     color: white;
 }
 
+.btn-warning {
+    background: #ed8936;
+    color: white;
+}
+
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -188,6 +193,17 @@
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.questions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.questions-header h2 {
+    margin: 0;
 }
 
 .question-card {
@@ -236,6 +252,11 @@
     width: 100%;
     height: auto;
     border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.preview-container img:last-child {
+    margin-bottom: 0;
 }
 
 .markscheme-container {
@@ -250,16 +271,41 @@
     font-size: 14px;
     font-weight: 600;
     color: #744210;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.markscheme-text {
+.ms-table {
+    width: 100%;
+    border-collapse: collapse;
     font-size: 13px;
+}
+
+.ms-table th,
+.ms-table td {
+    padding: 8px 12px;
+    border: 1px solid #fbd38d;
+    text-align: left;
+}
+
+.ms-table th {
+    background: #fef3c7;
+    font-weight: 600;
     color: #744210;
-    white-space: pre-wrap;
-    font-family: monospace;
-    max-height: 200px;
-    overflow-y: auto;
+}
+
+.ms-table td {
+    background: white;
+    color: #744210;
+}
+
+.ms-total {
+    margin-top: 12px;
+    font-weight: 600;
+    color: #744210;
+    text-align: right;
 }
 
 .question-metadata {
@@ -297,6 +343,7 @@
     border-radius: 6px;
     font-size: 12px;
     color: #4a5568;
+    margin-right: 4px;
 }
 
 .green-marker {
@@ -313,10 +360,10 @@
     border-radius: 2px;
 }
 
-.blue-marker {
+.purple-marker {
     width: 12px;
     height: 12px;
-    background: #4299e1;
+    background: #9f7aea;
     border-radius: 2px;
 }
 
@@ -340,12 +387,48 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.stats-bar {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f0f4f8;
+    border-radius: 8px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #718096;
+}
+
+.no-ms-warning {
+    background: #fed7d7;
+    border: 1px solid #fc8181;
+    color: #c53030;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
 </style>
 
 <div class="slicer-container">
     <div class="header">
         <h1>📄 Descriptive PDF Slicer</h1>
-        <p>Process multi-page structured questions with automatic green/red line detection</p>
+        <p>Process multi-page structured questions with automatic red/green/purple line detection and Cambridge mark scheme parsing</p>
     </div>
 
     <div class="upload-section">
@@ -354,11 +437,11 @@
         <div class="info-box">
             <h3>How it works:</h3>
             <ul>
-                <li><strong>Green line at top</strong> = Question starts</li>
-                <li><strong>Red line at bottom</strong> = Question ends</li>
-                <li><strong>Blue lines</strong> = Middle pages (question spanning multiple pages)</li>
-                <li>System automatically detects paper component from code (MCQ, Theory, Practical, etc.)</li>
-                <li>Markscheme extracts all content for theory questions (not just A/B/C/D)</li>
+                <li><strong>Red line</strong> = New question starts</li>
+                <li><strong>Green line</strong> = Sub-part within question</li>
+                <li><strong>Purple line</strong> = Answer/working space marker</li>
+                <li><strong>Mark Scheme</strong> = Automatically parsed from Cambridge table format (Question | Answer | Marks) starting page 5</li>
+                <li>Questions spanning multiple pages are automatically grouped together</li>
             </ul>
         </div>
 
@@ -367,9 +450,8 @@
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Paper Code *</label>
-                    <input type="text" id="paperCode" name="paper_code" placeholder="e.g., 0625_s23_qp_31" required>
-                    <small id="paperInfo" style="margin-top: 4px; font-size: 12px; color: #718096;"></small>
+                    <label>Year</label>
+                    <input type="number" id="yearInput" name="year" placeholder="e.g., 2023" min="2000" max="2100">
                 </div>
 
                 <div class="form-group">
@@ -393,9 +475,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Topic *</label>
-                    <select id="topicSelect" name="topic_id" required>
-                        <option value="">Select Topic</option>
+                    <label>Topic</label>
+                    <select id="topicSelect" name="topic_id">
+                        <option value="">Select Topic (Optional)</option>
                         {% for topic in topics %}
                         <option value="{{ topic.id }}">{{ topic.name }}</option>
                         {% endfor %}
@@ -409,43 +491,65 @@
                     <div class="file-input-wrapper">
                         <input type="file" id="qpFile" name="qp_file" accept=".pdf" required>
                         <label for="qpFile" class="file-input-label" id="qpLabel">
-                            📄 Choose QP File
+                            📄 Choose Question Paper
                         </label>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Mark Scheme (PDF)</label>
+                    <label>Mark Scheme (PDF) - Cambridge Format</label>
                     <div class="file-input-wrapper">
                         <input type="file" id="msFile" name="ms_file" accept=".pdf">
                         <label for="msFile" class="file-input-label" id="msLabel">
-                            📝 Choose MS File (Optional)
+                            📝 Choose Mark Scheme (Optional)
                         </label>
                     </div>
                 </div>
             </div>
 
             <button type="submit" class="btn btn-primary" id="uploadBtn">
-                🚀 Process PDF
+                🚀 Process PDFs
             </button>
         </form>
     </div>
 
     <div id="loadingIndicator">
         <div class="spinner"></div>
-        <p>Processing PDF... Detecting green/red lines and grouping questions...</p>
+        <p>Processing PDFs... Detecting colored lines and parsing mark scheme...</p>
     </div>
 
     <div id="questionsList">
-        <h2>Questions Detected</h2>
-        <p style="margin-bottom: 20px; color: #718096;">Review and save each question below</p>
+        <div class="questions-header">
+            <div>
+                <h2>Questions Detected</h2>
+                <p style="margin-top: 4px; color: #718096;">Review and save each question below</p>
+            </div>
+            <button class="btn btn-warning" onclick="saveAllQuestions()">
+                💾 Save All Questions
+            </button>
+        </div>
+
+        <div class="stats-bar" id="statsBar">
+            <div class="stat-item">
+                <span class="stat-value" id="totalQuestions">0</span>
+                <span class="stat-label">Questions</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="totalPages">0</span>
+                <span class="stat-label">Pages</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value" id="withMarkscheme">0</span>
+                <span class="stat-label">With Mark Scheme</span>
+            </div>
+        </div>
+
         <div id="questionsContainer"></div>
     </div>
 </div>
 
 <script>
 let pdfData = null;
-let paperInfo = null;
 
 // File input handlers
 document.getElementById('qpFile').addEventListener('change', function(e) {
@@ -454,7 +558,7 @@ document.getElementById('qpFile').addEventListener('change', function(e) {
         label.textContent = '✓ ' + e.target.files[0].name;
         label.classList.add('has-file');
     } else {
-        label.textContent = '📄 Choose QP File';
+        label.textContent = '📄 Choose Question Paper';
         label.classList.remove('has-file');
     }
 });
@@ -465,39 +569,8 @@ document.getElementById('msFile').addEventListener('change', function(e) {
         label.textContent = '✓ ' + e.target.files[0].name;
         label.classList.add('has-file');
     } else {
-        label.textContent = '📝 Choose MS File (Optional)';
+        label.textContent = '📝 Choose Mark Scheme (Optional)';
         label.classList.remove('has-file');
-    }
-});
-
-// Paper code info detector
-document.getElementById('paperCode').addEventListener('input', function(e) {
-    const code = e.target.value;
-    const infoEl = document.getElementById('paperInfo');
-
-    if (code.length >= 10) {
-        // Try to detect info
-        const parts = code.split('_');
-        let info = '';
-
-        if (parts[0] === '0625') info += 'Physics';
-        else if (parts[0] === '0620') info += 'Chemistry';
-        else if (parts[0] === '0610') info += 'Biology';
-
-        if (parts.length > 2) {
-            const paperNum = parts[parts.length - 1].replace('.pdf', '');
-            if (['11','12','13','21','22','23'].includes(paperNum)) info += ' - MCQ';
-            else if (['31','32','33','41','42','43'].includes(paperNum)) info += ' - Theory';
-            else if (['51','52','53'].includes(paperNum)) info += ' - Practical';
-            else if (['61','62','63'].includes(paperNum)) info += ' - Alt. to Practical';
-        }
-
-        if (info) {
-            infoEl.textContent = '✓ Detected: ' + info;
-            infoEl.style.color = '#48bb78';
-        }
-    } else {
-        infoEl.textContent = '';
     }
 });
 
@@ -525,10 +598,13 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
 
         if (data.success) {
             pdfData = data;
-            paperInfo = data.paper_info;
             renderQuestions(data.questions_grouped, data.markscheme_data);
+            updateStats(data);
         } else {
             alert('Error: ' + (data.error || 'Failed to process PDF'));
+            if (data.traceback) {
+                console.error(data.traceback);
+            }
         }
     } catch (error) {
         console.error('Error:', error);
@@ -538,6 +614,22 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
         document.getElementById('uploadBtn').disabled = false;
     }
 });
+
+function updateStats(data) {
+    document.getElementById('totalQuestions').textContent = data.total_questions || 0;
+    document.getElementById('totalPages').textContent = data.total_pages || 0;
+
+    // Count questions with mark scheme
+    let withMs = 0;
+    if (data.questions_grouped && data.markscheme_data) {
+        data.questions_grouped.forEach(q => {
+            if (data.markscheme_data[String(q.question_number)]) {
+                withMs++;
+            }
+        });
+    }
+    document.getElementById('withMarkscheme').textContent = withMs;
+}
 
 function renderQuestions(questions, markscheme) {
     const container = document.getElementById('questionsContainer');
@@ -557,17 +649,25 @@ function createQuestionCard(question, markscheme, index) {
     card.id = `question-${index}`;
 
     const pageCount = question.pages.length;
+
+    // Create page markers
     const markers = question.pages.map(p => {
-        if (p.has_green_line) return '<span class="green-marker"></span>';
-        if (p.has_red_line) return '<span class="red-marker"></span>';
-        return '<span class="blue-marker"></span>';
+        let markerClass = '';
+        if (p.has_red_line) markerClass = 'red-marker';
+        else if (p.has_green_line) markerClass = 'green-marker';
+        else if (p.has_purple_line) markerClass = 'purple-marker';
+        return `<span class="page-indicator"><span class="${markerClass}"></span> P${p.page_number}</span>`;
     }).join('');
 
-    // Stitch pages for preview
-    const stitchedImage = stitchPagesPreview(question.pages);
+    // Get mark scheme data for this question
+    const msData = markscheme ? markscheme[String(question.question_number)] : null;
+    const msHtml = msData ? formatMarkschemeHtml(msData) : '';
+    const totalMarks = msData ? msData.total_marks || 0 : 0;
 
-    // Get markscheme text
-    const msText = getMarkschemeForQuestion(question, markscheme);
+    // Generate images HTML
+    const imagesHtml = question.pages.map(p =>
+        `<img src="${p.page_image}" alt="Page ${p.page_number}">`
+    ).join('');
 
     card.innerHTML = `
         <div class="question-header">
@@ -575,31 +675,35 @@ function createQuestionCard(question, markscheme, index) {
                 <div class="question-title">Question ${question.question_number}</div>
                 <div class="question-pages">
                     Pages ${question.start_page} - ${question.end_page} (${pageCount} page${pageCount > 1 ? 's' : ''})
-                    <span style="margin-left: 8px;">${markers}</span>
                 </div>
+                <div style="margin-top: 8px;">${markers}</div>
             </div>
             <span class="status-badge status-pending" id="status-${index}">Pending</span>
         </div>
 
         <div class="preview-container">
-            <img src="${stitchedImage}" alt="Question ${question.question_number}">
+            ${imagesHtml}
         </div>
 
-        ${msText ? `
+        ${msHtml ? `
         <div class="markscheme-container">
-            <h4>📝 Mark Scheme</h4>
-            <div class="markscheme-text">${msText}</div>
+            <h4>📝 Mark Scheme (Auto-parsed from Cambridge Table)</h4>
+            ${msHtml}
         </div>
-        ` : ''}
+        ` : `
+        <div class="no-ms-warning">
+            ⚠️ No mark scheme found for this question. Make sure you uploaded the MS PDF and it follows the Cambridge table format.
+        </div>
+        `}
 
         <div class="question-metadata">
             <div class="form-group">
                 <label>Marks</label>
-                <input type="number" id="marks-${index}" value="5" min="1" max="100" style="max-width: 100px;">
+                <input type="number" id="marks-${index}" value="${totalMarks || 5}" min="1" max="100" style="max-width: 100px;">
             </div>
         </div>
 
-        <button class="btn btn-success" onclick="saveQuestion(${index}, ${question.question_number})">
+        <button class="btn btn-success" onclick="saveQuestion(${index})">
             💾 Save Question ${question.question_number}
         </button>
     `;
@@ -607,40 +711,58 @@ function createQuestionCard(question, markscheme, index) {
     return card;
 }
 
-function stitchPagesPreview(pages) {
-    // For now, just show first page
-    // In production, use canvas to stitch vertically
-    return pages[0].page_image;
-}
+function formatMarkschemeHtml(msData) {
+    if (!msData) return '';
 
-function getMarkschemeForQuestion(question, markscheme) {
-    if (!markscheme) return '';
+    let html = '<table class="ms-table"><thead><tr><th>Part</th><th>Answer</th><th>Marks</th></tr></thead><tbody>';
 
-    // Get markscheme for the page range
-    let msText = '';
-    for (let i = question.start_page; i <= question.end_page; i++) {
-        if (markscheme[i]) {
-            msText += markscheme[i] + '\n';
-        }
+    // Add stem answers first
+    if (msData.stem_answers) {
+        msData.stem_answers.forEach(entry => {
+            if (entry.answer) {
+                html += `<tr><td>-</td><td>${escapeHtml(entry.answer)}</td><td>${entry.marks || ''}</td></tr>`;
+            }
+        });
     }
-    return msText.trim();
+
+    // Add part answers
+    if (msData.parts) {
+        const sortedParts = Object.keys(msData.parts).sort();
+        sortedParts.forEach(part => {
+            const entries = msData.parts[part];
+            entries.forEach((entry, i) => {
+                const partLabel = i === 0 ? `(${part})` : '';
+                html += `<tr><td>${partLabel}</td><td>${escapeHtml(entry.answer)}</td><td>${entry.marks || ''}</td></tr>`;
+            });
+        });
+    }
+
+    html += '</tbody></table>';
+    html += `<div class="ms-total">Total: ${msData.total_marks || 0} marks</div>`;
+
+    return html;
 }
 
-async function saveQuestion(index, questionNumber) {
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+async function saveQuestion(index) {
     const question = pdfData.questions_grouped[index];
     const marks = document.getElementById(`marks-${index}`).value;
-    const msText = getMarkschemeForQuestion(question, pdfData.markscheme_data);
+    const msData = pdfData.markscheme_data ? pdfData.markscheme_data[String(question.question_number)] : null;
 
     const data = {
-        question_number: questionNumber,
+        action: 'save_question',
         pages: question.pages,
-        markscheme: msText,
+        markscheme: msData || {},
         grade_id: document.getElementById('gradeSelect').value,
         subject_id: document.getElementById('subjectSelect').value,
-        topic_id: document.getElementById('topicSelect').value,
-        marks: marks,
-        year: paperInfo.year,
-        component: paperInfo.component
+        topic_id: document.getElementById('topicSelect').value || null,
+        marks: parseInt(marks),
+        year: document.getElementById('yearInput').value || null
     };
 
     try {
@@ -650,10 +772,7 @@ async function saveQuestion(index, questionNumber) {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: JSON.stringify({
-                action: 'save_question',
-                ...data
-            })
+            body: JSON.stringify(data)
         });
 
         const result = await response.json();
@@ -662,13 +781,74 @@ async function saveQuestion(index, questionNumber) {
             const statusBadge = document.getElementById(`status-${index}`);
             statusBadge.textContent = '✓ Saved';
             statusBadge.className = 'status-badge status-saved';
-            alert(`✓ Question ${questionNumber} saved successfully!`);
         } else {
             alert('Error: ' + (result.error || 'Failed to save question'));
+            if (result.traceback) {
+                console.error(result.traceback);
+            }
         }
     } catch (error) {
         console.error('Error:', error);
         alert('Error saving question. Please try again.');
+    }
+}
+
+async function saveAllQuestions() {
+    if (!pdfData || !pdfData.questions_grouped) {
+        alert('No questions to save');
+        return;
+    }
+
+    const questions = pdfData.questions_grouped.map((q, index) => {
+        const msData = pdfData.markscheme_data ? pdfData.markscheme_data[String(q.question_number)] : null;
+        const marks = document.getElementById(`marks-${index}`).value;
+        return {
+            pages: q.pages,
+            markscheme: msData || {},
+            marks: parseInt(marks)
+        };
+    });
+
+    const data = {
+        action: 'save_all',
+        questions: questions,
+        grade_id: document.getElementById('gradeSelect').value,
+        subject_id: document.getElementById('subjectSelect').value,
+        topic_id: document.getElementById('topicSelect').value || null,
+        year: document.getElementById('yearInput').value || null
+    };
+
+    try {
+        const response = await fetch('', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✓ Successfully saved ${result.count} questions!`);
+            // Update all status badges
+            pdfData.questions_grouped.forEach((q, index) => {
+                const statusBadge = document.getElementById(`status-${index}`);
+                if (statusBadge) {
+                    statusBadge.textContent = '✓ Saved';
+                    statusBadge.className = 'status-badge status-saved';
+                }
+            });
+        } else {
+            alert('Error: ' + (result.error || 'Failed to save questions'));
+            if (result.traceback) {
+                console.error(result.traceback);
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error saving questions. Please try again.');
     }
 }
 </script>

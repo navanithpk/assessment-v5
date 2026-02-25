@@ -1,0 +1,1995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if test %}Edit{% else %}Create{% endif %} Descriptive Test | Lumen</title>
+  {% load static %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+/* ============================================
+   DESCRIPTIVE TEST CREATOR V3 - THREE PANE
+   Left: Outline  |  Center: Editor  |  Right: Properties
+   ============================================ */
+
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #dbeafe;
+  --primary-pale: #eff6ff;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --purple: #8b5cf6;
+  --purple-light: #ede9fe;
+  --orange: #f97316;
+  --orange-light: #fff7ed;
+  --teal: #14b8a6;
+  --teal-light: #ccfbf1;
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--gray-100);
+  overflow: hidden;
+}
+
+/* ========== TOP BAR ========== */
+.editor-wrapper {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: white;
+  border-bottom: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.title-input {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  outline: none;
+  color: var(--gray-800);
+  min-width: 200px;
+}
+.title-input:hover, .title-input:focus { background: var(--gray-50); }
+
+.top-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.meta-select {
+  padding: 7px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 13px;
+  background: white;
+  color: var(--gray-700);
+}
+
+.meta-input {
+  width: 70px;
+  padding: 7px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--gray-700);
+}
+
+.marks-badge {
+  font-size: 13px;
+  color: var(--gray-600);
+  background: var(--gray-100);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ========== BUTTONS ========== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #059669; }
+.btn-secondary { background: var(--gray-100); color: var(--gray-700); border: 1px solid var(--gray-300); }
+.btn-secondary:hover { background: var(--gray-200); }
+.btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); }
+.btn-outline:hover { background: var(--primary-light); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #dc2626; }
+.btn-ghost { background: transparent; color: var(--gray-600); }
+.btn-ghost:hover { background: var(--gray-100); color: var(--gray-800); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-icon { padding: 6px; min-width: 30px; justify-content: center; }
+
+/* ========== THREE PANE LAYOUT ========== */
+.three-pane {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr 300px;
+  overflow: hidden;
+}
+
+/* ========== LEFT PANE - OUTLINE ========== */
+.pane-left {
+  background: white;
+  border-right: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pane-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--gray-50);
+  flex-shrink: 0;
+}
+
+.pane-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pane-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+/* Outline Tree */
+.outline-tree { font-size: 13px; }
+
+.outline-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-bottom: 1px;
+  user-select: none;
+}
+.outline-node:hover { background: var(--gray-100); }
+.outline-node.active { background: var(--primary-light); }
+
+.outline-toggle {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gray-400);
+  font-size: 9px;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.outline-toggle.expanded { transform: rotate(90deg); }
+
+.outline-num {
+  font-weight: 700;
+  color: var(--gray-700);
+  min-width: 32px;
+  font-size: 13px;
+}
+.outline-node.active .outline-num { color: var(--primary); }
+
+.outline-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.outline-marks-badge {
+  font-size: 11px;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.outline-node.active .outline-marks-badge {
+  background: white;
+  color: var(--primary);
+}
+
+.outline-children {
+  margin-left: 24px;
+  border-left: 2px solid var(--gray-200);
+  padding-left: 6px;
+}
+
+/* Add buttons at bottom of outline */
+.outline-actions {
+  padding: 10px;
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.add-btn {
+  width: 100%;
+  padding: 10px;
+  border: 2px dashed var(--gray-300);
+  border-radius: 6px;
+  background: white;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  font-family: inherit;
+}
+.add-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-pale);
+}
+
+/* Stats footer */
+.pane-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.stat-box {
+  text-align: center;
+  padding: 6px;
+  background: white;
+  border-radius: 6px;
+}
+.stat-val { font-size: 18px; font-weight: 700; color: var(--gray-800); }
+.stat-lbl { font-size: 10px; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ========== CENTER PANE - EDITOR ========== */
+.pane-center {
+  background: var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.editor-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+/* Question Card in Editor */
+.q-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.q-card.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.q-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.q-num-badge {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--primary);
+  min-width: 40px;
+}
+
+.q-type-tag {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.q-type-tag.parent { background: var(--purple-light); color: var(--purple); }
+.q-type-tag.standalone { background: var(--primary-light); color: var(--primary); }
+.q-type-tag.part { background: var(--teal-light); color: var(--teal); }
+
+.q-marks-input {
+  width: 55px;
+  padding: 5px 8px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  font-family: inherit;
+}
+
+.q-card-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.q-card-body {
+  padding: 16px;
+}
+
+/* Section Label */
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.section-label .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.section-label .dot.blue { background: var(--primary); }
+.section-label .dot.orange { background: var(--orange); }
+
+/* Rich Editor Container */
+.editor-frame-wrap {
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  transition: border-color 0.15s;
+}
+.editor-frame-wrap:focus-within {
+  border-color: var(--primary);
+}
+
+.editor-iframe {
+  width: 100%;
+  border: none;
+  display: block;
+}
+.editor-iframe.h-lg { height: 220px; }
+.editor-iframe.h-md { height: 160px; }
+.editor-iframe.h-sm { height: 100px; }
+
+/* Mark Scheme Section */
+.ms-section {
+  background: var(--orange-light);
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.ms-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ms-header .section-label { margin-bottom: 0; }
+
+.ms-toggle {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--orange);
+  cursor: pointer;
+  font-weight: 500;
+}
+.ms-toggle:hover { text-decoration: underline; }
+
+/* Children area */
+.children-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--gray-300);
+}
+
+.children-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.children-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-600);
+}
+
+/* Child Card */
+.child-card {
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--primary);
+}
+
+/* Grandchild - level 2 */
+.child-card.level-2 {
+  border-left-color: var(--teal);
+  background: white;
+  margin-left: 16px;
+}
+
+.child-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.child-num {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 13px;
+}
+.child-card.level-2 .child-num { color: var(--teal); }
+
+/* Collapsible mark scheme in child */
+.child-ms {
+  background: var(--orange-light);
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+  text-align: center;
+  border: 2px dashed var(--gray-300);
+  border-radius: var(--radius-lg);
+  margin: 40px auto;
+  max-width: 500px;
+  background: linear-gradient(135deg, var(--gray-50) 0%, white 100%);
+}
+.empty-icon {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--primary-light), var(--purple-light));
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+}
+.empty-text { font-size: 18px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+.empty-hint { font-size: 13px; color: var(--gray-500); margin-bottom: 24px; line-height: 1.5; max-width: 320px; }
+
+/* ========== RIGHT PANE - PROPERTIES ========== */
+.pane-right {
+  background: white;
+  border-left: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pane-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--gray-200);
+  background: var(--gray-50);
+  flex-shrink: 0;
+}
+.pane-tab {
+  flex: 1;
+  padding: 11px 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.15s;
+}
+.pane-tab:hover { color: var(--gray-700); background: var(--gray-100); }
+.pane-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: white; }
+
+.tab-panel {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.tab-panel.active { display: flex; }
+
+/* Properties Form */
+.prop-section {
+  padding: 14px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.prop-section:last-child { border-bottom: none; }
+
+.prop-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gray-500);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.prop-select, .prop-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--gray-300);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--gray-700);
+  background: white;
+}
+.prop-select:focus, .prop-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.prop-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* LO Tags */
+.lo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+
+.lo-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--gray-50);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.lo-item:hover { background: var(--gray-100); }
+
+.lo-check {
+  width: 16px; height: 16px;
+  border: 2px solid var(--gray-300);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.lo-item.selected .lo-check {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.lo-item.selected .lo-check::after {
+  content: '';
+  width: 8px; height: 5px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg);
+  margin-top: -2px;
+}
+
+.lo-code {
+  font-weight: 600;
+  color: var(--gray-700);
+  min-width: 50px;
+}
+.lo-desc {
+  color: var(--gray-500);
+  line-height: 1.3;
+}
+
+/* Selected LO Tags */
+.selected-los {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.lo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.lo-tag-x {
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.lo-tag-x:hover { opacity: 1; }
+
+/* No selection message */
+.no-selection-msg {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--gray-400);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Import Tab */
+.import-filters {
+  padding: 12px;
+  border-bottom: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.import-filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.import-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.import-item {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.import-item:hover {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.import-item-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.import-item-type {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.import-item-marks {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+.import-item-preview {
+  font-size: 12px;
+  color: var(--gray-500);
+  line-height: 1.4;
+  max-height: 48px;
+  overflow: hidden;
+}
+
+/* Toast */
+.toast-wrap {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+}
+.toast {
+  background: var(--gray-800);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+  animation: toastIn 0.25s ease;
+  margin-top: 6px;
+  font-size: 13px;
+}
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Keyboard shortcut hint */
+.kb-hint {
+  font-size: 10px;
+  color: var(--gray-400);
+  padding: 6px 14px;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  flex-shrink: 0;
+}
+.kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: white;
+  border: 1px solid var(--gray-300);
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .three-pane { grid-template-columns: 230px 1fr 270px; }
+}
+@media (max-width: 1100px) {
+  .three-pane { grid-template-columns: 1fr; }
+  .pane-left, .pane-right { display: none; }
+}
+
+/* Scrollbar styling */
+.pane-body::-webkit-scrollbar,
+.editor-area::-webkit-scrollbar,
+.tab-panel::-webkit-scrollbar,
+.lo-list::-webkit-scrollbar,
+.import-list::-webkit-scrollbar {
+  width: 6px;
+}
+.pane-body::-webkit-scrollbar-track,
+.editor-area::-webkit-scrollbar-track,
+.tab-panel::-webkit-scrollbar-track,
+.lo-list::-webkit-scrollbar-track,
+.import-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pane-body::-webkit-scrollbar-thumb,
+.editor-area::-webkit-scrollbar-thumb,
+.tab-panel::-webkit-scrollbar-thumb,
+.lo-list::-webkit-scrollbar-thumb,
+.import-list::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+  </style>
+</head>
+<body>
+<div class="editor-wrapper">
+
+  <!-- ========== TOP BAR ========== -->
+  <div class="top-bar">
+    <input type="text" class="title-input" id="testTitle"
+           placeholder="Untitled Descriptive Test"
+           value="{{ test.title|default:'Untitled Descriptive Test' }}">
+
+    <div class="top-bar-meta">
+      <select class="meta-select" id="subjectSelect">
+        <option value="">Subject</option>
+        {% for subject in subjects %}
+        <option value="{{ subject.id }}" {% if test.subject_id == subject.id %}selected{% endif %}>
+          {{ subject.name }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <select class="meta-select" id="gradeSelect">
+        <option value="">Grade</option>
+        {% for grade in grades %}
+        <option value="{{ grade.id }}">{{ grade.name }}</option>
+        {% endfor %}
+      </select>
+
+      <input type="number" class="meta-input" id="durationInput"
+             placeholder="Min" title="Duration in minutes"
+             value="{{ test.duration_minutes|default:'' }}">
+
+      <span class="marks-badge">
+        Total: <strong id="totalMarksDisplay">0</strong> marks
+      </span>
+    </div>
+
+    <button class="btn btn-secondary" onclick="window.location.href='{% url 'tests_list' %}'">
+      Back
+    </button>
+    <button class="btn btn-success" onclick="saveTest()">
+      Save Test
+    </button>
+  </div>
+
+  <!-- ========== THREE PANE LAYOUT ========== -->
+  <div class="three-pane">
+
+    <!-- LEFT PANE - Outline -->
+    <div class="pane-left">
+      <div class="pane-header">
+        <span class="pane-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+          Outline
+        </span>
+        <button class="btn btn-sm btn-ghost" onclick="collapseAllOutline()">Collapse</button>
+      </div>
+
+      <div class="pane-body">
+        <div class="outline-tree" id="outlineTree"></div>
+      </div>
+
+      <div class="outline-actions">
+        <button class="add-btn" onclick="addQuestion('standalone')">+ Add Question</button>
+        <button class="add-btn" onclick="addQuestion('parent')">+ Question with Parts</button>
+      </div>
+
+      <div class="pane-footer">
+        <div class="stat-box">
+          <div class="stat-val" id="statQuestions">0</div>
+          <div class="stat-lbl">Questions</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="statMarks">0</div>
+          <div class="stat-lbl">Total Marks</div>
+        </div>
+      </div>
+
+      <div class="kb-hint">
+        <kbd>Ctrl+S</kbd> Save &nbsp; <kbd>Ctrl+Q</kbd> Add Question
+      </div>
+    </div>
+
+    <!-- CENTER PANE - Editor -->
+    <div class="pane-center">
+      <div class="editor-area" id="editorArea">
+        <div id="questionsContainer"></div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="12" y1="18" x2="12" y2="12"/>
+              <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+          </div>
+          <div class="empty-text">Start Building Your Test</div>
+          <div class="empty-hint">Add questions from the outline panel on the left, or use the question library on the right.</div>
+          <button class="btn btn-primary" onclick="addQuestion('standalone')" style="padding: 10px 20px;">
+            + Add First Question
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANE - Properties -->
+    <div class="pane-right">
+      <div class="pane-tabs">
+        <div class="pane-tab active" onclick="switchRightTab('properties')" data-tab="properties">Properties</div>
+        <div class="pane-tab" onclick="switchRightTab('markscheme')" data-tab="markscheme">Mark Scheme</div>
+        <div class="pane-tab" onclick="switchRightTab('import')" data-tab="import">Library</div>
+      </div>
+
+      <!-- Properties Tab -->
+      <div class="tab-panel active" id="tab-properties">
+        <div id="propsContent">
+          <div class="no-selection-msg" id="noSelectionProps">
+            Select a question from the outline to view and edit its properties.
+          </div>
+
+          <div id="propsForm" style="display: none;">
+            <div class="prop-section">
+              <label class="prop-label">Question Type</label>
+              <select class="prop-select" id="propType" onchange="onPropTypeChange()">
+                <option value="standalone">Standalone Question</option>
+                <option value="parent">Parent (with sub-parts)</option>
+              </select>
+            </div>
+
+            <div class="prop-section">
+              <label class="prop-label">Topic</label>
+              <select class="prop-select" id="propTopic" onchange="onPropTopicChange()">
+                <option value="">Select topic...</option>
+              </select>
+            </div>
+
+            <div class="prop-section">
+              <label class="prop-label">Learning Objectives</label>
+              <div class="selected-los" id="selectedLOs"></div>
+              <div class="lo-list" id="loList">
+                <div style="color: var(--gray-400); font-size: 12px; padding: 8px;">Select a topic first</div>
+              </div>
+            </div>
+
+            <div class="prop-section">
+              <div class="prop-row">
+                <div>
+                  <label class="prop-label">Marks</label>
+                  <input type="number" class="prop-input" id="propMarks" min="0"
+                         onchange="onPropMarksChange()">
+                </div>
+                <div>
+                  <label class="prop-label">Answer Type</label>
+                  <select class="prop-select" id="propAnswerType" onchange="onPropAnswerTypeChange()">
+                    <option value="multiline">Multi-line</option>
+                    <option value="oneline">One-line</option>
+                    <option value="calculation">Calculation</option>
+                    <option value="drawing">Drawing</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="prop-section" id="propLinesSection">
+              <label class="prop-label">Answer Lines</label>
+              <input type="number" class="prop-input" id="propLines" min="1" max="30" value="4"
+                     onchange="onPropLinesChange()">
+            </div>
+
+            <div class="prop-section">
+              <div class="prop-row">
+                <div>
+                  <label class="prop-label">Year</label>
+                  <input type="number" class="prop-input" id="propYear" placeholder="2025"
+                         onchange="onPropYearChange()">
+                </div>
+                <div>
+                  <label class="prop-label">Difficulty</label>
+                  <select class="prop-select" id="propDifficulty" onchange="onPropDifficultyChange()">
+                    <option value="">None</option>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mark Scheme Tab (dedicated) -->
+      <div class="tab-panel" id="tab-markscheme">
+        <div id="msContent">
+          <div class="no-selection-msg" id="noSelectionMs">
+            Select a question to edit its mark scheme.
+          </div>
+
+          <div id="msForm" style="display: none;">
+            <div class="prop-section">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <label class="prop-label" style="margin-bottom: 0;">
+                  <span class="dot orange" style="width:6px;height:6px;border-radius:50%;display:inline-block;background:var(--orange);"></span>
+                  Mark Scheme for <strong id="msQuestionLabel">Q1</strong>
+                </label>
+                <span id="msMarksBadge" class="marks-badge" style="font-size: 11px; padding: 3px 8px;">0 marks</span>
+              </div>
+              <div class="editor-frame-wrap">
+                <iframe id="msEditorFrame" class="editor-iframe h-lg"
+                        src="{% static 'editors/richtext_editor.html' %}"></iframe>
+              </div>
+              <p style="font-size: 11px; color: var(--gray-400); margin-top: 4px;">
+                Enter marking points, acceptable answers, and allocation guidance.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Import Tab -->
+      <div class="tab-panel" id="tab-import">
+        <div class="import-filters">
+          <div class="import-filter-row">
+            <select class="prop-select" id="libGrade" onchange="loadLibraryQuestions()">
+              <option value="">Grade</option>
+              {% for grade in grades %}
+              <option value="{{ grade.id }}">{{ grade.name }}</option>
+              {% endfor %}
+            </select>
+            <select class="prop-select" id="libSubject" onchange="loadLibraryQuestions()">
+              <option value="">Subject</option>
+              {% for subject in subjects %}
+              <option value="{{ subject.id }}">{{ subject.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <select class="prop-select" id="libTopic" onchange="loadLibraryQuestions()">
+            <option value="">All Topics</option>
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="loadLibraryQuestions()" style="width: 100%;">
+            Search Library
+          </button>
+        </div>
+        <div class="import-list" id="importList">
+          <div class="no-selection-msg">Select grade & subject to browse questions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ============================================
+// STATE
+// ============================================
+let questions = [];
+let activeId = null;
+let qCounter = 0;
+let editorFrames = {};        // questionId -> iframe (question content)
+let msEditorReady = false;
+let msEditorFrame = null;
+let collapsedNodes = new Set();
+
+// Load existing data if editing
+{% if test and test.descriptive_structure %}
+try {
+  questions = JSON.parse('{{ test.descriptive_structure|escapejs }}');
+  qCounter = findMaxId(questions);
+} catch (e) {
+  console.error('Error loading test data:', e);
+}
+{% endif %}
+
+function findMaxId(items) {
+  let max = 0;
+  items.forEach(item => {
+    const n = parseInt(item.id.replace('q-', ''));
+    if (n > max) max = n;
+    if (item.children) {
+      const cm = findMaxId(item.children);
+      if (cm > max) max = cm;
+    }
+  });
+  return max;
+}
+
+// ============================================
+// QUESTION CRUD
+// ============================================
+function genId() { return `q-${++qCounter}`; }
+
+function addQuestion(type, parentId = null) {
+  const q = {
+    id: genId(),
+    type: type,
+    level: parentId ? (findById(parentId)?.level ?? -1) + 1 : 0,
+    content: '',
+    markscheme: '',
+    marks: type === 'parent' ? 0 : 1,
+    answerType: 'multiline',
+    answerLines: 4,
+    topic_id: null,
+    learning_objectives: [],
+    year: null,
+    difficulty: '',
+    children: []
+  };
+
+  if (parentId) {
+    const parent = findById(parentId);
+    if (parent) {
+      parent.children.push(q);
+      // Auto-convert to parent type
+      if (parent.type === 'standalone') parent.type = 'parent';
+    }
+  } else {
+    questions.push(q);
+  }
+
+  activeId = q.id;
+  render();
+  setTimeout(() => scrollToCard(q.id), 100);
+  return q;
+}
+
+function deleteQuestion(id) {
+  if (!confirm('Delete this question and all its sub-parts?')) return;
+
+  const parent = findParent(id);
+  if (parent) {
+    parent.children = parent.children.filter(c => c.id !== id);
+  } else {
+    questions = questions.filter(c => c.id !== id);
+  }
+
+  if (activeId === id) {
+    activeId = questions.length > 0 ? questions[0].id : null;
+  }
+
+  render();
+  toast('Question deleted');
+}
+
+function moveQuestion(id, direction) {
+  const parent = findParent(id);
+  const list = parent ? parent.children : questions;
+  const idx = list.findIndex(q => q.id === id);
+  if (idx < 0) return;
+
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= list.length) return;
+
+  [list[idx], list[newIdx]] = [list[newIdx], list[idx]];
+  render();
+}
+
+function findById(id, items = questions) {
+  for (const q of items) {
+    if (q.id === id) return q;
+    if (q.children) {
+      const f = findById(id, q.children);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
+function findParent(id, items = questions, par = null) {
+  for (const q of items) {
+    if (q.id === id) return par;
+    if (q.children) {
+      const f = findParent(id, q.children, q);
+      if (f !== undefined) return f;
+    }
+  }
+  return undefined;
+}
+
+function updateField(id, field, value) {
+  const q = findById(id);
+  if (q) {
+    q[field] = value;
+    updateStats();
+    renderOutline();
+  }
+}
+
+// ============================================
+// NUMBERING
+// ============================================
+const ROMAN = ['i','ii','iii','iv','v','vi','vii','viii','ix','x','xi','xii'];
+
+function getNumber(q) {
+  if (q.level === 0) {
+    const idx = questions.indexOf(q);
+    return (idx + 1).toString();
+  } else if (q.level === 1) {
+    const p = findParent(q.id);
+    const idx = p.children.indexOf(q);
+    return `(${String.fromCharCode(97 + idx)})`;
+  } else {
+    const p = findParent(q.id);
+    const idx = p.children.indexOf(q);
+    return `(${ROMAN[idx] || (idx + 1)})`;
+  }
+}
+
+function getFullNumber(q) {
+  const parts = [];
+  let cur = q;
+  while (cur) {
+    parts.unshift(getNumber(cur));
+    cur = findParent(cur.id);
+  }
+  return parts.join('');
+}
+
+// ============================================
+// RENDERING - OUTLINE (LEFT PANE)
+// ============================================
+function renderOutline() {
+  const tree = document.getElementById('outlineTree');
+
+  function renderNode(q, depth = 0) {
+    const num = getFullNumber(q);
+    const preview = getPreview(q.content);
+    const hasKids = q.children && q.children.length > 0;
+    const isActive = activeId === q.id;
+    const isCollapsed = collapsedNodes.has(q.id);
+
+    let html = `<div class="outline-item">
+      <div class="outline-node ${isActive ? 'active' : ''}"
+           onclick="selectQuestion('${q.id}')"
+           style="padding-left: ${8 + depth * 14}px">
+        ${hasKids
+          ? `<span class="outline-toggle ${isCollapsed ? '' : 'expanded'}" onclick="event.stopPropagation(); toggleCollapse('${q.id}')">&#9654;</span>`
+          : '<span style="width:18px"></span>'}
+        <span class="outline-num">${num}</span>
+        <span class="outline-label">${escHtml(preview)}</span>
+        <span class="outline-marks-badge">${q.marks}m</span>
+      </div>`;
+
+    if (hasKids && !isCollapsed) {
+      html += `<div class="outline-children">
+        ${q.children.map(c => renderNode(c, depth + 1)).join('')}
+      </div>`;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  tree.innerHTML = questions.map(q => renderNode(q)).join('');
+}
+
+function toggleCollapse(id) {
+  if (collapsedNodes.has(id)) collapsedNodes.delete(id);
+  else collapsedNodes.add(id);
+  renderOutline();
+}
+
+function collapseAllOutline() {
+  function collect(items) {
+    items.forEach(q => {
+      if (q.children && q.children.length > 0) {
+        collapsedNodes.add(q.id);
+        collect(q.children);
+      }
+    });
+  }
+  collect(questions);
+  renderOutline();
+}
+
+// ============================================
+// RENDERING - EDITOR (CENTER PANE)
+// ============================================
+function renderQuestions() {
+  const container = document.getElementById('questionsContainer');
+  editorFrames = {};
+
+  let html = '';
+  questions.forEach(q => { html += renderCard(q); });
+  container.innerHTML = html;
+
+  setTimeout(initEditors, 100);
+}
+
+function renderCard(q) {
+  const num = getFullNumber(q);
+  const isActive = activeId === q.id;
+  const hasKids = q.children && q.children.length > 0;
+  const isParent = q.type === 'parent' || hasKids;
+  const typeClass = isParent ? 'parent' : (q.level > 0 ? 'part' : 'standalone');
+  const typeLabel = isParent ? 'Parent' : (q.level > 0 ? 'Part' : 'Question');
+
+  let childrenHtml = '';
+  if (hasKids) {
+    childrenHtml = `<div class="children-section">
+      <div class="children-head">
+        <span class="children-title">Sub-parts (${q.children.length})</span>
+        ${q.level < 1 ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); addQuestion('child', '${q.id}')">+ Add Part</button>` : ''}
+      </div>
+      ${q.children.map(child => renderChildCard(child, q)).join('')}
+    </div>`;
+  }
+
+  return `
+  <div class="q-card ${isActive ? 'active' : ''}" data-id="${q.id}" onclick="selectQuestion('${q.id}')">
+    <div class="q-card-head">
+      <span class="q-num-badge">${num}</span>
+      <span class="q-type-tag ${typeClass}">${typeLabel}</span>
+      <label style="font-size: 12px; color: var(--gray-500);">Marks:</label>
+      <input type="number" class="q-marks-input" value="${q.marks}" min="0"
+             onchange="updateField('${q.id}', 'marks', parseInt(this.value)||0)"
+             onclick="event.stopPropagation()">
+      <div class="q-card-actions">
+        <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation(); moveQuestion('${q.id}', -1)" title="Move up">&#9650;</button>
+        <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation(); moveQuestion('${q.id}', 1)" title="Move down">&#9660;</button>
+        ${q.level < 2 ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); addQuestion('child', '${q.id}')">+ Part</button>` : ''}
+        <button class="btn btn-sm btn-icon btn-secondary" onclick="event.stopPropagation(); deleteQuestion('${q.id}')" title="Delete">&#10005;</button>
+      </div>
+    </div>
+    <div class="q-card-body" onclick="event.stopPropagation()">
+      <div class="section-label"><span class="dot blue"></span> Question Content</div>
+      <div class="editor-frame-wrap">
+        <iframe id="editor-${q.id}" class="editor-iframe ${isParent ? 'h-md' : 'h-lg'}"
+                src="{% static 'editors/richtext_editor.html' %}"
+                data-qid="${q.id}"></iframe>
+      </div>
+
+      ${!isParent ? renderInlineMs(q) : ''}
+      ${childrenHtml}
+      ${isParent && !hasKids ? `<button class="btn btn-outline" onclick="addQuestion('child', '${q.id}')" style="margin-top: 8px;">+ Add First Part</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function renderInlineMs(q) {
+  return `
+  <div class="ms-section" id="ms-inline-${q.id}">
+    <div class="ms-header">
+      <div class="section-label"><span class="dot orange"></span> Mark Scheme</div>
+    </div>
+    <div class="editor-frame-wrap">
+      <iframe id="ms-editor-${q.id}" class="editor-iframe h-sm"
+              src="{% static 'editors/richtext_editor.html' %}"
+              data-qid="${q.id}" data-role="markscheme"></iframe>
+    </div>
+  </div>`;
+}
+
+function renderChildCard(child, parent) {
+  const num = getFullNumber(child);
+  const canAddSub = child.level < 2;
+  const hasGrandkids = child.children && child.children.length > 0;
+  const levelClass = child.level >= 2 ? 'level-2' : '';
+
+  let grandchildrenHtml = '';
+  if (hasGrandkids) {
+    grandchildrenHtml = `<div style="margin-top: 10px;">
+      <div class="children-head">
+        <span class="children-title">Sub-parts (${child.children.length})</span>
+        ${child.level < 2 ? `<button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); addQuestion('child', '${child.id}')">+ Sub-part</button>` : ''}
+      </div>
+      ${child.children.map(gc => renderChildCard(gc, child)).join('')}
+    </div>`;
+  }
+
+  return `
+  <div class="child-card ${levelClass}" data-id="${child.id}" onclick="event.stopPropagation(); selectQuestion('${child.id}')">
+    <div class="child-head">
+      <span class="child-num">${num}</span>
+      <input type="number" class="q-marks-input" value="${child.marks}" min="0" style="width:50px;"
+             onchange="updateField('${child.id}', 'marks', parseInt(this.value)||0)"
+             onclick="event.stopPropagation()">
+      <span style="font-size: 11px; color: var(--gray-500);">marks</span>
+      <div style="margin-left: auto; display: flex; gap: 4px;">
+        <select class="prop-select" style="width:auto; padding:3px 6px; font-size:11px;"
+                onchange="updateField('${child.id}', 'answerType', this.value); syncAllEditors(); renderQuestions();">
+          <option value="oneline" ${child.answerType==='oneline'?'selected':''}>One-line</option>
+          <option value="multiline" ${child.answerType==='multiline'?'selected':''}>Multi-line</option>
+          <option value="calculation" ${child.answerType==='calculation'?'selected':''}>Calculation</option>
+          <option value="drawing" ${child.answerType==='drawing'?'selected':''}>Drawing</option>
+        </select>
+        <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation(); moveQuestion('${child.id}', -1)" title="Move up">&#9650;</button>
+        <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation(); moveQuestion('${child.id}', 1)" title="Move down">&#9660;</button>
+        ${canAddSub && !hasGrandkids ? `<button class="btn btn-sm btn-icon btn-ghost" onclick="event.stopPropagation(); addQuestion('child', '${child.id}')" title="Add sub-part">+</button>` : ''}
+        <button class="btn btn-sm btn-icon btn-ghost" onclick="event.stopPropagation(); deleteQuestion('${child.id}')" title="Delete" style="color: var(--danger);">&#10005;</button>
+      </div>
+    </div>
+
+    <div class="editor-frame-wrap">
+      <iframe id="editor-${child.id}" class="editor-iframe ${child.answerType === 'oneline' ? 'h-sm' : 'h-md'}"
+              src="{% static 'editors/richtext_editor.html' %}"
+              data-qid="${child.id}"></iframe>
+    </div>
+
+    <div class="child-ms">
+      <div class="section-label" style="font-size: 11px;"><span class="dot orange"></span> Mark Scheme</div>
+      <div class="editor-frame-wrap">
+        <iframe id="ms-editor-${child.id}" class="editor-iframe h-sm"
+                src="{% static 'editors/richtext_editor.html' %}"
+                data-qid="${child.id}" data-role="markscheme"></iframe>
+      </div>
+    </div>
+
+    ${grandchildrenHtml}
+  </div>`;
+}
+
+// ============================================
+// EDITOR INIT & SYNC
+// ============================================
+function initEditors() {
+  document.querySelectorAll('.editor-iframe[data-qid]').forEach(iframe => {
+    const qId = iframe.dataset.qid;
+    const role = iframe.dataset.role; // 'markscheme' or undefined (question content)
+    const q = findById(qId);
+    if (!q) return;
+
+    iframe.onload = () => {
+      try {
+        const content = role === 'markscheme' ? (q.markscheme || '') : (q.content || '');
+        if (content && iframe.contentWindow.setEditorHTML) {
+          iframe.contentWindow.setEditorHTML(content);
+        }
+
+        // Store reference
+        const key = role === 'markscheme' ? `ms-${qId}` : qId;
+        editorFrames[key] = iframe;
+      } catch (e) {
+        console.error('Editor init error:', e);
+      }
+    };
+  });
+}
+
+function syncAllEditors() {
+  Object.keys(editorFrames).forEach(key => {
+    const iframe = editorFrames[key];
+    try {
+      if (!iframe.contentWindow || !iframe.contentWindow.getEditorHTML) return;
+      const html = iframe.contentWindow.getEditorHTML();
+
+      if (key.startsWith('ms-')) {
+        const qId = key.replace('ms-', '');
+        const q = findById(qId);
+        if (q) q.markscheme = html;
+      } else {
+        const q = findById(key);
+        if (q) q.content = html;
+      }
+    } catch (e) {}
+  });
+}
+
+// ============================================
+// RIGHT PANE MARK SCHEME EDITOR
+// ============================================
+function initMsEditor() {
+  const frame = document.getElementById('msEditorFrame');
+  if (!frame) return;
+
+  frame.onload = () => {
+    msEditorFrame = frame;
+    msEditorReady = true;
+    loadMsForActive();
+  };
+}
+
+function loadMsForActive() {
+  if (!msEditorReady || !msEditorFrame) return;
+
+  const q = activeId ? findById(activeId) : null;
+  const form = document.getElementById('msForm');
+  const noSel = document.getElementById('noSelectionMs');
+
+  if (!q) {
+    form.style.display = 'none';
+    noSel.style.display = 'block';
+    return;
+  }
+
+  form.style.display = 'block';
+  noSel.style.display = 'none';
+
+  document.getElementById('msQuestionLabel').textContent = getFullNumber(q);
+  document.getElementById('msMarksBadge').textContent = `${q.marks} marks`;
+
+  try {
+    if (msEditorFrame.contentWindow.setEditorHTML) {
+      msEditorFrame.contentWindow.setEditorHTML(q.markscheme || '');
+    }
+  } catch (e) {}
+}
+
+function saveMsFromPanel() {
+  if (!activeId || !msEditorReady || !msEditorFrame) return;
+  const q = findById(activeId);
+  if (!q) return;
+  try {
+    if (msEditorFrame.contentWindow.getEditorHTML) {
+      q.markscheme = msEditorFrame.contentWindow.getEditorHTML();
+    }
+  } catch (e) {}
+}
+
+// ============================================
+// RIGHT PANE - PROPERTIES
+// ============================================
+function loadPropsForActive() {
+  const q = activeId ? findById(activeId) : null;
+  const form = document.getElementById('propsForm');
+  const noSel = document.getElementById('noSelectionProps');
+
+  if (!q) {
+    form.style.display = 'none';
+    noSel.style.display = 'block';
+    return;
+  }
+
+  form.style.display = 'block';
+  noSel.style.display = 'none';
+
+  document.getElementById('propType').value = q.type === 'parent' ? 'parent' : 'standalone';
+  document.getElementById('propMarks').value = q.marks;
+  document.getElementById('propAnswerType').value = q.answerType || 'multiline';
+  document.getElementById('propLines').value = q.answerLines || 4;
+  document.getElementById('propYear').value = q.year || '';
+  document.getElementById('propDifficulty').value = q.difficulty || '';
+
+  // Show/hide lines config
+  const linesSection = document.getElementById('propLinesSection');
+  linesSection.style.display = q.answerType === 'multiline' ? 'block' : 'none';
+
+  // Load topics for grade+subject
+  loadTopicsForProps();
+  loadLOsForProps();
+}
+
+async function loadTopicsForProps() {
+  const grade = document.getElementById('gradeSelect').value;
+  const subject = document.getElementById('subjectSelect').value;
+  const select = document.getElementById('propTopic');
+
+  if (!grade || !subject) {
+    select.innerHTML = '<option value="">Select grade & subject first</option>';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`/ajax/topics/?grade_id=${grade}&subject_id=${subject}`);
+    const data = await resp.json();
+    select.innerHTML = '<option value="">Select topic...</option>';
+    data.topics.forEach(t => {
+      const sel = (activeId && findById(activeId)?.topic_id == t.id) ? 'selected' : '';
+      select.innerHTML += `<option value="${t.id}" ${sel}>${t.name}</option>`;
+    });
+  } catch (e) {
+    select.innerHTML = '<option value="">Error loading topics</option>';
+  }
+}
+
+async function loadLOsForProps() {
+  const q = activeId ? findById(activeId) : null;
+  const topicId = document.getElementById('propTopic').value;
+  const loList = document.getElementById('loList');
+  const selectedDiv = document.getElementById('selectedLOs');
+
+  if (!topicId) {
+    loList.innerHTML = '<div style="color: var(--gray-400); font-size: 12px; padding: 8px;">Select a topic first</div>';
+    selectedDiv.innerHTML = '';
+    return;
+  }
+
+  const grade = document.getElementById('gradeSelect').value;
+  const subject = document.getElementById('subjectSelect').value;
+
+  try {
+    const resp = await fetch(`/ajax/los/?topic_id=${topicId}`);
+    const data = await resp.json();
+
+    if (!data.los || data.los.length === 0) {
+      loList.innerHTML = '<div style="color: var(--gray-400); font-size: 12px; padding: 8px;">No LOs for this topic</div>';
+      selectedDiv.innerHTML = '';
+      return;
+    }
+
+    const selectedIds = q ? (q.learning_objectives || []) : [];
+
+    loList.innerHTML = data.los.map(lo => {
+      const isSelected = selectedIds.includes(lo.id);
+      return `<div class="lo-item ${isSelected ? 'selected' : ''}" onclick="toggleLO(${lo.id})">
+        <div class="lo-check"></div>
+        <span class="lo-code">${escHtml(lo.code)}</span>
+        <span class="lo-desc">${escHtml(lo.description)}</span>
+      </div>`;
+    }).join('');
+
+    // Render selected tags
+    renderSelectedLOs(data.los, selectedIds);
+  } catch (e) {
+    loList.innerHTML = '<div style="color: var(--gray-400); font-size: 12px; padding: 8px;">Error loading LOs</div>';
+  }
+}
+
+function renderSelectedLOs(allLOs, selectedIds) {
+  const div = document.getElementById('selectedLOs');
+  if (!selectedIds || selectedIds.length === 0) {
+    div.innerHTML = '';
+    return;
+  }
+  div.innerHTML = selectedIds.map(id => {
+    const lo = allLOs.find(l => l.id === id);
+    return lo ? `<span class="lo-tag">${escHtml(lo.code)}<span class="lo-tag-x" onclick="event.stopPropagation(); toggleLO(${id})">x</span></span>` : '';
+  }).join('');
+}
+
+function toggleLO(loId) {
+  const q = activeId ? findById(activeId) : null;
+  if (!q) return;
+  if (!q.learning_objectives) q.learning_objectives = [];
+
+  const idx = q.learning_objectives.indexOf(loId);
+  if (idx >= 0) {
+    q.learning_objectives.splice(idx, 1);
+  } else {
+    q.learning_objectives.push(loId);
+  }
+
+  loadLOsForProps();
+}
+
+// Property change handlers
+function onPropTypeChange() {
+  const q = findById(activeId);
+  if (!q) return;
+  q.type = document.getElementById('propType').value;
+  syncAllEditors(); render();
+}
+
+function onPropMarksChange() {
+  const q = findById(activeId);
+  if (!q) return;
+  q.marks = parseInt(document.getElementById('propMarks').value) || 0;
+  updateStats(); renderOutline();
+}
+
+function onPropAnswerTypeChange() {
+  const q = findById(activeId);
+  if (!q) return;
+  q.answerType = document.getElementById('propAnswerType').value;
+  document.getElementById('propLinesSection').style.display = q.answerType === 'multiline' ? 'block' : 'none';
+  syncAllEditors(); renderQuestions();
+}
+
+function onPropLinesChange() {
+  const q = findById(activeId);
+  if (!q) return;
+  q.answerLines = parseInt(document.getElementById('propLines').value) || 4;
+}
+
+function onPropTopicChange() {
+  const q = findById(activeId);
+  if (!q) return;
+  q.topic_id = document.getElementById('propTopic').value || null;
+  loadLOsForProps();
+}
+
+function onPropYearChange() {
+  const q = findById(activeId);
+  if (!q) return;
+  q.year = document.getElementById('propYear').value || null;
+}
+
+function onPropDifficultyChange() {
+  const q = findById(activeId);
+  if (!q) return;
+  q.difficulty = document.getElementById('propDifficulty').value || '';
+}
+
+// ============================================
+// SELECTION & NAVIGATION
+// ============================================
+function selectQuestion(id) {
+  // Save current MS from right panel
+  saveMsFromPanel();
+  // Sync all inline editors
+  syncAllEditors();
+
+  activeId = id;
+  renderOutline();
+
+  // Highlight active card
+  document.querySelectorAll('.q-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+
+  // Update right pane
+  loadPropsForActive();
+  loadMsForActive();
+}
+
+function scrollToCard(id) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function switchRightTab(tabName) {
+  // Save MS when switching away from markscheme tab
+  if (tabName !== 'markscheme') saveMsFromPanel();
+
+  document.querySelectorAll('.pane-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tabName}`));
+
+  if (tabName === 'markscheme') loadMsForActive();
+  if (tabName === 'properties') loadPropsForActive();
+}
+
+// ============================================
+// STATS
+// ============================================
+function updateStats() {
+  let totalQ = 0, totalM = 0;
+  function count(items) {
+    items.forEach(q => {
+      totalQ++;
+      totalM += q.marks || 0;
+      if (q.children) count(q.children);
+    });
+  }
+  count(questions);
+  document.getElementById('statQuestions').textContent = totalQ;
+  document.getElementById('statMarks').textContent = totalM;
+  document.getElementById('totalMarksDisplay').textContent = totalM;
+}
+
+// ============================================
+// LIBRARY IMPORT
+// ============================================
+async function loadLibraryQuestions() {
+  const grade = document.getElementById('libGrade').value;
+  const subject = document.getElementById('libSubject').value;
+  const topic = document.getElementById('libTopic').value;
+  const list = document.getElementById('importList');
+
+  if (!grade || !subject) {
+    list.innerHTML = '<div class="no-selection-msg">Select grade & subject</div>';
+    return;
+  }
+
+  // Load topics
+  if (grade && subject) {
+    try {
+      const tResp = await fetch(`/ajax/topics/?grade_id=${grade}&subject_id=${subject}`);
+      const tData = await tResp.json();
+      const tSel = document.getElementById('libTopic');
+      tSel.innerHTML = '<option value="">All Topics</option>';
+      tData.topics.forEach(t => {
+        tSel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+      });
+    } catch (e) {}
+  }
+
+  let url = `/questions/api/search/?grade=${grade}&subject=${subject}`;
+  if (topic) url += `&topic=${topic}`;
+
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (data.questions && data.questions.length > 0) {
+      list.innerHTML = data.questions.map(q => {
+        const preview = q.question_text.includes('data:image')
+          ? '<em>Image question</em>'
+          : stripHtml(q.question_text).substring(0, 80);
+        return `<div class="import-item" onclick="importQuestion(${q.id})">
+          <div class="import-item-head">
+            <span class="import-item-type">${q.question_type}</span>
+            <span class="import-item-marks">${q.marks}m</span>
+          </div>
+          <div class="import-item-preview">${preview}</div>
+        </div>`;
+      }).join('');
+    } else {
+      list.innerHTML = '<div class="no-selection-msg">No questions found</div>';
+    }
+  } catch (e) {
+    list.innerHTML = '<div class="no-selection-msg">Error loading questions</div>';
+  }
+}
+
+async function importQuestion(qId) {
+  try {
+    const resp = await fetch(`/questions/api/${qId}/`);
+    const data = await resp.json();
+    if (!data.success) { toast(data.error || 'Failed', 'error'); return; }
+
+    const q = data.question;
+    const newQ = addQuestion('standalone');
+    newQ.content = q.question_text;
+    newQ.marks = q.marks;
+    newQ.markscheme = q.answer_text || '';
+    render();
+    toast('Question imported!', 'success');
+  } catch (e) {
+    toast('Import failed', 'error');
+  }
+}
+
+// ============================================
+// SAVE TEST
+// ============================================
+async function saveTest() {
+  syncAllEditors();
+  saveMsFromPanel();
+
+  const title = document.getElementById('testTitle').value.trim();
+  const subject = document.getElementById('subjectSelect').value;
+  const duration = document.getElementById('durationInput').value;
+
+  if (!title) { toast('Enter a test title', 'error'); return; }
+  if (questions.length === 0) { toast('Add at least one question', 'error'); return; }
+
+  const payload = {
+    title,
+    subject_id: subject || null,
+    duration_minutes: duration ? parseInt(duration) : null,
+    questions,
+    test_type: 'descriptive'
+  };
+
+  try {
+    const url = {% if test %}'{% url "edit_descriptive_test" test.id %}'{% else %}'{% url "create_descriptive_test" %}'{% endif %};
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await resp.json();
+    if (result.success) {
+      toast('Test saved!', 'success');
+      setTimeout(() => { window.location.href = '{% url "tests_list" %}'; }, 1000);
+    } else {
+      toast(result.error || 'Save failed', 'error');
+    }
+  } catch (e) {
+    toast('Failed to save test', 'error');
+  }
+}
+
+// ============================================
+// MASTER RENDER
+// ============================================
+function render() {
+  renderOutline();
+  renderQuestions();
+  updateStats();
+
+  const empty = document.getElementById('emptyState');
+  const container = document.getElementById('questionsContainer');
+  if (questions.length === 0) {
+    empty.style.display = 'flex';
+    container.style.display = 'none';
+  } else {
+    empty.style.display = 'none';
+    container.style.display = 'block';
+  }
+
+  loadPropsForActive();
+  loadMsForActive();
+}
+
+// ============================================
+// UTILITIES
+// ============================================
+function getCookie(name) {
+  let v = null;
+  if (document.cookie) {
+    document.cookie.split(';').forEach(c => {
+      const [k, val] = c.trim().split('=');
+      if (k === name) v = decodeURIComponent(val);
+    });
+  }
+  return v;
+}
+
+function escHtml(t) {
+  if (!t) return '';
+  const d = document.createElement('div');
+  d.textContent = t;
+  return d.innerHTML;
+}
+
+function stripHtml(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  return d.textContent || d.innerText || '';
+}
+
+function getPreview(content) {
+  if (!content) return 'Empty';
+  const t = stripHtml(content);
+  return t.length > 28 ? t.substring(0, 28) + '...' : t;
+}
+
+function toast(msg, type = 'default') {
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ============================================
+// KEYBOARD SHORTCUTS
+// ============================================
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveTest(); }
+  if (e.ctrlKey && e.key === 'q') { e.preventDefault(); addQuestion('standalone'); }
+});
+
+// ============================================
+// INIT
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  render();
+  initMsEditor();
+});
+</script>
+</body>
+</html>

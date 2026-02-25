@@ -72,6 +72,18 @@ body {
   padding: 16px;
   background: var(--editor);
   outline: none;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* IMAGE RENDERING */
+.editor img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10px 0;
+  border-radius: 8px;
+  border: 2px solid var(--border);
 }
 
 /* TABLE */
@@ -259,6 +271,48 @@ function insertTable(rows, cols) {
 
   range.insertNode(table);
 }
+
+/* IMAGE PASTE HANDLER */
+editor.addEventListener('paste', function(e) {
+  // Check if clipboard contains files (images)
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (let item of items) {
+    if (item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+
+      const file = item.getAsFile();
+      const reader = new FileReader();
+
+      reader.onload = function(event) {
+        const img = document.createElement('img');
+        img.src = event.target.result;
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+
+        // Insert at cursor position
+        const sel = window.getSelection();
+        if (sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(img);
+
+          // Move cursor after image
+          range.setStartAfter(img);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else {
+          editor.appendChild(img);
+        }
+      };
+
+      reader.readAsDataURL(file);
+      return; // Only handle first image
+    }
+  }
+});
 
 /* IFRAME API (Django uses these) */
 window.setEditorHTML = function (html) {

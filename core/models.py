@@ -48,7 +48,18 @@ class UserProfile(models.Model):
 
 
 class Grade(models.Model):
+    """
+    Grade model. grade_level groups related grades together:
+    e.g. IGCSE-1, IGCSE-2, IGCSE all share grade_level='IGCSE'
+         DP-1, DP-2 share grade_level='DP'
+         AS Level, A Level share grade_level='A Level'
+    This lets us pull questions from the same curriculum level.
+    """
     name = models.CharField(max_length=50)
+    grade_level = models.CharField(
+        max_length=50, blank=True, default='',
+        help_text='Curriculum level grouping, e.g. IGCSE, DP, A Level'
+    )
 
     class Meta:
         ordering = ["name"]
@@ -57,15 +68,25 @@ class Grade(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_same_level_grades(self):
+        """Return all Grade objects that share the same grade_level."""
+        if not self.grade_level:
+            return Grade.objects.filter(id=self.id)
+        return Grade.objects.filter(grade_level=self.grade_level)
         
         
 class Subject(models.Model):
     name = models.CharField(max_length=100)
+    code = models.CharField(max_length=10, unique=True, null=True, blank=True)  # e.g., "9702", "0625"
+    description = models.TextField(blank=True)  # e.g., "AS & A Level Physics"
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
+        if self.code:
+            return f"{self.code} - {self.name}"
         return self.name
         
         
@@ -156,6 +177,21 @@ class Question(models.Model):
         choices=QUESTION_TYPES
     )
 
+    # Hierarchical question structure - parent/child relationships
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='sub_questions'
+    )
+
+    # Question number/label within parent (e.g., "a", "b", "i", "ii")
+    question_number = models.CharField(max_length=20, blank=True)
+
+    # Order within parent for sorting sub-questions
+    order = models.PositiveIntegerField(default=0)
+
     # NEW: JSON configuration for question parts (Step 2 of two-step import)
     parts_config = models.JSONField(
         blank=True,
@@ -171,8 +207,33 @@ class Question(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['order', 'id']
+
     def __str__(self):
+        if self.parent:
+            return f"Q{self.parent.id}.{self.question_number} | {self.grade}.{self.subject}"
         return f"Q{self.id} | {self.grade}.{self.subject}.{self.topic}"
+
+    def get_all_sub_questions(self):
+        """Recursively get all sub-questions"""
+        subs = list(self.sub_questions.all().order_by('order'))
+        all_subs = []
+        for sub in subs:
+            all_subs.append(sub)
+            all_subs.extend(sub.get_all_sub_questions())
+        return all_subs
+
+    def get_total_marks(self):
+        """Calculate total marks including all sub-questions"""
+        total = self.marks
+        for sub in self.sub_questions.all():
+            total += sub.get_total_marks()
+        return total
+
+    def is_root_question(self):
+        """Check if this is a top-level question (no parent)"""
+        return self.parent is None
 
 
 # Update your Test model in models.py to add this field:
@@ -182,6 +243,10 @@ class Test(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.SET_NULL, null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
     is_published = models.BooleanField(default=False)
+    results_published = models.BooleanField(
+        default=False,
+        help_text='True when teacher has published grades — students can see their results'
+    )
 
     start_time = models.DateTimeField(null=True, blank=True)
     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
@@ -212,7 +277,14 @@ class Test(models.Model):
         blank=True,
         related_name="excluded_from_tests"
     )
-    
+
+    # Teachers who have been granted access to this test (see, edit, grade, monitor, etc.)
+    assigned_teachers = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="shared_tests"
+    )
+
     # NEW FIELD for descriptive tests
     descriptive_structure = models.TextField(
         blank=True,
@@ -231,7 +303,15 @@ class Test(models.Model):
     
     def __str__(self):
         return self.title
-    
+
+    def user_has_access(self, user):
+        """Check if a user is the creator or an assigned teacher for this test."""
+        if user.username == 'sis_admin':
+            return True
+        if self.created_by == user:
+            return True
+        return self.assigned_teachers.filter(id=user.id).exists()
+
     def get_all_assigned_students(self):
         """
         Get all students assigned to this test (both directly and through groups)
@@ -364,6 +444,12 @@ class StudentAnswer(models.Model):
         blank=True
     )
 
+    time_spent_seconds = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text='Time spent on this question in seconds'
+    )
+
     submitted_at = models.DateTimeField(auto_now_add=True)
     evaluated_at = models.DateTimeField(null=True, blank=True)
     evaluated_by = models.ForeignKey(
@@ -431,7 +517,9 @@ class PDFImportSession(models.Model):
 
 class ProcessedPDF(models.Model):
     """
-    Tracks processed PDF files to prevent duplicate processing
+    Tracks processed PDF files to prevent duplicate processing.
+    Stores question IDs so we can verify they still exist before
+    blocking a re-slice (if all questions were deleted, allow re-slice).
     """
     file_name = models.CharField(max_length=500)
     file_hash = models.CharField(max_length=64, unique=True)  # SHA-256 hash
@@ -441,6 +529,7 @@ class ProcessedPDF(models.Model):
     year = models.IntegerField(null=True, blank=True)
 
     questions_created = models.IntegerField(default=0)
+    question_ids = models.JSONField(default=list, blank=True)  # Actual IDs of questions created
     processed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -448,6 +537,62 @@ class ProcessedPDF(models.Model):
 
     def __str__(self):
         return f"{self.file_name} ({self.processed_at.date()})"
+
+    def get_surviving_question_count(self):
+        """Check how many of the originally created questions still exist."""
+        if not self.question_ids:
+            return 0
+        from core.models import Question
+        return Question.objects.filter(id__in=self.question_ids).count()
+
+    @property
+    def all_questions_deleted(self):
+        """True if every question created from this PDF has been deleted."""
+        if not self.question_ids:
+            # Legacy record without IDs — fall back to assuming it's still valid
+            return False
+        return self.get_surviving_question_count() == 0
+
+
+class Resource(models.Model):
+    """
+    Shared resources — like Google Classroom.
+    Teachers and students can upload files, notes, homework, etc.
+    """
+    RESOURCE_TYPES = [
+        ('notes', 'Notes'),
+        ('homework', 'Homework'),
+        ('worksheet', 'Worksheet'),
+        ('file', 'File'),
+        ('link', 'Link'),
+    ]
+
+    title = models.CharField(max_length=300)
+    description = models.TextField(blank=True)
+    resource_type = models.CharField(max_length=20, choices=RESOURCE_TYPES, default='file')
+    file = models.FileField(upload_to='resources/%Y/%m/', blank=True, null=True)
+    link_url = models.URLField(blank=True)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='resources')
+    grade = models.ForeignKey('Grade', on_delete=models.SET_NULL, null=True, blank=True)
+    subject = models.ForeignKey('Subject', on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='uploaded_resources')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.get_resource_type_display()})"
+
+    @property
+    def file_extension(self):
+        if self.file and self.file.name:
+            return self.file.name.rsplit('.', 1)[-1].lower() if '.' in self.file.name else ''
+        return ''
+
+    @property
+    def is_link(self):
+        return self.resource_type == 'link'
 
 
 class AnswerSpace(models.Model):
@@ -568,3 +713,94 @@ class QuestionPage(models.Model):
             markers.append('RED')
         marker_str = f" [{', '.join(markers)}]" if markers else ""
         return f"Q{self.question.id} Page {self.page_number}{marker_str}"
+
+
+class QuestionBank(models.Model):
+    """
+    DLC (Downloadable Content) - Modular question databases
+    Each subject-grade combination can have its own isolated question bank
+    """
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('pending', 'Pending Activation'),
+    ]
+
+    # Subject-Grade identification
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='question_banks')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='question_banks')
+
+    # Metadata
+    name = models.CharField(max_length=200)  # e.g., "AS & A Level Physics (9702)"
+    description = models.TextField(blank=True)
+    version = models.CharField(max_length=20, default="1.0")
+
+    # DLC management
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    is_core = models.BooleanField(default=False)  # Core modules can't be deactivated
+    database_file = models.CharField(max_length=500, blank=True)  # Path to SQLite file
+
+    # Statistics
+    question_count = models.IntegerField(default=0)
+    total_size_mb = models.FloatField(default=0.0)
+
+    # Access control
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='question_banks', null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_banks')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ['subject', 'grade', 'school']
+        ordering = ['-is_core', 'subject__name', 'grade__name']
+
+    def __str__(self):
+        return f"{self.name} ({self.question_count} questions)"
+
+    def activate(self):
+        """Activate this question bank DLC"""
+        from django.utils import timezone
+        self.status = 'active'
+        self.activated_at = timezone.now()
+        self.save()
+
+    def deactivate(self):
+        """Deactivate this question bank DLC"""
+        if not self.is_core:
+            self.status = 'inactive'
+            self.save()
+
+
+class SubjectGradeCombination(models.Model):
+    """
+    Pre-configured subject-grade combinations for quick setup
+    Examples: 9702 (AS & A Level Physics), 0625 (IGCSE Physics)
+    """
+    LEVEL_CHOICES = [
+        ('igcse', 'IGCSE'),
+        ('as_level', 'AS Level'),
+        ('a_level', 'A Level'),
+        ('as_a_level', 'AS & A Level'),
+        ('jee', 'JEE'),
+        ('sat', 'SAT'),
+        ('cuet', 'CUET'),
+    ]
+
+    code = models.CharField(max_length=10, unique=True)  # e.g., "9702", "0625"
+    name = models.CharField(max_length=200)  # e.g., "AS & A Level Physics"
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE)
+    level = models.CharField(max_length=20, choices=LEVEL_CHOICES)
+
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['code']
+        verbose_name = "Subject-Grade Combination"
+        verbose_name_plural = "Subject-Grade Combinations"
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"

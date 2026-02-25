@@ -37,6 +37,242 @@ from .logs_views import ai_tagging_logs, view_log_file
 
 # Import improved bulk tagging
 from .bulk_tagging_view import bulk_ai_tag_questions_improved
+import re
+from bs4 import BeautifulSoup
+
+
+# ===================== HELPER FUNCTIONS FOR STRUCTURED QUESTIONS =====================
+
+def build_answer_parts_from_config(parts_config):
+    """
+    Build answer parts list from question's parts_config JSON.
+    Expected format:
+    {
+        "parts": [
+            {"id": "a", "label": "(a)", "marks": 2, "level": 0},
+            {"id": "a_i", "label": "(a)(i)", "marks": 1, "level": 1},
+            ...
+        ]
+    }
+    """
+    if not parts_config:
+        return []
+
+    parts = parts_config.get('parts', [])
+    answer_parts = []
+
+    for part in parts:
+        answer_parts.append({
+            'partId': part.get('id', f'part_{len(answer_parts)}'),
+            'label': part.get('label', f'Part {len(answer_parts) + 1}'),
+            'marks': part.get('marks', 0),
+            'level': part.get('level', 0),
+            'hint': part.get('hint', '')
+        })
+
+    return answer_parts
+
+
+def parse_answer_parts_from_markscheme(answer_text, total_marks=0):
+    """
+    Parse mark scheme HTML to extract answer parts.
+    Looks for patterns like (a), (b), (i), (ii) etc.
+    Returns a list of answer parts with labels and marks.
+    """
+    if not answer_text:
+        return []
+
+    answer_parts = []
+
+    try:
+        # Try to parse as HTML
+        soup = BeautifulSoup(answer_text, 'html.parser')
+        text = soup.get_text()
+    except:
+        text = answer_text
+
+    # Pattern to match question parts like (a), (b), (a)(i), 1(a), etc.
+    # Also match standalone letters like "a)", "b)", and roman numerals
+    part_patterns = [
+        r'\(([a-z])\)\s*\(([ivx]+)\)',  # (a)(i) format
+        r'\(([a-z])\)',                   # (a) format
+        r'\(([ivx]+)\)',                  # (i) format
+        r'^([a-z])\)',                    # a) format at line start
+        r'^([ivx]+)\)',                   # i) format at line start
+    ]
+
+    found_parts = set()
+
+    for pattern in part_patterns:
+        matches = re.finditer(pattern, text, re.MULTILINE | re.IGNORECASE)
+        for match in matches:
+            groups = match.groups()
+            if len(groups) == 2:
+                # Combined format like (a)(i)
+                part_id = f"{groups[0].lower()}_{groups[1].lower()}"
+                label = f"({groups[0].lower()})({groups[1].lower()})"
+                level = 1
+            else:
+                # Single format like (a) or (i)
+                part_val = groups[0].lower()
+                if part_val in ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x']:
+                    # Roman numeral - likely sub-part
+                    part_id = f"roman_{part_val}"
+                    label = f"({part_val})"
+                    level = 1
+                else:
+                    # Letter - main part
+                    part_id = part_val
+                    label = f"({part_val})"
+                    level = 0
+
+            if part_id not in found_parts:
+                found_parts.add(part_id)
+                answer_parts.append({
+                    'partId': part_id,
+                    'label': label,
+                    'marks': 0,  # Will try to extract from context
+                    'level': level,
+                    'hint': ''
+                })
+
+    # Sort parts: letters first, then roman numerals
+    def sort_key(part):
+        label = part['label'].lower()
+        # Extract the main identifier
+        if '(' in label:
+            inner = label.replace('(', '').replace(')', '')
+            if '_' in part['partId']:
+                # Combined like a_i
+                main, sub = part['partId'].split('_')
+                return (ord(main) - ord('a'), 1, sub)
+            elif 'roman_' in part['partId']:
+                roman_order = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5,
+                               'vi': 6, 'vii': 7, 'viii': 8, 'ix': 9, 'x': 10}
+                return (100, 1, roman_order.get(inner, 99))
+            else:
+                return (ord(inner) - ord('a'), 0, '')
+        return (999, 0, '')
+
+    answer_parts.sort(key=sort_key)
+
+    # If no parts found but there's mark scheme content, create a single part
+    if not answer_parts and answer_text.strip():
+        answer_parts.append({
+            'partId': 'main',
+            'label': 'Answer',
+            'marks': total_marks,
+            'level': 0,
+            'hint': ''
+        })
+
+    # Try to extract marks from the HTML table if present
+    try:
+        soup = BeautifulSoup(answer_text, 'html.parser')
+        table = soup.find('table', class_='ms-table')
+        if table:
+            rows = table.find_all('tr')
+            for row in rows[1:]:  # Skip header row
+                cells = row.find_all('td')
+                if len(cells) >= 3:
+                    part_label = cells[0].get_text().strip()
+                    marks_text = cells[2].get_text().strip()
+                    try:
+                        marks = int(marks_text)
+                        # Find matching part
+                        for part in answer_parts:
+                            if part_label in part['label']:
+                                part['marks'] = marks
+                                break
+                    except:
+                        pass
+    except:
+        pass
+
+    return answer_parts
+
+
+def build_question_data_recursive(question, number_prefix, level=0):
+    """
+    Build question data recursively including all sub-questions.
+    Returns a nested structure with parent question and all children.
+    """
+    from .models import AnswerSpace
+
+    # Check for answer spaces
+    answer_spaces = AnswerSpace.objects.filter(question=question).order_by('order')
+
+    question_data = {
+        'id': question.id,
+        'number': number_prefix,
+        'questionNumber': question.question_number or '',
+        'content': question.question_text,
+        'marks': question.marks,
+        'totalMarks': question.get_total_marks(),
+        'questionType': question.question_type,
+        'answerId': f'q{question.id}',
+        'level': level
+    }
+
+    # Check if this is a structured question with parts_config
+    is_structured = question.question_type == 'structured' or question.parts_config
+
+    if is_structured and question.parts_config:
+        question_data['isStructured'] = True
+        question_data['answerParts'] = build_answer_parts_from_config(question.parts_config)
+    elif is_structured and question.answer_text:
+        question_data['isStructured'] = True
+        question_data['answerParts'] = parse_answer_parts_from_markscheme(question.answer_text, question.marks)
+    else:
+        question_data['isStructured'] = False
+
+    # Add legacy answer spaces if exists
+    if answer_spaces.exists():
+        question_data['hasAnswerSpaces'] = True
+        question_data['answerSpaces'] = [{
+            'id': space.id,
+            'type': space.space_type,
+            'x': space.x,
+            'y': space.y,
+            'width': space.width,
+            'height': space.height,
+            'order': space.order,
+            'marks': float(space.marks),
+            'config': space.config
+        } for space in answer_spaces]
+    else:
+        question_data['hasAnswerSpaces'] = False
+
+    # Recursively build sub-questions
+    sub_questions = question.sub_questions.all().order_by('order')
+    if sub_questions.exists():
+        question_data['subQuestions'] = []
+        for idx, sub_q in enumerate(sub_questions):
+            sub_number = sub_q.question_number or chr(ord('a') + idx)
+            sub_prefix = f"{number_prefix}({sub_number})"
+            sub_data = build_question_data_recursive(sub_q, sub_prefix, level + 1)
+            question_data['subQuestions'].append(sub_data)
+
+    return question_data
+
+
+# ===================== QP SLICER WORKSTATION =====================
+
+@login_required
+@staff_member_required
+def qp_slicer_workstation(request):
+    """
+    Interactive QP Slicer Workstation - Draw lines on PDF to slice questions.
+    Z = Green (Question Start), X = Red (Question End), W = Purple (Stitch/Continue)
+    A = White mask (to cover question numbers)
+    """
+    grades = Grade.objects.all().order_by('name')
+    subjects = Subject.objects.all().order_by('name')
+
+    return render(request, 'teacher/qp_slicer_workstation.html', {
+        'grades': grades,
+        'subjects': subjects,
+    })
 
 
 # ===================== AUTHENTICATION & REDIRECTS =====================
@@ -67,6 +303,7 @@ def custom_login(request):
     if request.method == "POST":
         username = request.POST.get("username")
         password = request.POST.get("password")
+        role_clicked = request.POST.get("role")  # Get which button was clicked
 
         user = authenticate(request, username=username, password=password)
 
@@ -74,6 +311,8 @@ def custom_login(request):
             error = "Invalid username or password"
         else:
             login(request, user)
+
+            # Always redirect based on actual profile role, not which button was clicked
             return redirect_after_login(user)
 
     return render(request, "registration/login.html", {"error": error})
@@ -146,11 +385,51 @@ def teacher_dashboard(request):
 @login_required
 def student_dashboard(request):
     school = get_user_school(request.user)
-    
+
+    # Calculate real stats for the dashboard
+    pending_tests = 0
+    completed_tests = 0
+    average_score = 0
+    total_points = 0
+    has_graded_results = False
+
+    try:
+        student = Student.objects.get(user=request.user)
+
+        from django.db.models import Q
+        assigned_tests = Test.objects.filter(
+            Q(assigned_students=student) | Q(assigned_groups__students=request.user),
+            is_published=True
+        ).distinct()
+
+        submitted_test_ids = set(
+            StudentAnswer.objects.filter(student=student)
+            .values_list('test_id', flat=True).distinct()
+        )
+
+        pending_tests = assigned_tests.exclude(id__in=submitted_test_ids).count()
+        completed_tests = len(submitted_test_ids)
+
+        graded = StudentAnswer.objects.filter(
+            student=student, marks_awarded__isnull=False
+        ).select_related('question')
+        total_m = sum(float(a.question.marks or 0) for a in graded)
+        earned_m = sum(float(a.marks_awarded or 0) for a in graded)
+        average_score = round((earned_m / total_m * 100), 1) if total_m > 0 else 0
+        total_points = round(earned_m, 1)
+        has_graded_results = graded.exists()
+    except Student.DoesNotExist:
+        pass
+
     context = {
         'school': school,
+        'pending_tests': pending_tests,
+        'completed_tests': completed_tests,
+        'average_score': average_score,
+        'total_points': total_points,
+        'has_graded_results': has_graded_results,
     }
-    
+
     return render(request, "student/student_dashboard.html", context)
 
 
@@ -305,7 +584,7 @@ def add_user(request):
     """
     school = get_user_school(request.user)
     role = get_user_role(request.user)
-    is_school_admin = (role == 'school_admin')
+    is_school_admin = (role == 'school_admin' or role == 'superuser' or request.user.is_superuser)
     
     if not school:
         messages.error(request, "You are not assigned to a school.")
@@ -439,7 +718,7 @@ def manage_users(request):
     """
     school = get_user_school(request.user)
     role = get_user_role(request.user)
-    is_school_admin = (role == 'school_admin')
+    is_school_admin = (role == 'school_admin' or role == 'superuser' or request.user.is_superuser)
     
     if not school:
         messages.error(request, "You are not assigned to a school.")
@@ -518,7 +797,7 @@ def change_password(request):
     
     school = get_user_school(request.user)
     role = get_user_role(request.user)
-    is_school_admin = (role == 'school_admin')
+    is_school_admin = (role == 'school_admin' or role == 'superuser' or request.user.is_superuser)
     
     user_id = request.POST.get("user_id")
     new_password = request.POST.get("new_password", "").strip()
@@ -661,12 +940,22 @@ def tests_list(request):
     if request.user.username == "sis_admin":
         tests = Test.objects.all()
     else:
-        tests = Test.objects.filter(created_by=request.user).order_by("-id")
+        # Show tests created by the user OR shared with them
+        from django.db.models import Q
+        tests = Test.objects.filter(
+            Q(created_by=request.user) | Q(assigned_teachers=request.user)
+        ).distinct().select_related('created_by').order_by("-id")
+
+    # Get teachers from same school for the assign-teacher modal
+    teachers = UserProfile.objects.filter(
+        school=school,
+        role__in=['teacher', 'school_admin']
+    ).exclude(user=request.user).select_related('user')
 
     return render(
         request,
         "teacher/tests_list.html",
-        {"tests": tests, "school": school}
+        {"tests": tests, "school": school, "teachers": teachers}
     )
 
 
@@ -680,11 +969,75 @@ def create_test(request):
     return redirect("edit_test", test_id=test.id)
 
 
+@login_required
+def create_descriptive_test(request):
+    school = get_user_school(request.user)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            title = data.get('title', '').strip()
+            questions_data = data.get('questions', [])
+
+            if not title:
+                return JsonResponse({'error': 'Title is required'}, status=400)
+            if not questions_data:
+                return JsonResponse({'error': 'At least one question is required'}, status=400)
+
+            test = Test.objects.create(
+                title=title,
+                created_by=request.user,
+                is_published=False,
+            )
+            test.descriptive_structure = json.dumps(questions_data)
+            test.save()
+
+            return JsonResponse({'success': True, 'test_id': test.id, 'message': 'Test created successfully'})
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return render(request, 'teacher/create_descriptive_test.html', {'school': school})
+
+
+@login_required
+def edit_descriptive_test(request, test_id):
+    school = get_user_school(request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return redirect("tests_list")
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            test.title = data.get('title', test.title)
+            test.descriptive_structure = json.dumps(data.get('questions', []))
+            test.save()
+            return JsonResponse({'success': True, 'message': 'Test updated successfully'})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    questions_data = []
+    if test.descriptive_structure:
+        try:
+            questions_data = json.loads(test.descriptive_structure)
+        except Exception:
+            questions_data = []
+
+    return render(request, 'teacher/create_descriptive_test.html', {
+        'school': school,
+        'test': test,
+        'questions_data': json.dumps(questions_data),
+    })
+
 
 
 @login_required
 def toggle_publish(request, test_id):
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return redirect("tests_list")
     test.is_published = not test.is_published
     test.save()
     return redirect("tests_list")
@@ -692,14 +1045,18 @@ def toggle_publish(request, test_id):
 
 @login_required
 def delete_test(request, test_id):
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return redirect("tests_list")
     test.delete()
     return redirect("tests_list")
 
 
 @login_required
 def duplicate_test(request, test_id):
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return redirect("tests_list")
 
     new_test = Test.objects.create(
         title=f"{test.title} (Copy)",
@@ -723,7 +1080,9 @@ def duplicate_test(request, test_id):
 
 @login_required
 def autosave_test(request, test_id):
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return JsonResponse({"error": "Access denied"}, status=403)
     data = json.loads(request.body)
 
     test.title = data.get("title", test.title)
@@ -743,11 +1102,15 @@ def autosave_test(request, test_id):
 @login_required
 def question_library(request):
     from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+    from django.db.models import Count
 
     school = get_user_school(request.user)
     qs = Question.objects.filter(
         created_by=request.user
     ).select_related("grade", "subject", "topic").prefetch_related("learning_objectives")
+
+    # Annotate with usage count (how many tests use this question)
+    qs = qs.annotate(usage_count=Count('testquestion', distinct=True))
 
     # Filters
     grade = request.GET.get("grade")
@@ -755,6 +1118,7 @@ def question_library(request):
     qtype = request.GET.get("question_type")
     marks = request.GET.get("marks")
     year = request.GET.get("year")
+    usage_filter = request.GET.get("usage")  # 'most', 'least', 'unused'
 
     if grade:
         qs = qs.filter(grade_id=grade)
@@ -766,6 +1130,10 @@ def question_library(request):
         qs = qs.filter(marks=marks)
     if year:
         qs = qs.filter(year=year)
+    if usage_filter == 'unused':
+        qs = qs.filter(usage_count=0)
+    elif usage_filter == 'least':
+        qs = qs.filter(usage_count__gt=0)
 
     topics = request.GET.getlist("topics[]")
     if topics:
@@ -779,10 +1147,18 @@ def question_library(request):
     sort_by = request.GET.get("sort", "id")
     order = request.GET.get("order", "desc")
 
-    # Valid sort fields
-    valid_sorts = ["id", "grade__name", "subject__name", "topic__name", "question_type", "marks", "year"]
+    # Valid sort fields — now includes usage_count
+    valid_sorts = ["id", "grade__name", "subject__name", "topic__name", "question_type", "marks", "year", "usage_count"]
     if sort_by not in valid_sorts:
         sort_by = "id"
+
+    # Auto-sort for usage filters
+    if usage_filter == 'most' and sort_by == 'id':
+        sort_by = 'usage_count'
+        order = 'desc'
+    elif usage_filter == 'least' and sort_by == 'id':
+        sort_by = 'usage_count'
+        order = 'asc'
 
     # Apply sort with order
     if order == "asc":
@@ -812,6 +1188,7 @@ def question_library(request):
             "school": school,
             "current_sort": sort_by,
             "current_order": order,
+            "current_usage": usage_filter or '',
         }
     )
 
@@ -894,6 +1271,21 @@ def add_edit_question(request, question_id=None):
             "years": years,
         }
     )
+
+
+@login_required
+def structured_question_editor(request):
+    """
+    New structured question editor - allows creating questions with sub-parts,
+    per-question topic and LO tagging, and batch saving to library.
+    """
+    grades = Grade.objects.all().order_by('name')
+    subjects = Subject.objects.all().order_by('name')
+
+    return render(request, 'teacher/structured_question_editor.html', {
+        'grades': grades,
+        'subjects': subjects,
+    })
 
 
 @login_required
@@ -1017,11 +1409,147 @@ def edit_structured_question(request, question_id):
 
 
 @login_required
+def edit_question_v2(request, question_id):
+    """
+    Revamped unified question editor.
+    - Shows question image with interactive answer-space overlays (QP-MS ingested questions).
+    - Editable metadata: grade, subject, topic, year, marks, type, LOs.
+    - Editable mark scheme (answer_text).
+    - Add / move / resize / delete answer spaces inline.
+    - Full save via a single POST endpoint.
+    """
+    from .models import AnswerSpace, QuestionPage
+    from .utils.image_processing import stitch_question_pages
+
+    # Allow editing questions from same school (not just own questions)
+    question = get_object_or_404(Question, id=question_id)
+
+    # ── POST: save all changes ───────────────────────────────────────
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+
+            # 1. Metadata
+            question.grade_id    = data.get('grade_id',    question.grade_id)
+            question.subject_id  = data.get('subject_id',  question.subject_id)
+            question.topic_id    = data.get('topic_id',    question.topic_id)
+            question.year        = data.get('year') or None
+            question.marks       = data.get('marks',       question.marks)
+            question.question_type = data.get('question_type', question.question_type)
+            question.answer_text = data.get('answer_text', question.answer_text)
+
+            # 2. question_text: only update when the client sends it
+            #    (text-mode editors send HTML; image-mode questions keep existing img tag)
+            if 'question_text' in data and data['question_text']:
+                question.question_text = data['question_text']
+
+            question.save()
+
+            # 3. Learning objectives
+            if 'lo_ids' in data:
+                question.learning_objectives.set(data['lo_ids'])
+
+            # 4. Answer spaces (full replace)
+            if 'answer_spaces' in data:
+                AnswerSpace.objects.filter(question=question).delete()
+                for idx, sp in enumerate(data['answer_spaces']):
+                    AnswerSpace.objects.create(
+                        question=question,
+                        space_type=sp.get('type', 'text_line'),
+                        x=int(sp.get('x', 0)),
+                        y=int(sp.get('y', 0)),
+                        width=int(sp.get('width', 600)),
+                        height=int(sp.get('height', 80)),
+                        order=sp.get('order', idx),
+                        marks=sp.get('marks', 1),
+                        config=sp.get('config', {}),
+                    )
+
+            return JsonResponse({'success': True, 'message': 'Saved successfully'})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    # ── GET: build editor context ────────────────────────────────────
+
+    # Determine if there is a displayable image
+    pages = QuestionPage.objects.filter(question=question).order_by('page_number')
+    question_image = None
+
+    if pages.exists():
+        pages_data = [
+            {
+                'page_number': p.page_number,
+                'page_image':  p.page_image,
+                'has_green_line': p.has_green_line,
+                'has_red_line':   p.has_red_line,
+                'blue_rect_x':    p.blue_rect_x,
+                'blue_rect_y':    p.blue_rect_y,
+                'blue_rect_width':  p.blue_rect_width,
+                'blue_rect_height': p.blue_rect_height,
+            }
+            for p in pages
+        ]
+        try:
+            question_image = stitch_question_pages(pages_data)
+        except Exception:
+            question_image = pages_data[0]['page_image']
+    elif question.question_text.strip().startswith('<img') or \
+         question.question_text.strip().startswith('data:image'):
+        question_image = question.question_text.strip()
+        # If it's a raw base64 string (no <img> tag), keep as-is for the <img src="">
+        # If it's an <img> tag, extract the src
+        import re
+        m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', question_image)
+        if m:
+            question_image = m.group(1)
+
+    # Answer spaces JSON
+    answer_spaces = AnswerSpace.objects.filter(question=question).order_by('order')
+    answer_spaces_json = json.dumps([
+        {
+            'id':     sp.id,
+            'type':   sp.space_type,
+            'x':      sp.x,
+            'y':      sp.y,
+            'width':  sp.width,
+            'height': sp.height,
+            'order':  sp.order,
+            'marks':  float(sp.marks),
+            'config': sp.config,
+        }
+        for sp in answer_spaces
+    ])
+
+    # LOs for the current topic
+    selected_lo_ids = list(question.learning_objectives.values_list('id', flat=True))
+
+    grades   = Grade.objects.all()
+    subjects = Subject.objects.all()
+    topics   = Topic.objects.all()
+    years    = list(range(2026, 1999, -1))
+
+    return render(request, 'teacher/edit_question_v2.html', {
+        'question':          question,
+        'question_image':    question_image,
+        'answer_spaces_json': answer_spaces_json,
+        'selected_lo_ids':   selected_lo_ids,
+        'grades':            grades,
+        'subjects':          subjects,
+        'topics':            topics,
+        'years':             years,
+        'page_count':        pages.count(),
+    })
+
+
+@login_required
 def inline_add_question(request, test_id):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
 
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return JsonResponse({"error": "Access denied"}, status=403)
 
     try:
         data = json.loads(request.body)
@@ -1076,8 +1604,10 @@ def inline_add_question(request, test_id):
 def remove_question_from_test(request, test_id, test_question_id):
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
-    
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return JsonResponse({"error": "Access denied"}, status=403)
     test_question = get_object_or_404(TestQuestion, id=test_question_id, test=test)
     
     test_question.delete()
@@ -1096,8 +1626,10 @@ def remove_question_from_test(request, test_id, test_question_id):
 def add_questions_to_test(request, test_id):
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
-    
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return JsonResponse({"error": "Access denied"}, status=403)
     
     try:
         data = json.loads(request.body)
@@ -1541,104 +2073,6 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-# ===================== DESCRIPTIVE TESTS (TEACHER) =====================
-
-@login_required
-def create_descriptive_test(request):
-    """
-    Create a new descriptive test with hierarchical questions
-    """
-    school = get_user_school(request.user)
-    
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            
-            title = data.get('title', '').strip()
-            questions_data = data.get('questions', [])
-            
-            if not title:
-                return JsonResponse({'error': 'Title is required'}, status=400)
-            
-            if not questions_data:
-                return JsonResponse({'error': 'At least one question is required'}, status=400)
-            
-            # Create the test
-            test = Test.objects.create(
-                title=title,
-                created_by=request.user,
-                is_published=False
-            )
-            
-            # Store the hierarchical structure as JSON in a TextField
-            # You'll need to add this field to your Test model
-            test.descriptive_structure = json.dumps(questions_data)
-            test.save()
-            
-            return JsonResponse({
-                'success': True,
-                'test_id': test.id,
-                'message': 'Test created successfully'
-            })
-            
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    
-    # GET request - show the editor
-    return render(request, 'teacher/create_descriptive_test.html', {
-        'school': school
-    })
-
-
-@login_required
-def edit_descriptive_test(request, test_id):
-    """
-    Edit an existing descriptive test
-    """
-    school = get_user_school(request.user)
-    if request.user.username == "sis_admin":
-        test = get_object_or_404(Test, id=test_id)
-    else:
-        test = get_object_or_404(
-            Test,
-            id=test_id,
-            created_by=request.user
-        )
-
-    
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            
-            test.title = data.get('title', test.title)
-            test.descriptive_structure = json.dumps(data.get('questions', []))
-            test.save()
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'Test updated successfully'
-            })
-            
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    
-    # GET request - show editor with existing data
-    questions_data = []
-    if hasattr(test, 'descriptive_structure') and test.descriptive_structure:
-        try:
-            questions_data = json.loads(test.descriptive_structure)
-        except:
-            questions_data = []
-    
-    return render(request, 'teacher/create_descriptive_test.html', {
-        'school': school,
-        'test': test,
-        'questions_data': json.dumps(questions_data)
-    })
-
-
 # ===================== STUDENT TEST TAKING =====================
 
 
@@ -1647,16 +2081,13 @@ def edit_descriptive_test(request, test_id):
 @login_required
 def test_editor(request, test_id):
     """
-    Test editor with proper student assignment handling
+    Test editor with proper student assignment handling.
+    Allows access for test creator and assigned teachers.
     """
-    if request.user.username == "sis_admin":
-        test = get_object_or_404(Test, id=test_id)
-    else:
-        test = get_object_or_404(
-            Test,
-            id=test_id,
-            created_by=request.user
-        )
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        messages.error(request, "You don't have access to this test.")
+        return redirect("tests_list")
     school = get_user_school(request.user)
 
     if request.method == "POST":
@@ -1701,7 +2132,20 @@ def test_editor(request, test_id):
                 school=school
             )
             test.assigned_students.set(valid_students)
-        
+
+        # Handle teacher assignments (only the creator can manage teacher assignments)
+        if test.created_by == request.user or request.user.username == 'sis_admin':
+            assigned_teacher_ids = request.POST.getlist("assigned_teachers")
+            if assigned_teacher_ids:
+                valid_teachers = User.objects.filter(
+                    id__in=assigned_teacher_ids,
+                    profile__school=school,
+                    profile__role__in=['teacher', 'school_admin']
+                )
+                test.assigned_teachers.set(valid_teachers)
+            else:
+                test.assigned_teachers.clear()
+
         messages.success(request, "Test saved successfully!")
         return redirect("edit_test", test_id=test.id)
 
@@ -1716,7 +2160,16 @@ def test_editor(request, test_id):
     
     # Get currently assigned students
     assigned_students = test.assigned_students.all()
-    
+
+    # Get currently assigned teachers
+    assigned_teacher_ids = list(test.assigned_teachers.values_list('id', flat=True))
+
+    # Get all teachers from same school (for teacher assignment dropdown)
+    school_teachers = UserProfile.objects.filter(
+        school=school,
+        role__in=['teacher', 'school_admin']
+    ).exclude(user=request.user).exclude(user=test.created_by).select_related('user')
+
     subjects = Subject.objects.all()
 
     return render(
@@ -1728,9 +2181,12 @@ def test_editor(request, test_id):
             "groups": groups,
             "students": students,
             "assigned_students": assigned_students,
+            "assigned_teacher_ids": assigned_teacher_ids,
+            "school_teachers": school_teachers,
             "grades": Grade.objects.all(),
             "subjects": subjects,
             "school": school,
+            "is_owner": test.created_by == request.user or request.user.username == 'sis_admin',
         }
     )
 
@@ -1853,36 +2309,12 @@ def take_test(request, test_id):
     }
 
     for idx, tq in enumerate(test_questions, 1):
-        # Check if question has answer spaces (structured question)
-        answer_spaces = AnswerSpace.objects.filter(question=tq.question).order_by('order')
+        question = tq.question
 
-        question_data = {
-            'id': tq.question.id,
-            'number': f'Q{idx}',
-            'content': tq.question.question_text,
-            'marks': tq.question.marks,
-            'type': tq.question.question_type,
-            'answerId': f'q{tq.question.id}'
-        }
+        # Build question data with hierarchical sub-questions
+        question_data = build_question_data_recursive(question, f'Q{idx}')
 
-        # Add answer spaces if this is a structured question
-        if answer_spaces.exists():
-            question_data['hasAnswerSpaces'] = True
-            question_data['answerSpaces'] = [{
-                'id': space.id,
-                'type': space.space_type,
-                'x': space.x,
-                'y': space.y,
-                'width': space.width,
-                'height': space.height,
-                'order': space.order,
-                'marks': float(space.marks),
-                'config': space.config
-            } for space in answer_spaces]
-        else:
-            question_data['hasAnswerSpaces'] = False
-
-        # Each question is a separate page
+        # Each question (with all its sub-questions) is a separate page
         test_data['pages'].append({
             'pageNumber': idx,
             'questions': [question_data]
@@ -1999,6 +2431,7 @@ def autosave_test_answers(request, test_id):
         data = json.loads(request.body)
         answers = data.get('answers', {})
         current_page = data.get('currentPage', 0)
+        question_timers = data.get('questionTimers', {})
 
         # Save answers to database
         for answer_key, answer_text in answers.items():
@@ -2060,23 +2493,75 @@ def autosave_test_answers(request, test_id):
                 except (ValueError, Question.DoesNotExist, AnswerSpace.DoesNotExist):
                     continue
 
+            # Handle structured answer form parts: "structured-<question_id>-<part_id>"
+            elif answer_key.startswith('structured-'):
+                try:
+                    parts = answer_key.split('-')
+                    if len(parts) >= 3:
+                        question_id = int(parts[1])
+                        part_id = '-'.join(parts[2:])  # Part ID might contain hyphens
+
+                        question = Question.objects.get(id=question_id)
+
+                        # Get or create StudentAnswer for the question
+                        student_answer, created = StudentAnswer.objects.get_or_create(
+                            student=student,
+                            test=test,
+                            question=question
+                        )
+
+                        # Store structured answers in JSON format
+                        # Retrieve existing structured_answers or initialize
+                        existing_answers = {}
+                        if student_answer.answer_text:
+                            try:
+                                # Check if it's JSON structured answers
+                                if student_answer.answer_text.startswith('{'):
+                                    existing_answers = json.loads(student_answer.answer_text)
+                            except json.JSONDecodeError:
+                                # Existing text is not JSON, preserve it
+                                existing_answers = {'_legacy': student_answer.answer_text}
+
+                        # Update the specific part
+                        existing_answers[part_id] = answer_text
+
+                        # Save as JSON
+                        student_answer.answer_text = json.dumps(existing_answers)
+                        student_answer.save()
+
+                except (ValueError, Question.DoesNotExist):
+                    continue
+
             # Extract question ID from format "q123" -> 123 (regular questions)
             elif answer_key.startswith('q'):
                 try:
                     question_id = int(answer_key[1:])
                     question = Question.objects.get(id=question_id)
 
+                    defaults = {'answer_text': answer_text}
+                    timer_val = question_timers.get(str(question_id))
+                    if timer_val is not None:
+                        defaults['time_spent_seconds'] = int(timer_val)
+
                     # Create or update StudentAnswer
                     StudentAnswer.objects.update_or_create(
                         student=student,
                         test=test,
                         question=question,
-                        defaults={
-                            'answer_text': answer_text
-                        }
+                        defaults=defaults
                     )
                 except (ValueError, Question.DoesNotExist):
                     continue
+
+        # Update time for any questions tracked but not yet answered
+        for q_id_str, seconds in question_timers.items():
+            try:
+                q_id = int(q_id_str)
+                StudentAnswer.objects.filter(
+                    student=student, test=test, question_id=q_id
+                ).update(time_spent_seconds=int(seconds))
+            except (ValueError, Exception):
+                continue
 
         # Store current page in session for monitoring
         request.session[f'test_{test_id}_current_page'] = current_page
@@ -2104,7 +2589,7 @@ def get_saved_answers(request, test_id):
 @require_POST
 def submit_test(request, test_id):
     """
-    Submit completed test
+    Submit completed test - saves all answers and marks test as submitted
     """
     try:
         student = Student.objects.get(user=request.user)
@@ -2112,20 +2597,83 @@ def submit_test(request, test_id):
 
         data = json.loads(request.body)
         answers = data.get('answers', {})
+        question_timers = data.get('questionTimers', {})
 
-        # Save all answers to StudentAnswer model
-        # You'll need to modify this based on your question structure
+        # Group answers by question
+        question_answers = {}  # question_id -> {part_id: answer_text}
 
-        for question_id, answer_text in answers.items():
-            # Extract actual question ID from answerId format (e.g., "q1a" -> "1a")
-            # This depends on your question identification scheme
+        for answer_key, answer_text in answers.items():
+            if answer_key.startswith('structured-'):
+                # Structured answer: "structured-<question_id>-<part_id>"
+                parts = answer_key.split('-')
+                if len(parts) >= 3:
+                    question_id = int(parts[1])
+                    part_id = '-'.join(parts[2:])
 
-            # For now, store as JSON in a submission tracking model
-            pass
+                    if question_id not in question_answers:
+                        question_answers[question_id] = {}
+                    question_answers[question_id][part_id] = answer_text
+
+            elif answer_key.startswith('space-'):
+                # Legacy overlay answer: "space-<question_id>-<space_id>"
+                parts = answer_key.split('-')
+                if len(parts) >= 3:
+                    question_id = int(parts[1])
+                    space_id = parts[2]
+
+                    if question_id not in question_answers:
+                        question_answers[question_id] = {}
+                    question_answers[question_id][f'space_{space_id}'] = answer_text
+
+            elif answer_key.startswith('q'):
+                # Regular answer: "q<question_id>"
+                try:
+                    question_id = int(answer_key[1:])
+                    if question_id not in question_answers:
+                        question_answers[question_id] = {}
+                    question_answers[question_id]['main'] = answer_text
+                except ValueError:
+                    continue
+
+        # Save answers to database
+        for question_id, parts_answers in question_answers.items():
+            try:
+                question = Question.objects.get(id=question_id)
+
+                # For structured questions, store as JSON
+                if len(parts_answers) > 1 or 'main' not in parts_answers:
+                    answer_text = json.dumps(parts_answers)
+                else:
+                    answer_text = parts_answers.get('main', '')
+
+                time_spent = question_timers.get(str(question_id))
+
+                # For structured questions with parts, also save to answer_parts
+                if len(parts_answers) > 1 or 'main' not in parts_answers:
+                    defaults = {
+                        'answer_text': answer_text,
+                        'answer_parts': parts_answers
+                    }
+                else:
+                    defaults = {'answer_text': answer_text}
+
+                if time_spent is not None:
+                    defaults['time_spent_seconds'] = int(time_spent)
+
+                StudentAnswer.objects.update_or_create(
+                    student=student,
+                    test=test,
+                    question=question,
+                    defaults=defaults
+                )
+            except Question.DoesNotExist:
+                continue
 
         # Clear session answers
         if f'test_{test_id}_answers' in request.session:
             del request.session[f'test_{test_id}_answers']
+        if f'test_{test_id}_current_page' in request.session:
+            del request.session[f'test_{test_id}_current_page']
 
         return JsonResponse({
             'success': True,
@@ -2133,7 +2681,11 @@ def submit_test(request, test_id):
         })
 
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        import traceback
+        return JsonResponse({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
 
 
 # ===================== TEST MONITORING & GRADING =====================
@@ -2148,7 +2700,9 @@ def monitor_test(request, test_id):
     Real-time test monitoring page for teachers
     Shows students taking the test, their progress, and status
     """
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return redirect("tests_list")
 
     # Get all students assigned to this test
     assigned_students = test.get_all_assigned_students()
@@ -2242,7 +2796,9 @@ def monitor_test_api(request, test_id):
     API endpoint for real-time monitoring data
     Returns JSON with current test status
     """
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return JsonResponse({"error": "Access denied"}, status=403)
     assigned_students = test.get_all_assigned_students()
 
     # Get student progress data
@@ -2308,7 +2864,9 @@ def grade_test_answers(request, test_id):
     Teacher page for grading student answers
     Shows all student submissions with AI-assisted grading
     """
-    test = get_object_or_404(Test, id=test_id, created_by=request.user)
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return redirect("tests_list")
 
     # Get all students who submitted answers
     students_with_answers = Student.objects.filter(
@@ -2381,14 +2939,9 @@ def grade_test_spreadsheet(request, test_id):
     """
     Spreadsheet-style grading view with all students and questions
     """
-    if request.user.username == "sis_admin":
-        test = get_object_or_404(Test, id=test_id)
-    else:
-        test = get_object_or_404(
-            Test,
-            id=test_id,
-            created_by=request.user
-        )
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return redirect("tests_list")
 
 
     # Get all students who submitted answers
@@ -2660,32 +3213,47 @@ def ai_grade_answer(request):
 @require_POST
 def publish_results(request, test_id):
     """
-    Publish test results to students
+    Publish test results to students.
+    Only publishes results for students whose answers are ALL graded.
+    Does NOT block if some students still have ungraded answers.
     """
     try:
-        test = get_object_or_404(Test, id=test_id, created_by=request.user)
+        test = get_object_or_404(Test, id=test_id)
+        if not test.user_has_access(request.user):
+            return JsonResponse({'error': 'Access denied'}, status=403)
 
-        # Check if all answers are graded
-        total_answers = StudentAnswer.objects.filter(test=test).count()
-        graded_answers = StudentAnswer.objects.filter(
-            test=test,
-            marks_awarded__isnull=False
-        ).count()
+        # Count students who have submitted answers
+        submitted_students = Student.objects.filter(
+            answers__test=test
+        ).distinct()
+        total_submitted = submitted_students.count()
 
-        if total_answers > graded_answers:
+        # Count students who are fully graded (all their answers have marks)
+        fully_graded_count = 0
+        pending_count = 0
+        for student in submitted_students:
+            student_answers = StudentAnswer.objects.filter(student=student, test=test)
+            if student_answers.exists() and not student_answers.filter(marks_awarded__isnull=True).exists():
+                fully_graded_count += 1
+            else:
+                pending_count += 1
+
+        if fully_graded_count == 0:
             return JsonResponse({
-                'error': f'Only {graded_answers} out of {total_answers} answers are graded',
-                'success': False
+                'success': False,
+                'error': 'No students have fully graded answers yet. Grade at least one student before publishing.',
             }, status=400)
 
-        # Mark test as results published (you may need to add this field to Test model)
-        # test.results_published = True
-        # test.save()
+        # Set the flag — students with graded answers can now see results
+        test.results_published = True
+        test.save(update_fields=['results_published'])
 
         return JsonResponse({
             'success': True,
-            'message': 'Results published successfully',
-            'graded_answers': graded_answers
+            'message': f'Results published for {fully_graded_count} student(s).',
+            'fully_graded': fully_graded_count,
+            'pending': pending_count,
+            'total_submitted': total_submitted,
         })
 
     except Exception as e:
@@ -2722,20 +3290,31 @@ def student_results(request):
         total_marks = sum(sa.question.marks for sa in student_answers)
         scored_marks = sum(sa.marks_awarded or 0 for sa in student_answers)
 
-        # Check if all answers are graded
+        # Check if this student's answers are all graded
         graded_count = student_answers.filter(marks_awarded__isnull=False).count()
         total_count = student_answers.count()
         is_graded = graded_count == total_count and total_count > 0
 
-        if is_graded and total_marks > 0:
+        # Only show result if teacher has published results AND this student is fully graded
+        if test.results_published and is_graded and total_marks > 0:
             percentage = (scored_marks / total_marks) * 100
-
             results.append({
                 'test': test,
                 'scored_marks': scored_marks,
                 'total_marks': total_marks,
                 'percentage': round(percentage, 1),
                 'is_graded': True,
+                'submitted_at': student_answers.first().submitted_at if student_answers.exists() else None
+            })
+        elif not test.results_published and is_graded:
+            # Submitted and graded but not yet published — show as "pending release"
+            results.append({
+                'test': test,
+                'scored_marks': None,
+                'total_marks': total_marks,
+                'percentage': None,
+                'is_graded': False,
+                'pending_release': True,
                 'submitted_at': student_answers.first().submitted_at if student_answers.exists() else None
             })
 
@@ -2777,7 +3356,7 @@ def student_test_review(request, test_id):
     # Prepare question-answer pairs
     review_data = []
     if test.test_type == 'standard':
-        test_questions = test.test_questions.all().order_by('order')
+        test_questions = test.test_questions.all().order_by('order').select_related('question__topic')
 
         for tq in test_questions:
             question = tq.question
@@ -2796,6 +3375,50 @@ def student_test_review(request, test_id):
     scored_marks = sum(rd['awarded_marks'] or 0 for rd in review_data if rd['awarded_marks'] is not None)
     percentage = (scored_marks / total_marks * 100) if total_marks > 0 else 0
 
+    # ── Topic-wise performance stats ──────────────────────────────
+    topic_map = {}
+    for rd in review_data:
+        topic_obj = rd['question'].topic
+        topic_name = topic_obj.name if topic_obj else 'General'
+        topic_id = topic_obj.id if topic_obj else None
+        if topic_name not in topic_map:
+            topic_map[topic_name] = {
+                'name': topic_name,
+                'topic_id': topic_id,
+                'total_marks': 0,
+                'awarded_marks': 0.0,
+                'question_count': 0,
+                'graded_count': 0,
+                'percentage': None,
+                'mastery': 'Pending Evaluation',
+            }
+        s = topic_map[topic_name]
+        s['total_marks']    += rd['max_marks']
+        s['question_count'] += 1
+        if rd['awarded_marks'] is not None:
+            s['awarded_marks'] += float(rd['awarded_marks'])
+            s['graded_count']  += 1
+
+    for s in topic_map.values():
+        if s['graded_count'] > 0 and s['total_marks'] > 0:
+            pct = (s['awarded_marks'] / s['total_marks']) * 100
+            s['percentage'] = round(pct, 1)
+            if pct >= 80:
+                s['mastery'] = 'Mastered'
+            elif pct >= 60:
+                s['mastery'] = 'Good'
+            elif pct >= 40:
+                s['mastery'] = 'Needs Improvement'
+            else:
+                s['mastery'] = 'Weak'
+
+    # Sort: weakest first (best practice recommendation order), ungraded at end
+    topic_stats = sorted(
+        topic_map.values(),
+        key=lambda x: (x['percentage'] is None, x['percentage'] if x['percentage'] is not None else 0)
+    )
+    weak_topics = [t for t in topic_stats if t['percentage'] is not None and t['percentage'] < 60]
+
     context = {
         'test': test,
         'student': student,
@@ -2803,10 +3426,164 @@ def student_test_review(request, test_id):
         'total_marks': total_marks,
         'scored_marks': scored_marks,
         'percentage': round(percentage, 1),
-        'is_fully_graded': is_fully_graded
+        'is_fully_graded': is_fully_graded,
+        'topic_stats': topic_stats,
+        'weak_topics': weak_topics,
     }
 
     return render(request, 'student/test_review.html', context)
+
+
+@login_required
+def student_practice(request, topic_id):
+    """
+    Show 5 practice questions from a weak topic for the student.
+    The student can view them and print as a PDF using jsPDF.
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+    except Student.DoesNotExist:
+        messages.error(request, "Student profile not found")
+        return redirect("student_dashboard")
+
+    topic = get_object_or_404(Topic, id=topic_id)
+
+    # Get questions from this topic that the student has NOT answered correctly
+    # First, get question IDs the student already answered well (>= 70%)
+    well_answered_ids = list(
+        StudentAnswer.objects.filter(
+            student=student,
+            question__topic=topic,
+            marks_awarded__isnull=False,
+        ).values_list('question_id', 'marks_awarded', 'question__marks')
+    )
+
+    skip_ids = set()
+    for qid, awarded, qmax in well_answered_ids:
+        if qmax and qmax > 0 and float(awarded) / float(qmax) >= 0.7:
+            skip_ids.add(qid)
+
+    # Fetch questions from this topic, excluding well-answered ones, parent-level only
+    practice_qs = (
+        Question.objects.filter(topic=topic, parent__isnull=True)
+        .exclude(id__in=skip_ids)
+        .order_by('?')[:5]
+    )
+
+    # If not enough, fill with any questions from this topic
+    if practice_qs.count() < 5:
+        remaining = 5 - practice_qs.count()
+        extra_ids = set(practice_qs.values_list('id', flat=True))
+        extra_qs = (
+            Question.objects.filter(topic=topic, parent__isnull=True)
+            .exclude(id__in=extra_ids)
+            .order_by('?')[:remaining]
+        )
+        practice_qs = list(practice_qs) + list(extra_qs)
+    else:
+        practice_qs = list(practice_qs)
+
+    # Also try nearby LOs if not enough questions
+    if len(practice_qs) < 5:
+        remaining = 5 - len(practice_qs)
+        existing_ids = set(q.id for q in practice_qs)
+        # Get questions from same subject/grade, nearby topics
+        nearby_qs = (
+            Question.objects.filter(
+                grade=topic.grade,
+                subject=topic.subject,
+                parent__isnull=True,
+            )
+            .exclude(id__in=existing_ids)
+            .order_by('?')[:remaining]
+        )
+        practice_qs = practice_qs + list(nearby_qs)
+
+    context = {
+        'student': student,
+        'topic': topic,
+        'practice_questions': practice_qs,
+        'question_count': len(practice_qs),
+    }
+
+    return render(request, 'student/practice.html', context)
+
+
+@login_required
+@staff_member_required
+def edit_school_settings(request):
+    """
+    Allow school admin / teacher to view and edit school details.
+    """
+    school = get_user_school(request.user)
+    if not school:
+        messages.error(request, "No school associated with your account.")
+        return redirect("teacher_dashboard")
+
+    if request.method == 'POST':
+        school.name = request.POST.get('name', school.name).strip()
+        school.address = request.POST.get('address', school.address).strip()
+        school.phone = request.POST.get('phone', school.phone).strip()
+        school.email = request.POST.get('email', school.email).strip()
+        school.code = request.POST.get('code', school.code).strip()
+        school.save()
+        messages.success(request, "School details updated successfully.")
+        return redirect("edit_school_settings")
+
+    context = {
+        'school': school,
+    }
+    return render(request, 'teacher/school_settings.html', context)
+
+
+@login_required
+@staff_member_required
+def assign_teachers_to_test(request):
+    """
+    API endpoint to assign/update teachers for a test.
+    POST { test_id: int, teacher_ids: [int,...] }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        test_id = data.get('test_id')
+        teacher_ids = data.get('teacher_ids', [])
+
+        test = get_object_or_404(Test, id=test_id)
+        # Only the test creator (or sis_admin) can assign teachers
+        if test.created_by != request.user and request.user.username != 'sis_admin':
+            return JsonResponse({'error': 'Only the test creator can assign teachers.'}, status=403)
+
+        school = get_user_school(request.user)
+        valid_teachers = User.objects.filter(
+            id__in=teacher_ids,
+            profile__school=school,
+            profile__role__in=['teacher', 'school_admin']
+        ).exclude(id=test.created_by.id)
+
+        test.assigned_teachers.set(valid_teachers)
+
+        return JsonResponse({
+            'success': True,
+            'assigned_count': valid_teachers.count(),
+            'teacher_names': list(valid_teachers.values_list('first_name', flat=True)),
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@login_required
+@staff_member_required
+def get_test_teachers(request, test_id):
+    """API endpoint to get currently assigned teachers for a test."""
+    test = get_object_or_404(Test, id=test_id)
+    if not test.user_has_access(request.user):
+        return JsonResponse({'error': 'Access denied'}, status=403)
+
+    assigned = list(test.assigned_teachers.values('id', 'first_name', 'last_name', 'username'))
+    return JsonResponse({'teachers': assigned})
 
 
 @login_required
@@ -2952,6 +3729,101 @@ def import_mcq_pdf(request):
 
 @login_required
 @staff_member_required
+def import_qp_slices(request):
+    """Import structured/theory questions from QP Slicer Workstation"""
+    import base64
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid method'}, status=405)
+
+    try:
+        grade_id = request.POST.get('grade_id')
+        subject_id = request.POST.get('subject_id')
+        year = request.POST.get('year')
+        question_type = request.POST.get('question_type', 'structured')
+        total_images = int(request.POST.get('total_images', 0))
+
+        if not all([grade_id, subject_id]):
+            return JsonResponse({'error': 'Missing grade or subject'}, status=400)
+
+        # Get the first topic for this subject
+        topic = Topic.objects.filter(subject_id=subject_id).first()
+        if not topic:
+            return JsonResponse({'error': 'No topics found for this subject'}, status=400)
+
+        imported_count = 0
+
+        for i in range(total_images):
+            image_data = request.POST.get(f'image_{i}')
+            marks = request.POST.get(f'marks_{i}', 5)
+
+            if not image_data:
+                continue
+
+            # Extract base64 from data URL
+            if ',' in image_data:
+                base64_str = image_data.split(',')[1]
+            else:
+                base64_str = image_data
+
+            # Create HTML img tag
+            question_html = f'<img src="data:image/png;base64,{base64_str}" alt="Question {i+1}" style="max-width: 100%; height: auto;" />'
+
+            # Create question
+            question_data = {
+                'grade_id': grade_id,
+                'subject_id': subject_id,
+                'topic_id': topic.id,
+                'question_text': question_html,
+                'answer_text': '',  # Can be filled in later via AI or manual entry
+                'marks': int(marks) if marks else 5,
+                'question_type': question_type,
+                'created_by': request.user
+            }
+
+            if year:
+                question_data['year'] = int(year)
+
+            Question.objects.create(**question_data)
+            imported_count += 1
+
+        return JsonResponse({'success': True, 'count': imported_count})
+
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
+
+
+def _get_lmstudio_model(lmstudio_url):
+    """Return the LMStudio model ID to use.
+    Priority: Django settings → /api/v1/models (0.4.x) → /v1/models (0.3.x) → fallback."""
+    import requests as _req
+    from django.conf import settings as _s
+    # 1. Django settings (set via LMSTUDIO_MODEL env var or settings.py)
+    configured = getattr(_s, 'LMSTUDIO_MODEL', None)
+    if configured:
+        return configured
+    # 2. Dynamically query the running server — try both API paths
+    base = lmstudio_url.split('/v1/')[0]  # e.g. http://127.0.0.1:1234
+    for path in ('/api/v1/models', '/v1/models'):
+        try:
+            r = _req.get(f"{base}{path}", timeout=5)
+            if r.status_code == 200:
+                models = r.json().get('data', [])
+                if models:
+                    print(f"[LMStudio] model discovered via {path}: {models[0]['id']}")
+                    return models[0]['id']
+        except Exception:
+            pass
+    # 3. Fallback
+    return 'openai/gpt-oss-20b'
+
+
+@login_required
+@staff_member_required
 def ai_suggest_topic(request):
     """AI-powered topic suggestion for questions with context-aware prompting and OCR"""
     if request.method != 'POST':
@@ -2959,15 +3831,16 @@ def ai_suggest_topic(request):
 
     try:
         data = json.loads(request.body)
-        question_text = data.get('question_text', '')
+        question_text = data.get('question_text', '')   # mark scheme / answer text
+        question_id = data.get('question_id')           # DB question id
         subject_id = data.get('subject_id')
         grade_id = data.get('grade_id')
 
-        if not question_text or not subject_id or not grade_id:
-            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        if not subject_id or not grade_id:
+            return JsonResponse({'error': 'Missing required fields (subject, grade)'}, status=400)
 
         # Get subject and grade names for context-aware prompting
-        from .models import Subject, Grade
+        from .models import Subject, Grade, QuestionPage
         try:
             subject = Subject.objects.get(id=subject_id)
             grade = Grade.objects.get(id=grade_id)
@@ -2983,74 +3856,135 @@ def ai_suggest_topic(request):
         if not topic_list:
             return JsonResponse({'error': 'No topics found for this subject and grade combination'}, status=400)
 
-        # Use AI to suggest topic
-        import anthropic
         import os
         import re
         import requests
         from .ai_tagging_improved import ImageTextExtractor, ContextAwarePromptBuilder
+        from django.conf import settings as _dj_settings
+        lmstudio_url = getattr(_dj_settings, 'LMSTUDIO_URL', 'http://127.0.0.1:1234/v1/chat/completions')
 
-        api_key = os.environ.get('ANTHROPIC_API_KEY')
-        google_api_key = os.environ.get('GOOGLE_API_KEY')
-        lmstudio_url = os.environ.get('LMSTUDIO_URL', 'http://localhost:1234/v1/chat/completions')
+        # ── Build question context from the DB image (not the mark scheme) ──
+        image_text = ''
+        question_content = question_text  # fallback to whatever the frontend sent
 
-        # Check if question contains image
-        has_image = '<img' in question_text and 'base64' in question_text
+        if question_id:
+            try:
+                q = Question.objects.get(id=question_id)
 
-        # Extract text from images using OCR
-        image_text = ImageTextExtractor.extract_from_html(question_text)
+                # 1) Try QuestionPage images (QP-MS ingested questions)
+                pages = QuestionPage.objects.filter(question=q).order_by('page_number')
+                if pages.exists():
+                    for p in pages:
+                        if p.page_image:
+                            extracted = ImageTextExtractor.extract_from_base64(p.page_image)
+                            if extracted:
+                                image_text += ' ' + extracted
+                    print(f"[AI] OCR from {pages.count()} page(s): {len(image_text)} chars")
+
+                # 2) Try base64 image in question_text field
+                elif q.question_text and ('base64' in q.question_text):
+                    image_text = ImageTextExtractor.extract_from_html(q.question_text)
+                    print(f"[AI] OCR from question_text image: {len(image_text)} chars")
+
+                # 3) Use plain question_text if it's not just an image tag
+                elif q.question_text and not q.question_text.strip().startswith('<img'):
+                    question_content = q.question_text
+                    print(f"[AI] Using plain question_text: {len(question_content)} chars")
+
+                # Also include mark scheme as supplementary context
+                if q.answer_text:
+                    question_content = f"Mark scheme: {q.answer_text}\n{question_content}"
+
+            except Question.DoesNotExist:
+                pass
+
+        if not question_content.strip() and not image_text:
+            return JsonResponse({'error': 'No question content or image found to analyze'}, status=400)
 
         # Build context-aware prompt
         prompt_text, clean_text = ContextAwarePromptBuilder.build_topic_prompt(
-            question_text, image_text, subject_name, grade_name, topic_list
+            question_content, image_text, subject_name, grade_name, topic_list
         )
+        print(f"[AI] Prompt length: {len(prompt_text)} chars, OCR text: {len(image_text)} chars")
 
-        # Priority 1: Try LMStudio FIRST (works with OCR-extracted text)
+        # Priority 1: LMStudio (primary service)
         suggested_topic_id = None
         used_service = None
         error_details = {}
+        lmstudio_reachable = False  # True once we get any HTTP response back
 
         try:
+            lmstudio_model = _get_lmstudio_model(lmstudio_url)
+            print(f"[LMStudio] using model: {lmstudio_model}")
             response = requests.post(
                 lmstudio_url,
                 json={
-                    "model": "local-model",
+                    "model": lmstudio_model,
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an expert educational content analyzer. Always respond with just the topic number."
+                            "content": (
+                                "You are an educational content classifier. "
+                                f"The user will show you a question and a numbered list of {len(topic_list)} topics. "
+                                "Reply with ONLY the single integer that matches best. No words, no explanation."
+                            )
                         },
                         {
                             "role": "user",
                             "content": prompt_text
                         }
                     ],
-                    "temperature": 0.1,
-                    "max_tokens": 50
+                    "temperature": 0.0,
+                    "max_tokens": 256
                 },
-                timeout=45  # Allow 30-50 seconds for AI processing
+                timeout=60
             )
+
+            print(f"[LMStudio] HTTP {response.status_code}")
 
             if response.status_code == 200:
                 response_data = response.json()
-                response_text = response_data['choices'][0]['message']['content'].strip()
-                topic_number = int(re.search(r'\d+', response_text).group())
-
-                if 0 < topic_number <= len(topic_list):
-                    suggested_topic_id = topic_list[topic_number - 1]['id']
-                    suggested_topic_name = topic_list[topic_number - 1]['name']
-                    used_service = 'LMStudio'
+                msg = response_data['choices'][0]['message']
+                # Reasoning models put output in 'reasoning' first, then 'content'
+                response_text = (msg.get('content') or '').strip()
+                reasoning_text = (msg.get('reasoning') or '').strip()
+                print(f"[LMStudio] content: {repr(response_text)}")
+                print(f"[LMStudio] reasoning: {repr(reasoning_text[:200])}")
+                # Try content first, fall back to reasoning field
+                parse_text = response_text or reasoning_text
+                match = re.search(r'\d+', parse_text)
+                if match:
+                    topic_number = int(match.group())
+                    print(f"[LMStudio] parsed topic number: {topic_number} (list has {len(topic_list)} topics)")
+                    if 0 < topic_number <= len(topic_list):
+                        suggested_topic_id = topic_list[topic_number - 1]['id']
+                        suggested_topic_name = topic_list[topic_number - 1]['name']
+                        used_service = f'LMStudio ({lmstudio_model})'
+                    else:
+                        error_details['lmstudio'] = f'Number {topic_number} out of range (1–{len(topic_list)})'
+                else:
+                    error_details['lmstudio'] = f'No digit in content or reasoning: {repr(parse_text[:120])}'
             else:
-                error_details['lmstudio'] = f"HTTP {response.status_code}"
+                error_details['lmstudio'] = f"HTTP {response.status_code}: {response.text[:120]}"
 
-        except requests.exceptions.ConnectionError:
-            error_details['lmstudio'] = 'Connection refused - not running'
+        except requests.exceptions.ConnectionError as e:
+            error_details['lmstudio'] = 'Connection refused - LMStudio not running'
+            print(f"[LMStudio] ConnectionError: {e}")
         except requests.exceptions.Timeout:
-            error_details['lmstudio'] = 'Timeout - may be overloaded'
+            error_details['lmstudio'] = 'Timeout after 45s'
+            print(f"[LMStudio] Timeout")
         except Exception as e:
             error_details['lmstudio'] = str(e)
-            print(f"LMStudio failed: {str(e)}")
+            print(f"[LMStudio] exception: {e}")
 
+        # Always stop after LMStudio — never fall through to external paid APIs.
+        if not suggested_topic_id:
+            return JsonResponse({
+                'error': f"LMStudio: {error_details.get('lmstudio', 'unknown error')}",
+                'details': error_details
+            }, status=500)
+
+        # (Gemini / Anthropic fallbacks disabled — LMStudio is the sole service)
         # Priority 2: Fallback to Google Gemini (works with OCR-extracted text)
         if not suggested_topic_id and google_api_key:
             try:
@@ -3225,11 +4159,12 @@ def ai_suggest_learning_objectives(request):
 
     try:
         data = json.loads(request.body)
-        question_text = data.get('question_text', '')
+        question_text = data.get('question_text', '')   # mark scheme / answer text
+        question_id = data.get('question_id')           # DB question id
         topic_id = data.get('topic_id')
 
-        if not question_text or not topic_id:
-            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        if not topic_id:
+            return JsonResponse({'error': 'Missing required fields (topic)'}, status=400)
 
         # Get topic details with subject and grade for context
         topic = get_object_or_404(Topic, id=topic_id)
@@ -3244,61 +4179,127 @@ def ai_suggest_learning_objectives(request):
         if not lo_list:
             return JsonResponse({'error': 'No learning objectives found for this topic'}, status=400)
 
-        # Use AI to suggest LOs
-        import anthropic
         import os
         import re
         import requests
+        from .models import QuestionPage
         from .ai_tagging_improved import ImageTextExtractor, ContextAwarePromptBuilder
+        from django.conf import settings as _dj_settings
+        lmstudio_url = getattr(_dj_settings, 'LMSTUDIO_URL', 'http://127.0.0.1:1234/v1/chat/completions')
 
-        api_key = os.environ.get('ANTHROPIC_API_KEY')
-        google_api_key = os.environ.get('GOOGLE_API_KEY', 'AIzaSyCzbW72vCJ3YfxBEkQNb8HZkBTXD3iL6QE')
-        lmstudio_url = os.environ.get('LMSTUDIO_URL', 'http://localhost:1234/v1/chat/completions')
+        # ── Build question context from the DB image ────────────────────
+        image_text = ''
+        question_content = question_text  # fallback
 
-        # Extract text from images using OCR
-        image_text = ImageTextExtractor.extract_from_html(question_text)
+        if question_id:
+            try:
+                q = Question.objects.get(id=question_id)
+
+                # 1) Try QuestionPage images
+                pages = QuestionPage.objects.filter(question=q).order_by('page_number')
+                if pages.exists():
+                    for p in pages:
+                        if p.page_image:
+                            extracted = ImageTextExtractor.extract_from_base64(p.page_image)
+                            if extracted:
+                                image_text += ' ' + extracted
+                    print(f"[AI-LO] OCR from {pages.count()} page(s): {len(image_text)} chars")
+
+                # 2) Try base64 image in question_text
+                elif q.question_text and ('base64' in q.question_text):
+                    image_text = ImageTextExtractor.extract_from_html(q.question_text)
+                    print(f"[AI-LO] OCR from question_text image: {len(image_text)} chars")
+
+                # 3) Plain text question
+                elif q.question_text and not q.question_text.strip().startswith('<img'):
+                    question_content = q.question_text
+                    print(f"[AI-LO] Using plain question_text: {len(question_content)} chars")
+
+                if q.answer_text:
+                    question_content = f"Mark scheme: {q.answer_text}\n{question_content}"
+
+            except Question.DoesNotExist:
+                pass
+
+        if not question_content.strip() and not image_text:
+            return JsonResponse({'error': 'No question content or image found to analyze'}, status=400)
 
         # Build context-aware prompt for LO selection
         prompt_text, clean_text = ContextAwarePromptBuilder.build_lo_prompt(
-            question_text, image_text, subject_name, grade_name, topic_name, lo_list
+            question_content, image_text, subject_name, grade_name, topic_name, lo_list
         )
+        print(f"[AI-LO] Prompt length: {len(prompt_text)} chars, OCR text: {len(image_text)} chars")
 
-        # Priority 1: Try LMStudio FIRST (works with OCR-extracted text)
+        # Primary service: LMStudio
         suggested_los = []
         used_service = None
+        lmstudio_error = None
 
         try:
+            lmstudio_model = _get_lmstudio_model(lmstudio_url)
+            print(f"[LMStudio] using model: {lmstudio_model}")
             response = requests.post(
                 lmstudio_url,
                 json={
-                    "model": "local-model",
+                    "model": lmstudio_model,
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an expert educational content analyzer. Always respond with just the numbers separated by commas."
+                            "content": (
+                                "You are an educational content classifier. "
+                                f"The user will show you a question and a numbered list of {len(lo_list)} learning objectives. "
+                                "Reply with ONLY the comma-separated integers that match best. No words, no explanation."
+                            )
                         },
                         {
                             "role": "user",
                             "content": prompt_text
                         }
                     ],
-                    "temperature": 0.1,
-                    "max_tokens": 100
+                    "temperature": 0.0,
+                    "max_tokens": 256
                 },
-                timeout=30
+                timeout=60
             )
+
+            print(f"[LMStudio] HTTP {response.status_code}")
 
             if response.status_code == 200:
                 response_data = response.json()
-                response_text = response_data['choices'][0]['message']['content'].strip()
-                lo_numbers = [int(n.strip()) for n in re.findall(r'\d+', response_text)]
+                msg = response_data['choices'][0]['message']
+                response_text = (msg.get('content') or '').strip()
+                reasoning_text = (msg.get('reasoning') or '').strip()
+                print(f"[LMStudio] content: {repr(response_text)}")
+                print(f"[LMStudio] reasoning: {repr(reasoning_text[:200])}")
+                parse_text = response_text or reasoning_text
+                lo_numbers = [int(n) for n in re.findall(r'\d+', parse_text)]
+                print(f"[LMStudio] parsed LO numbers: {lo_numbers} (list has {len(lo_list)} items)")
                 suggested_los = [lo_list[n - 1] for n in lo_numbers if 0 < n <= len(lo_list)]
                 if suggested_los:
-                    used_service = 'LMStudio'
+                    used_service = f'LMStudio ({lmstudio_model})'
+                else:
+                    lmstudio_error = f'No valid LO numbers in content or reasoning: {repr(parse_text[:120])}'
+            else:
+                lmstudio_error = f"HTTP {response.status_code}: {response.text[:120]}"
 
+        except requests.exceptions.ConnectionError as e:
+            lmstudio_error = 'Connection refused - LMStudio not running'
+            print(f"[LMStudio] ConnectionError: {e}")
+        except requests.exceptions.Timeout:
+            lmstudio_error = 'Timeout after 30s'
+            print(f"[LMStudio] Timeout")
         except Exception as e:
-            print(f"LMStudio failed: {str(e)}")
+            lmstudio_error = str(e)
+            print(f"[LMStudio] exception: {e}")
 
+        # Always stop after LMStudio — never fall through to external paid APIs.
+        if not suggested_los:
+            return JsonResponse({
+                'error': f"LMStudio: {lmstudio_error or 'unknown error'}",
+                'details': {'lmstudio': lmstudio_error}
+            }, status=500)
+
+        # (Gemini / Anthropic fallbacks disabled — LMStudio is the sole service)
         # Priority 2: Fallback to Google Gemini (works with OCR-extracted text)
         if not suggested_los and google_api_key:
             try:
@@ -3362,7 +4363,11 @@ def ai_suggest_learning_objectives(request):
                 response_data['service'] = used_service
             return JsonResponse(response_data)
         else:
-            return JsonResponse({'error': 'All AI services failed. Please check your API keys and LMStudio connection.'}, status=500)
+            detail = lmstudio_error or 'No response from any service'
+            return JsonResponse({
+                'error': f'All AI services failed. LMStudio: {detail}',
+                'details': {'lmstudio': lmstudio_error}
+            }, status=500)
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -3776,6 +4781,12 @@ def test_analytics_view(request, test_id):
 
         success_rate = round((correct / attempts) * 100, 1)
 
+        # Time analytics per question
+        q_times = [a.time_spent_seconds for a in q_answers if a.time_spent_seconds is not None]
+        avg_time = round(sum(q_times) / len(q_times), 1) if q_times else None
+        min_time = min(q_times) if q_times else None
+        max_time = max(q_times) if q_times else None
+
         question_stats.append({
             "id": q.id,
             "number": idx,
@@ -3788,8 +4799,98 @@ def test_analytics_view(request, test_id):
                 "easy" if success_rate >= 75 else
                 "medium" if success_rate >= 50 else
                 "hard"
-            )
+            ),
+            "avg_time": avg_time,
+            "min_time": min_time,
+            "max_time": max_time,
         })
+
+    # ─────────────────────────────────────────────
+    # 4b. Time Analytics
+    # ─────────────────────────────────────────────
+    all_timed_answers = [
+        (a.time_spent_seconds, float(a.marks_awarded), float(a.question.marks))
+        for a in answers if a.time_spent_seconds is not None
+    ]
+
+    if all_timed_answers:
+        all_times_raw = [t[0] for t in all_timed_answers]
+        avg_time_overall = round(sum(all_times_raw) / len(all_times_raw), 1)
+        sorted_times = sorted(all_times_raw)
+        median_time = sorted_times[len(sorted_times) // 2]
+
+        # Per-student total time
+        student_times = {}
+        for a in answers:
+            if a.time_spent_seconds is not None:
+                sid = a.student_id
+                student_times.setdefault(sid, 0)
+                student_times[sid] += a.time_spent_seconds
+
+        avg_total_time = round(sum(student_times.values()) / len(student_times), 1) if student_times else 0
+
+        # Time vs accuracy correlation (Pearson) across all timed answers
+        times_list = [t[0] for t in all_timed_answers]
+        accuracy_list = [round((t[1] / t[2]) * 100, 1) if t[2] > 0 else 0 for t in all_timed_answers]
+
+        correlation = 0
+        if len(times_list) > 2:
+            n = len(times_list)
+            mean_t = sum(times_list) / n
+            mean_a = sum(accuracy_list) / n
+            numerator = sum((t - mean_t) * (a - mean_a) for t, a in zip(times_list, accuracy_list))
+            denom_t = (sum((t - mean_t) ** 2 for t in times_list)) ** 0.5
+            denom_a = (sum((a - mean_a) ** 2 for a in accuracy_list)) ** 0.5
+            correlation = round(numerator / (denom_t * denom_a), 3) if (denom_t * denom_a) > 0 else 0
+
+        # Compute overall expected time per mark for flagging
+        total_marks_timed = sum(t[2] for t in all_timed_answers)
+        total_time_timed = sum(t[0] for t in all_timed_answers)
+        time_per_mark = total_time_timed / total_marks_timed if total_marks_timed > 0 else 0
+
+        for qs in question_stats:
+            if qs["avg_time"] is not None:
+                expected_time = time_per_mark * qs["marks"]
+                time_ratio = qs["avg_time"] / expected_time if expected_time > 0 else 1
+
+                if time_ratio < 0.6 and qs["success_rate"] < 50:
+                    qs["time_flag"] = "rushed"
+                elif time_ratio > 1.5 and qs["success_rate"] < 50:
+                    qs["time_flag"] = "overthought"
+                elif time_ratio > 1.5 and qs["success_rate"] >= 50:
+                    qs["time_flag"] = "challenging"
+                else:
+                    qs["time_flag"] = "normal"
+            else:
+                qs["time_flag"] = "no_data"
+
+        # Per-student time vs score for scatter chart
+        student_time_score = []
+        for sid, total_t in student_times.items():
+            for s in students:
+                if s["id"] == sid:
+                    student_time_score.append({
+                        "name": s["name"],
+                        "time": round(total_t / 60, 1),  # minutes
+                        "score": s["score"],
+                    })
+                    break
+
+        time_analytics = {
+            "has_data": True,
+            "avg_time_per_question": avg_time_overall,
+            "median_time_per_question": median_time,
+            "avg_total_time_per_student": avg_total_time,
+            "avg_total_time_minutes": round(avg_total_time / 60, 1),
+            "time_accuracy_correlation": correlation,
+            "time_per_mark": round(time_per_mark, 1),
+            "student_time_score": student_time_score,
+            "total_timed_answers": len(all_timed_answers),
+        }
+    else:
+        time_analytics = {"has_data": False}
+        for qs in question_stats:
+            qs["time_flag"] = "no_data"
 
     # ─────────────────────────────────────────────
     # 5. Topic / LO mastery
@@ -3975,6 +5076,11 @@ def test_analytics_view(request, test_id):
     # ─────────────────────────────────────────────
     # FINAL CONTEXT
     # ─────────────────────────────────────────────
+    # Completion rate
+    total_students = len(students)
+    completed_students = sum(1 for s in students if s["completion"]["complete"])
+    completion_rate = round((completed_students / total_students) * 100, 1) if total_students else 0
+
     context = {
         "test": test,
         "analytics": {
@@ -3989,11 +5095,180 @@ def test_analytics_view(request, test_id):
             },
             "questions": question_stats,
             "learning_objectives": learning_objectives,
-            "assessment_quality_radar": assessment_quality_radar,  # NEW: Assessment quality metrics
-            "differentiated_groups": differentiated_groups,  # NEW: Real groups
+            "assessment_quality_radar": assessment_quality_radar,
+            "differentiated_groups": differentiated_groups,
             "examiner_report": examiner_report,
+            "time_analytics": time_analytics,
+            "summary": {
+                "discrimination_index": round(discrimination_score / 100, 2),
+                "completion_rate": completion_rate,
+                "total_students": total_students,
+                "completed_students": completed_students,
+            },
         }
     }
 
     return render(request, "teacher/analytics_dashboard.html", context)
+
+
+# ===================== QUESTION LIBRARY API =====================
+
+@login_required
+def question_library_api_search(request):
+    """
+    API endpoint to search questions in the library
+    GET /questions/api/search/?subject_id=&grade_id=&topic_id=&q=
+    """
+    try:
+        # Support both naming conventions: subject_id or subject, grade_id or grade
+        subject_id = request.GET.get('subject_id') or request.GET.get('subject')
+        grade_id = request.GET.get('grade_id') or request.GET.get('grade')
+        topic_id = request.GET.get('topic_id') or request.GET.get('topic')
+        search_query = request.GET.get('q', '').strip()
+        limit = int(request.GET.get('limit', 50))
+
+        questions = Question.objects.all().order_by('-created_at')
+
+        if subject_id:
+            questions = questions.filter(subject_id=subject_id)
+        if grade_id:
+            questions = questions.filter(grade_id=grade_id)
+        if topic_id:
+            questions = questions.filter(topic_id=topic_id)
+        if search_query:
+            questions = questions.filter(question_text__icontains=search_query)
+
+        questions = questions[:limit]
+
+        results = []
+        for q in questions:
+            # Get topic name
+            topic_name = q.topic.name if q.topic else 'No Topic'
+
+            # Truncate question text for preview
+            preview_text = q.question_text[:150] + '...' if len(q.question_text) > 150 else q.question_text
+
+            results.append({
+                'id': q.id,
+                'question_text': q.question_text,
+                'preview_text': preview_text,
+                'answer_text': q.answer_text or '',
+                'marks': q.marks,
+                'question_type': q.question_type,
+                'topic_name': topic_name,
+                'topic_id': q.topic_id,
+                'subject_id': q.subject_id,
+                'grade_id': q.grade_id,
+                'year': q.year,
+                'parts_config': q.parts_config,
+            })
+
+        return JsonResponse({
+            'success': True,
+            'questions': results,
+            'total': len(results)
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
+def question_library_api_get(request, question_id):
+    """
+    API endpoint to get a single question by ID
+    GET /questions/api/<id>/
+    """
+    try:
+        question = get_object_or_404(Question, id=question_id)
+
+        return JsonResponse({
+            'success': True,
+            'question': {
+                'id': question.id,
+                'question_text': question.question_text,
+                'answer_text': question.answer_text or '',
+                'marks': question.marks,
+                'question_type': question.question_type,
+                'topic_name': question.topic.name if question.topic else 'No Topic',
+                'topic_id': question.topic_id,
+                'subject_id': question.subject_id,
+                'grade_id': question.grade_id,
+                'year': question.year,
+                'parts_config': question.parts_config,
+            }
+        })
+
+    except Question.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Question not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
+def question_library_api_create(request):
+    """
+    API endpoint to create a new question in the library
+    POST /questions/api/create/
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+
+        # Required fields
+        question_text = data.get('question_text', '').strip()
+        if not question_text:
+            return JsonResponse({'error': 'Question text is required'}, status=400)
+
+        # Get subject and grade
+        subject_id = data.get('subject_id')
+        grade_id = data.get('grade_id')
+        topic_id = data.get('topic_id')
+
+        if not subject_id or not grade_id:
+            return JsonResponse({'error': 'Subject and Grade are required'}, status=400)
+
+        # Create the question
+        question = Question.objects.create(
+            question_text=question_text,
+            answer_text=data.get('answer_text', ''),
+            marks=int(data.get('marks', 1)),
+            question_type=data.get('question_type', 'theory'),
+            subject_id=subject_id,
+            grade_id=grade_id,
+            topic_id=topic_id if topic_id else None,
+            year=data.get('year'),
+            parts_config=data.get('parts_config'),
+            created_by=request.user,
+        )
+
+        # Set learning objectives if provided
+        los = data.get('los', [])
+        if los:
+            question.learning_objectives.set(los)
+
+        return JsonResponse({
+            'success': True,
+            'question_id': question.id,
+            'message': 'Question created successfully'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 

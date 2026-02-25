@@ -1,0 +1,298 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Preview Import Data{% endblock %}
+
+{% block content %}
+<style>
+/* Fill the main panel, no outer scroll */
+.pv-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+/* ── Top bar: title + actions ── */
+.pv-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 0 0 14px 0;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pv-bar-left { display: flex; flex-direction: column; gap: 2px; }
+
+.pv-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pv-sub { font-size: 13px; color: #6b7280; }
+
+.pv-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Stats pills */
+.stat-pills { display: flex; gap: 8px; align-items: center; }
+
+.stat-pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-pill.students { background: #eff6ff; color: #1d4ed8; }
+.stat-pill.teachers { background: #f5f3ff; color: #6d28d9; }
+
+/* Buttons */
+.btn-confirm {
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: opacity 0.2s, transform 0.15s;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+  white-space: nowrap;
+}
+
+.btn-confirm:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.btn-cancel {
+  padding: 10px 18px;
+  background: white;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.btn-cancel:hover { background: #f9fafb; border-color: #9ca3af; }
+
+/* ── Table card: takes remaining height ── */
+.pv-card {
+  flex: 1;
+  min-height: 0;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-top: 14px;
+}
+
+/* Truncation note */
+.trunc-note {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  background: #fffbeb;
+  border-bottom: 1px solid #fde68a;
+  font-size: 12px;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Scrollable table wrapper */
+.table-wrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+thead th {
+  background: #1f2937;
+  color: white;
+  padding: 11px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+tbody tr:nth-child(even) { background: #f9fafb; }
+tbody tr:hover { background: #eff6ff; }
+
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #374151;
+  white-space: nowrap;
+}
+
+td.email { color: #6b7280; font-size: 12px; }
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-student { background: #eff6ff; color: #1d4ed8; }
+.role-teacher { background: #f5f3ff; color: #6d28d9; }
+
+.auto-tag {
+  font-size: 10px;
+  background: #dcfce7;
+  color: #15803d;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.na { color: #d1d5db; font-style: italic; font-size: 12px; }
+</style>
+
+{% with students=preview_data|length %}
+<div class="pv-page">
+
+  <!-- Top bar -->
+  <div class="pv-bar">
+    <div class="pv-bar-left">
+      <div class="pv-title">
+        👁 Preview — {{ total_rows }} row{{ total_rows|pluralize }}
+      </div>
+      <div class="pv-sub">Review data before importing. Missing optional fields will be auto-assigned.</div>
+    </div>
+
+    <div class="pv-actions">
+      <!-- Stats -->
+      <div class="stat-pills">
+        <div class="stat-pill">📋 {{ total_rows }} total</div>
+        <div class="stat-pill students">👨‍🎓 students shown</div>
+      </div>
+
+      <!-- Actions -->
+      <a href="{% url 'bulk_import_users' %}" class="btn-cancel">← Back</a>
+
+      <form method="post" style="margin:0;">
+        {% csrf_token %}
+        <button type="submit" name="confirm_import" class="btn-confirm">
+          ✅ Import {{ total_rows }} User{{ total_rows|pluralize }}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table card -->
+  <div class="pv-card">
+
+    {% if total_rows > preview_data|length %}
+    <div class="trunc-note">
+      ℹ️ Showing first {{ preview_data|length }} of {{ total_rows }} rows · all {{ total_rows }} will be imported
+    </div>
+    {% endif %}
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Full Name</th>
+            <th>Role</th>
+            <th>Grade</th>
+            <th>Division</th>
+            <th>Roll No.</th>
+            <th>Admission ID</th>
+            <th>Subject</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview_data %}
+          <tr>
+            <td style="color:#9ca3af; font-size:12px;">{{ forloop.counter }}</td>
+            <td><strong>{{ row.username }}</strong></td>
+            <td class="email">{{ row.email }}</td>
+            <td>
+              {% if row.full_name %}{{ row.full_name }}
+              {% else %}{{ row.first_name }} {{ row.last_name }}{% endif %}
+            </td>
+            <td>
+              <span class="role-badge role-{{ row.role|lower }}">
+                {% if row.role|lower == 'student' %}👨‍🎓{% else %}👨‍🏫{% endif %}
+                {{ row.role|title }}
+              </span>
+            </td>
+            <td>
+              {% if row.grade %}{{ row.grade }}
+              {% else %}<span class="na">auto</span>{% endif %}
+            </td>
+            <td>
+              {% if row.division %}{{ row.division }}
+              {% else %}<span class="na">auto</span>{% endif %}
+            </td>
+            <td>
+              {% if row.roll_number %}{{ row.roll_number }}
+              {% else %}<span class="na">auto <span class="auto-tag">✦</span></span>{% endif %}
+            </td>
+            <td>
+              {% if row.admission_id %}{{ row.admission_id }}
+              {% else %}<span class="na">auto <span class="auto-tag">✦</span></span>{% endif %}
+            </td>
+            <td>
+              {% if row.subject %}{{ row.subject }}
+              {% else %}<span class="na">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+{% endwith %}
+
+{% endblock %}

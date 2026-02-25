@@ -1,0 +1,314 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}AI Tagging Import{% endblock %}
+
+{% block content %}
+<style>
+    h1 { margin-top: 0; }
+    .import-header {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    }
+    .btn {
+        border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer;
+        font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;
+        transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .btn.blue { background: #2563eb; color: white; }
+    .btn.green { background: #10b981; color: white; }
+    .btn.gray { background: #6b7280; color: white; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .card {
+        background: white; border-radius: 12px; padding: 24px;
+        margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+
+    .card h3 { margin: 0 0 16px 0; font-size: 18px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+        display: block; font-size: 12px; font-weight: 600;
+        color: #5f6368; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .form-group select, .form-group input[type="file"] {
+        width: 100%; padding: 10px 12px; border: 1px solid #ccc;
+        border-radius: 8px; font-size: 14px; font-family: inherit;
+    }
+
+    .upload-zone {
+        border: 2px dashed #dadce0; border-radius: 12px;
+        padding: 40px; text-align: center; cursor: pointer;
+        transition: all 0.2s; background: #fafbfc;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: #2563eb; background: #f0f4ff;
+    }
+    .upload-zone .icon { font-size: 48px; color: #dadce0; margin-bottom: 8px; }
+    .upload-zone p { color: #5f6368; margin: 4px 0; }
+
+    .format-help {
+        background: #f0f4ff; border-radius: 8px; padding: 16px;
+        margin-top: 16px; font-size: 13px;
+    }
+    .format-help code {
+        background: #1e293b; color: #e2e8f0; padding: 2px 6px;
+        border-radius: 4px; font-size: 12px;
+    }
+    .format-help pre {
+        background: #1e293b; color: #e2e8f0; padding: 12px;
+        border-radius: 8px; font-size: 12px; overflow-x: auto;
+        margin: 8px 0;
+    }
+
+    /* Results */
+    .results-card { display: none; }
+    .results-card.visible { display: block; }
+
+    .summary-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px; margin-bottom: 20px;
+    }
+    .summary-box {
+        background: #f8f9fa; border-radius: 8px; padding: 16px; text-align: center;
+    }
+    .summary-box .num { font-size: 28px; font-weight: 700; }
+    .summary-box .lbl { font-size: 11px; color: #5f6368; margin-top: 4px; }
+    .summary-box.success .num { color: #10b981; }
+    .summary-box.warning .num { color: #f59e0b; }
+    .summary-box.error .num { color: #ef4444; }
+
+    .result-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .result-table th { background: #f1f3f4; padding: 8px; text-align: left; font-size: 11px; }
+    .result-table td { padding: 8px; border-bottom: 1px solid #eee; }
+    .result-table tr.updated td { background: #f0fdf4; }
+    .result-table tr.skipped td { background: #fefce8; }
+
+    .error-list {
+        background: #fef2f2; border-radius: 8px; padding: 12px;
+        max-height: 200px; overflow-y: auto; font-size: 12px; color: #991b1b;
+    }
+    .error-list div { padding: 4px 0; border-bottom: 1px solid #fecaca; }
+
+    .spinner-inline {
+        display: inline-block; width: 16px; height: 16px;
+        border: 2px solid #fff; border-top: 2px solid transparent;
+        border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+
+<div class="import-header">
+    <div>
+        <h1>Import AI Tagging Results</h1>
+        <p style="color: #5f6368; font-size: 14px;">Upload CSV/TXT from ChatGPT to bulk-update question topics and LOs</p>
+    </div>
+    <a href="{% url 'ai_tagging_export' %}" class="btn gray">Back to Export</a>
+</div>
+
+<!-- Upload Form -->
+<div class="card">
+    <h3>Upload Tagging File</h3>
+
+    <form id="importForm" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+                <label>Grade</label>
+                <select name="grade" id="importGrade" required>
+                    <option value="">Select Grade</option>
+                    {% for g in grades %}
+                    <option value="{{ g.id }}">{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Subject</label>
+                <select name="subject" id="importSubject" required>
+                    <option value="">Select Subject</option>
+                    {% for s in subjects %}
+                    <option value="{{ s.id }}">{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Tagging File (CSV or TXT)</label>
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click();">
+                <div class="icon">📄</div>
+                <p style="font-weight: 600;" id="fileLabel">Click to select file or drag & drop here</p>
+                <p style="font-size: 12px;">Supports .csv and .txt files</p>
+            </div>
+            <input type="file" name="tagging_file" id="fileInput" accept=".csv,.txt" style="display: none;" required>
+        </div>
+
+        <button type="submit" class="btn green" id="importBtn" disabled>
+            <span id="importBtnText">Import & Update Questions</span>
+        </button>
+    </form>
+
+    <div class="format-help">
+        <strong>Expected CSV format:</strong>
+        <pre>question_id,topic_name,lo_codes
+142,Kinematics,1.1.1;1.1.2
+143,Forces and Motion,2.1.1
+144,Energy,3.2.1;3.2.2;3.2.3</pre>
+        <p>
+            <strong>Rules:</strong> <code>question_id</code> = numeric ID,
+            <code>topic_name</code> = exact topic name,
+            <code>lo_codes</code> = semicolon-separated LO codes.
+            Header row is optional and will be auto-detected.
+        </p>
+    </div>
+</div>
+
+<!-- Results Panel -->
+<div class="card results-card" id="resultsPanel">
+    <h3>Import Results</h3>
+
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <div id="errorsSection" style="display: none; margin-bottom: 16px;">
+        <h4 style="color: #ef4444; margin-bottom: 8px;">Warnings & Errors</h4>
+        <div class="error-list" id="errorList"></div>
+    </div>
+
+    <div id="resultsTableSection" style="display: none;">
+        <h4 style="margin-bottom: 8px;">Changes Applied</h4>
+        <table class="result-table">
+            <thead><tr><th>Question ID</th><th>Status</th><th>Changes</th></tr></thead>
+            <tbody id="resultsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// File input handling
+var fileInput = document.getElementById('fileInput');
+var uploadZone = document.getElementById('uploadZone');
+var fileLabel = document.getElementById('fileLabel');
+var importBtn = document.getElementById('importBtn');
+
+fileInput.addEventListener('change', function() {
+    if (this.files.length > 0) {
+        fileLabel.textContent = this.files[0].name + ' (' + Math.round(this.files[0].size / 1024) + ' KB)';
+        uploadZone.style.borderColor = '#10b981';
+        importBtn.disabled = false;
+    }
+});
+
+// Drag & drop
+uploadZone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('dragover');
+});
+
+uploadZone.addEventListener('dragleave', function() {
+    this.classList.remove('dragover');
+});
+
+uploadZone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        fileLabel.textContent = e.dataTransfer.files[0].name;
+        uploadZone.style.borderColor = '#10b981';
+        importBtn.disabled = false;
+    }
+});
+
+// Form submission
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    var grade = document.getElementById('importGrade').value;
+    var subject = document.getElementById('importSubject').value;
+
+    if (!grade || !subject) {
+        alert('Please select both Grade and Subject.');
+        return;
+    }
+
+    if (!fileInput.files.length) {
+        alert('Please select a file.');
+        return;
+    }
+
+    // Show loading state
+    importBtn.disabled = true;
+    document.getElementById('importBtnText').innerHTML = '<span class="spinner-inline"></span> Processing...';
+
+    var formData = new FormData(this);
+
+    fetch('{% url "ai_tagging_import" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+
+        // Show results panel
+        var panel = document.getElementById('resultsPanel');
+        panel.classList.add('visible');
+
+        // Summary
+        var summary = data.summary;
+        document.getElementById('summaryGrid').innerHTML =
+            '<div class="summary-box"><div class="num">' + summary.total_rows + '</div><div class="lbl">Total Rows</div></div>' +
+            '<div class="summary-box success"><div class="num">' + summary.updated + '</div><div class="lbl">Updated</div></div>' +
+            '<div class="summary-box warning"><div class="num">' + summary.skipped + '</div><div class="lbl">Skipped</div></div>' +
+            '<div class="summary-box error"><div class="num">' + summary.errors + '</div><div class="lbl">Errors</div></div>';
+
+        // Errors
+        if (data.errors && data.errors.length > 0) {
+            var errSection = document.getElementById('errorsSection');
+            errSection.style.display = 'block';
+            var html = '';
+            for (var i = 0; i < data.errors.length; i++) {
+                html += '<div>' + data.errors[i] + '</div>';
+            }
+            document.getElementById('errorList').innerHTML = html;
+        }
+
+        // Results table
+        if (data.results && data.results.length > 0) {
+            document.getElementById('resultsTableSection').style.display = 'block';
+            var tbody = document.getElementById('resultsBody');
+            var rows = '';
+            for (var j = 0; j < data.results.length; j++) {
+                var r = data.results[j];
+                rows += '<tr class="' + r.status + '">';
+                rows += '<td><strong>Q' + r.question_id + '</strong></td>';
+                rows += '<td>' + (r.status === 'updated' ? '&#10003; Updated' : '&#8212; Skipped') + '</td>';
+                rows += '<td>' + r.changes.join('<br>') + '</td>';
+                rows += '</tr>';
+            }
+            tbody.innerHTML = rows;
+        }
+
+        // Scroll to results
+        panel.scrollIntoView({ behavior: 'smooth' });
+    })
+    .catch(function(err) {
+        console.error('Import error:', err);
+        alert('Failed to import file. Please check the format and try again.');
+    })
+    .finally(function() {
+        importBtn.disabled = false;
+        document.getElementById('importBtnText').textContent = 'Import & Update Questions';
+    });
+});
+</script>
+
+{% endblock %}

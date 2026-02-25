@@ -1,0 +1,259 @@
+{% extends "teacher/teacher_base.html" %}
+
+{% block title %}Add Subject-Grade Combination{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="page-header">
+        <h1>➕ Add Subject-Grade Combination</h1>
+        <p class="subtitle">Create a new curriculum combination (IGCSE, AS/A Level, JEE, SAT, CUET)</p>
+    </div>
+
+    <div class="form-card">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="code">Code *</label>
+                <input type="text"
+                       name="code"
+                       id="code"
+                       required
+                       placeholder="e.g., 9702, 0625, JEE-PHYS">
+                <small class="help-text">Unique identifier (e.g., Cambridge syllabus codes)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="name">Name *</label>
+                <input type="text"
+                       name="name"
+                       id="name"
+                       required
+                       placeholder="e.g., AS & A Level Physics">
+                <small class="help-text">Full descriptive name</small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="subject">Subject *</label>
+                    <select name="subject" id="subject" required>
+                        <option value="">-- Select Subject --</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}">{{ subject.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="grade">Grade *</label>
+                    <select name="grade" id="grade" required>
+                        <option value="">-- Select Grade --</option>
+                        {% for grade in grades %}
+                        <option value="{{ grade.id }}">{{ grade.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="level">Level *</label>
+                <select name="level" id="level" required>
+                    <option value="">-- Select Level --</option>
+                    {% for value, display in levels %}
+                    <option value="{{ value }}">{{ display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea name="description"
+                          id="description"
+                          rows="4"
+                          placeholder="Optional description or notes about this combination"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    ✅ Create Combination
+                </button>
+                <a href="{% url 'subject_grade_combinations' %}" class="btn btn-secondary">
+                    ❌ Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="examples-card">
+        <h3>📋 Example Combinations</h3>
+        <table class="examples-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>9702</td>
+                    <td>AS & A Level Physics</td>
+                    <td>AS & A Level</td>
+                </tr>
+                <tr>
+                    <td>9701</td>
+                    <td>AS & A Level Chemistry</td>
+                    <td>AS & A Level</td>
+                </tr>
+                <tr>
+                    <td>9700</td>
+                    <td>AS & A Level Biology</td>
+                    <td>AS & A Level</td>
+                </tr>
+                <tr>
+                    <td>0625</td>
+                    <td>IGCSE Physics</td>
+                    <td>IGCSE</td>
+                </tr>
+                <tr>
+                    <td>0620</td>
+                    <td>IGCSE Chemistry</td>
+                    <td>IGCSE</td>
+                </tr>
+                <tr>
+                    <td>0610</td>
+                    <td>IGCSE Biology</td>
+                    <td>IGCSE</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.form-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-width: 700px;
+    margin: 0 auto 30px;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+}
+
+.help-text {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 13px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.form-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    text-align: center;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    margin: 0 10px;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #1a73e8;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1557b0;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.examples-card {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.examples-card h3 {
+    color: #1a73e8;
+    margin-bottom: 20px;
+}
+
+.examples-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.examples-table th {
+    background: #f8f9fa;
+    padding: 10px;
+    text-align: left;
+    font-weight: 500;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.examples-table td {
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.examples-table tr:last-child td {
+    border-bottom: none;
+}
+</style>
+{% endblock %}

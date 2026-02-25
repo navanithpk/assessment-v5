@@ -6,423 +6,248 @@
 <style>
 * { box-sizing: border-box; }
 
+/* ── Toast notification ──────────────────────────────── */
+#toast-container {
+  position: fixed; top: 20px; right: 20px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: 10px;
+  font-size: 13px; font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.15);
+  animation: toastIn .25s ease; pointer-events: none;
+  max-width: 320px;
+}
+.toast.success { background: #ecfdf5; color: #065f46; border-left: 4px solid #10b981; }
+.toast.error   { background: #fef2f2; color: #991b1b; border-left: 4px solid #ef4444; }
+.toast.info    { background: #eff6ff; color: #1e40af; border-left: 4px solid #3b82f6; }
+.toast.warn    { background: #fffbeb; color: #92400e; border-left: 4px solid #f59e0b; }
+@keyframes toastIn  { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+@keyframes toastOut { to   { opacity: 0; transform: translateX(20px); } }
+
+/* ── Header ──────────────────────────────────────────── */
 .grade-header {
-  background: white;
-  border-radius: 12px;
-  padding: 20px 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  background: white; border-radius: 12px; padding: 20px 24px;
+  margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
 }
-
-.header-info h2 {
-  margin: 0 0 4px 0;
-  font-size: 20px;
-  color: #1f2937;
-}
-
-.header-info p {
-  margin: 0;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
+.header-info h2 { margin: 0 0 4px; font-size: 20px; color: #1f2937; }
+.header-info p  { margin: 0; font-size: 14px; color: #6b7280; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+  padding: 9px 18px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
 }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-auto-zero  { background: #8b5cf6; color: white; }
+.btn-ai-grade   { background: #f59e0b; color: white; }
+.btn-publish    { background: #10b981; color: white; }
+.btn-outline    { background: white; border: 1.5px solid #d1d5db; color: #374151; }
+.btn-outline:hover { border-color: #9ca3af; background: #f9fafb; }
 
-.btn-draft {
-  background: #f3f4f6;
-  color: #374151;
+/* ── Progress bar ─────────────────────────────────────── */
+.grade-progress-bar {
+  background: white; border-radius: 10px; padding: 12px 20px;
+  margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  display: flex; align-items: center; gap: 16px; font-size: 13px;
 }
-
-.btn-draft:hover {
-  background: #e5e7eb;
+.gp-track {
+  flex: 1; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;
 }
-
-.btn-auto-zero {
-  background: #8b5cf6;
-  color: white;
+.gp-fill {
+  height: 100%; background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 4px; transition: width .4s ease;
 }
+.gp-label { font-weight: 600; color: #374151; white-space: nowrap; }
+.gp-pct   { font-weight: 700; color: #059669; min-width: 40px; text-align: right; }
 
-.btn-auto-zero:hover {
-  background: #7c3aed;
-}
-
-.btn-ai-grade {
-  background: #f59e0b;
-  color: white;
-}
-
-.btn-ai-grade:hover {
-  background: #d97706;
-}
-
-.btn-publish {
-  background: #10b981;
-  color: white;
-}
-
-.btn-publish:hover {
-  background: #059669;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Checkbox Column */
-.checkbox-col {
-  width: 50px;
-  text-align: center;
-}
-
-.select-checkbox {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
-
-.select-all-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-/* Spreadsheet Table */
+/* ── Spreadsheet ─────────────────────────────────────── */
 .spreadsheet-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  overflow: auto;
-  max-height: calc(100vh - 200px);
+  background: white; border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  overflow: auto; max-height: calc(100vh - 230px);
 }
-
 .grade-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  min-width: 800px;
+  width: 100%; border-collapse: separate; border-spacing: 0; min-width: 800px;
 }
-
 .grade-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: #f9fafb;
+  position: sticky; top: 0; z-index: 10; background: #f9fafb;
 }
-
 .grade-table th {
-  padding: 16px 12px;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  border-bottom: 2px solid #e5e7eb;
-  white-space: nowrap;
+  padding: 14px 12px; text-align: left; font-size: 12px; font-weight: 600;
+  color: #6b7280; text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 2px solid #e5e7eb; white-space: nowrap;
 }
-
 .grade-table th.student-col {
-  position: sticky;
-  left: 0;
-  background: #f9fafb;
-  z-index: 11;
-  min-width: 200px;
-  max-width: 200px;
-  border-right: 2px solid #e5e7eb;
+  position: sticky; left: 0; background: #f9fafb; z-index: 11;
+  min-width: 200px; max-width: 200px; border-right: 2px solid #e5e7eb;
 }
-
 .grade-table td {
-  padding: 12px;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 14px;
-  vertical-align: top;
+  padding: 10px 12px; border-bottom: 1px solid #f3f4f6;
+  font-size: 14px; vertical-align: top;
 }
-
-.grade-table tbody tr:hover {
-  background: #f9fafb;
-}
-
+.grade-table tbody tr:hover { background: #fafafa; }
 .grade-table td.student-col {
-  position: sticky;
-  left: 0;
-  background: white;
-  border-right: 2px solid #e5e7eb;
-  z-index: 5;
-  font-weight: 600;
-  color: #1f2937;
+  position: sticky; left: 0; background: white;
+  border-right: 2px solid #e5e7eb; z-index: 5;
+  font-weight: 600; color: #1f2937;
 }
+.grade-table tbody tr:hover td.student-col { background: #fafafa; }
+.grade-table td.total-col { font-weight: 600; white-space: nowrap; color: #1f2937; }
 
-.grade-table tbody tr:hover td.student-col {
-  background: #f9fafb;
-}
-
+/* ── Answer cell ─────────────────────────────────────── */
 .answer-cell {
-  max-width: 200px;
-  cursor: pointer;
-  position: relative;
-  padding: 8px;
-  border-radius: 6px;
-  transition: all 0.2s;
+  max-width: 200px; cursor: pointer; position: relative;
+  padding: 6px 8px; border-radius: 6px; transition: all .2s;
 }
-
-.answer-cell:hover {
-  background: #eff6ff;
-  box-shadow: 0 0 0 2px #2563eb;
-}
-
+.answer-cell:hover { background: #eff6ff; box-shadow: 0 0 0 2px #2563eb; }
 .answer-preview {
-  max-height: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 13px;
-  color: #4b5563;
-  line-height: 1.4;
-  margin-bottom: 8px;
-  word-wrap: break-word;
+  max-height: 60px; overflow: hidden; font-size: 12px; color: #4b5563;
+  line-height: 1.4; margin-bottom: 6px; word-break: break-word;
 }
-
-.answer-preview img {
-  max-width: 100%;
-  max-height: 60px;
-  object-fit: contain;
-  border-radius: 4px;
-}
-
-.answer-empty {
-  color: #9ca3af;
-  font-style: italic;
-  font-size: 12px;
-}
-
-.marks-input-cell {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
+.answer-preview img { max-width: 100%; max-height: 50px; object-fit: contain; border-radius: 3px; }
+.answer-empty { color: #9ca3af; font-style: italic; font-size: 12px; }
+.marks-input-cell { display: flex; gap: 6px; align-items: center; }
 .marks-input {
-  width: 70px;
-  padding: 6px 8px;
-  border: 2px solid #e5e7eb;
-  border-radius: 6px;
-  font-size: 14px;
-  text-align: center;
+  width: 64px; padding: 5px 8px; border: 2px solid #e5e7eb; border-radius: 6px;
+  font-size: 13px; text-align: center; transition: border-color .15s, background .15s;
 }
+.marks-input:focus { outline: none; border-color: #2563eb; }
+.marks-input.graded  { background: #d1fae5; border-color: #6ee7b7; }
+.marks-input.saving  { background: #fef3c7; border-color: #fbbf24; }
+.marks-input.error-border { background: #fee2e2; border-color: #fca5a5; }
+.max-marks { font-size: 11px; color: #9ca3af; }
 
-.marks-input:focus {
-  outline: none;
-  border-color: #2563eb;
-}
-
-.marks-input.graded {
-  background: #d1fae5;
-  border-color: #10b981;
-}
-
-.max-marks {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-/* Modal for Descriptive Responses */
+/* ── Modal ───────────────────────────────────────────── */
 .modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  display: none; position: fixed; z-index: 1000;
+  left: 0; top: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(4px);
 }
-
-.modal.active {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+.modal.active { display: flex; align-items: center; justify-content: center; }
 .modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 1000px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  background: white; border-radius: 16px; width: 90%; max-width: 900px;
+  max-height: 90vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
 }
-
 .modal-header {
-  padding: 24px;
-  border-bottom: 2px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 20px 24px; border-bottom: 1px solid #e5e7eb;
+  display: flex; justify-content: space-between; align-items: center;
 }
-
-.modal-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
+.modal-title { font-size: 17px; font-weight: 600; color: #1f2937; }
 .modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: none; border: none; font-size: 22px; cursor: pointer; color: #6b7280;
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
   border-radius: 6px;
 }
-
-.modal-close:hover {
-  background: #f3f4f6;
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-.modal-section {
-  margin-bottom: 24px;
-}
-
+.modal-close:hover { background: #f3f4f6; }
+.modal-body { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.modal-section { margin-bottom: 20px; }
 .modal-section-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase;
+  letter-spacing: .6px; margin-bottom: 8px;
 }
-
 .modal-answer-display {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #1f2937;
-  max-height: 400px;
-  overflow-y: auto;
+  background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
+  padding: 14px; font-size: 14px; line-height: 1.6; color: #1f2937;
+  max-height: 380px; overflow-y: auto; white-space: pre-wrap;
 }
-
-.modal-answer-display img {
-  max-width: 100%;
-  height: auto;
-  margin: 12px 0;
-  border-radius: 8px;
-}
-
+.modal-answer-display img { max-width: 100%; height: auto; margin: 8px 0; border-radius: 6px; }
 .modal-footer {
-  padding: 20px 24px;
-  border-top: 2px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  padding: 16px 24px; border-top: 1px solid #e5e7eb;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
 }
-
-.modal-nav-info {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 500;
+.modal-nav-info { font-size: 13px; color: #6b7280; font-weight: 500; }
+.modal-grading { display: flex; gap: 8px; align-items: center; }
+.modal-nav-btns { display: flex; gap: 4px; }
+.modal-nav-btn {
+  padding: 6px 12px; border: 1.5px solid #d1d5db; border-radius: 6px;
+  background: white; cursor: pointer; font-size: 12px; font-weight: 600; color: #374151;
 }
+.modal-nav-btn:hover { background: #f3f4f6; }
 
-.modal-grading {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
+/* ── Keyboard hint ──────────────────────────────────── */
 .keyboard-hint {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: #1f2937;
-  color: white;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-  z-index: 1001;
+  position: fixed; bottom: 20px; right: 20px;
+  background: #1f2937; color: white; padding: 10px 14px; border-radius: 8px;
+  font-size: 11px; box-shadow: 0 4px 12px rgba(0,0,0,.3); opacity: 0;
+  transition: opacity .3s; pointer-events: none; z-index: 1001;
 }
+.keyboard-hint.visible { opacity: 1; }
 
-.keyboard-hint.visible {
-  opacity: 1;
+/* ── Publish modal ──────────────────────────────────── */
+.confirm-overlay {
+  display: none; position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,.5); backdrop-filter: blur(3px);
+  align-items: center; justify-content: center;
 }
-
-.kbd {
-  background: #374151;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 11px;
-  margin: 0 2px;
+.confirm-overlay.active { display: flex; }
+.confirm-box {
+  background: white; border-radius: 16px; padding: 32px; max-width: 440px;
+  width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,.25); text-align: center;
 }
+.confirm-box h3 { margin: 0 0 12px; font-size: 20px; }
+.confirm-box p  { font-size: 14px; color: #4b5563; margin: 0 0 24px; line-height: 1.6; }
+.confirm-actions { display: flex; gap: 10px; justify-content: center; }
 </style>
 
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Publish confirm overlay -->
+<div class="confirm-overlay" id="publishOverlay">
+  <div class="confirm-box">
+    <div style="font-size: 40px; margin-bottom: 12px;">✅</div>
+    <h3>Publish Results?</h3>
+    <p id="publishMsg">Students with fully graded answers will be able to see their results.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closePublishOverlay()">Cancel</button>
+      <button class="btn btn-publish" id="publishConfirmBtn" onclick="doPublish()">Publish Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
 <div class="grade-header">
   <div class="header-info">
     <h2>{{ test.title }}</h2>
-    <p>Grading {{ students_with_answers.count }} student(s)</p>
+    <p>
+      {% if test.results_published %}
+        <span style="color: #059669; font-weight: 600;">✅ Results Published</span> ·
+      {% endif %}
+      {{ students_with_answers.count }} student(s) submitted
+    </p>
   </div>
   <div class="header-actions">
     <button class="btn btn-ai-grade" onclick="aiGradeSelected()" id="aiGradeBtn">
-      🤖 AI Grade Selected (<span id="selectedCount">0</span>)
+      🤖 AI Grade (<span id="selectedCount">0</span>)
     </button>
     <button class="btn btn-auto-zero" onclick="autoZeroUnattempted()">
-      Zero Unattempted
+      ⬜ Zero Blanks
     </button>
-    <button class="btn btn-draft" onclick="saveDraft()">
-      💾 Save Draft
-    </button>
-    <button class="btn btn-publish" onclick="publishResults()">
-      ✅ Publish Results
+    <button class="btn btn-publish" onclick="openPublishOverlay()">
+      {% if test.results_published %}🔄 Re-publish{% else %}✅ Publish Results{% endif %}
     </button>
   </div>
 </div>
 
+<!-- Progress bar -->
+<div class="grade-progress-bar" id="progressBar">
+  <span class="gp-label" id="progressLabel">Loading...</span>
+  <div class="gp-track"><div class="gp-fill" id="progressFill" style="width: 0%"></div></div>
+  <span class="gp-pct" id="progressPct">0%</span>
+</div>
+
+<!-- Spreadsheet -->
 <div class="spreadsheet-container">
   <table class="grade-table">
     <thead>
       <tr>
-        <th class="checkbox-col">
-          <div class="select-all-container">
-            <input type="checkbox" id="selectAll" class="select-checkbox" onchange="toggleSelectAll(this)">
-          </div>
+        <th class="checkbox-col" style="width: 46px; text-align: center;">
+          <input type="checkbox" id="selectAll" style="width:16px;height:16px;cursor:pointer;" onchange="toggleSelectAll(this)">
         </th>
         <th class="student-col">Student</th>
         {% for question in questions %}
@@ -434,27 +259,26 @@
     <tbody>
       {% for student_data in grading_spreadsheet %}
       <tr data-student-id="{{ student_data.student.id }}">
-        <td class="checkbox-col">
-          <input type="checkbox"
-                 class="select-checkbox student-checkbox"
+        <td style="text-align: center; vertical-align: middle;">
+          <input type="checkbox" class="student-checkbox"
                  data-student-id="{{ student_data.student.id }}"
+                 style="width:16px;height:16px;cursor:pointer;"
                  onchange="updateSelectedCount()">
         </td>
         <td class="student-col">
           <div>{{ student_data.student.full_name }}</div>
-          <div style="font-size: 12px; color: #6b7280; font-weight: normal;">
-            {{ student_data.student.grade }}-{{ student_data.student.section }}
+          <div style="font-size: 11px; color: #9ca3af; font-weight: normal;">
+            {{ student_data.student.grade }}{% if student_data.student.section %}-{{ student_data.student.section }}{% endif %}
           </div>
         </td>
         {% for answer in student_data.answers %}
         <td>
+          {% if answer.id %}
           <div class="answer-cell"
-               data-student-id="{{ student_data.student.id }}"
-               data-question-index="{{ forloop.counter0 }}"
                onclick="openModal({{ student_data.student.id }}, {{ forloop.counter0 }})">
             <div class="answer-preview">
               {% if answer.answer_text %}
-                {{ answer.answer_text|safe|truncatewords_html:15 }}
+                {{ answer.answer_text|safe|truncatewords_html:12 }}
               {% else %}
                 <span class="answer-empty">No answer</span>
               {% endif %}
@@ -464,24 +288,27 @@
                      class="marks-input {% if answer.marks_awarded is not None %}graded{% endif %}"
                      data-answer-id="{{ answer.id }}"
                      data-max-marks="{{ answer.max_marks }}"
-                     min="0"
-                     max="{{ answer.max_marks }}"
-                     step="0.5"
+                     min="0" max="{{ answer.max_marks }}" step="0.5"
                      value="{{ answer.marks_awarded|default:'' }}"
-                     placeholder="0"
-                     onchange="saveMarks(this)">
+                     placeholder="—"
+                     onchange="saveMarks(this)"
+                     onblur="saveMarksOnBlur(this)">
               <span class="max-marks">/{{ answer.max_marks }}</span>
             </div>
           </div>
+          {% else %}
+          <div style="color: #d1d5db; font-size: 12px; font-style: italic; padding: 6px 8px;">Not submitted</div>
+          {% endif %}
         </td>
         {% endfor %}
-        <td>
-          <strong>{{ student_data.total_marks|floatformat:1 }}</strong> / {{ student_data.max_total }}
+        <td class="total-col" data-max-total="{{ student_data.max_total }}">
+          <strong class="student-total">{{ student_data.total_marks|floatformat:1 }}</strong>
+          <span style="color: #9ca3af; font-size: 12px; font-weight: normal;"> / {{ student_data.max_total }}</span>
         </td>
       </tr>
       {% empty %}
       <tr>
-        <td colspan="100" style="text-align: center; padding: 40px; color: #9ca3af;">
+        <td colspan="100" style="text-align: center; padding: 48px; color: #9ca3af;">
           No student submissions yet
         </td>
       </tr>
@@ -490,7 +317,7 @@
   </table>
 </div>
 
-<!-- Modal for Descriptive Responses -->
+<!-- Answer Modal -->
 <div class="modal" id="answerModal">
   <div class="modal-content">
     <div class="modal-header">
@@ -498,25 +325,27 @@
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="modal-body">
+      <div class="modal-section" id="modelAnswerSection" style="display:none;">
+        <div class="modal-section-label">Model Answer</div>
+        <div class="modal-answer-display" id="modalModelAnswer" style="background:#f0fdf4; border-color:#a7f3d0;"></div>
+      </div>
       <div class="modal-section">
         <div class="modal-section-label">Student Answer</div>
-        <div class="modal-answer-display" id="modalAnswer">
-          <!-- Answer content will be loaded here -->
-        </div>
+        <div class="modal-answer-display" id="modalAnswer"></div>
       </div>
     </div>
     <div class="modal-footer">
-      <div class="modal-nav-info" id="modalNavInfo">
-        <!-- Navigation info -->
+      <div class="modal-nav-btns">
+        <button class="modal-nav-btn" onclick="navModal(-1, 0)" title="Previous student">◀ Prev Student</button>
+        <button class="modal-nav-btn" onclick="navModal(1, 0)"  title="Next student">Next ▶</button>
+        <button class="modal-nav-btn" onclick="navModal(0, -1)" title="Previous question">▲ Q</button>
+        <button class="modal-nav-btn" onclick="navModal(0, 1)"  title="Next question">▼ Q</button>
       </div>
+      <div class="modal-nav-info" id="modalNavInfo"></div>
       <div class="modal-grading">
-        <input type="number"
-               class="marks-input"
-               id="modalMarksInput"
-               min="0"
-               step="0.5"
-               placeholder="0"
-               onchange="saveMarksFromModal()">
+        <input type="number" class="marks-input" id="modalMarksInput"
+               min="0" step="0.5" placeholder="0"
+               onchange="saveMarksFromModal()" onblur="saveMarksFromModal()">
         <span class="max-marks" id="modalMaxMarks"></span>
       </div>
     </div>
@@ -524,21 +353,146 @@
 </div>
 
 <div class="keyboard-hint" id="keyboardHint">
-  <kbd>Shift</kbd> + <kbd>→</kbd> Next student |
-  <kbd>Shift</kbd> + <kbd>←</kbd> Prev student |
-  <kbd>Shift</kbd> + <kbd>↓</kbd> Next question |
-  <kbd>Shift</kbd> + <kbd>↑</kbd> Prev question |
-  <kbd>Esc</kbd> Close
+  <kbd style="background:#374151;padding:2px 5px;border-radius:3px;">Shift</kbd>+arrows to navigate &nbsp; <kbd style="background:#374151;padding:2px 5px;border-radius:3px;">Esc</kbd> close
 </div>
 
 <script>
 const csrftoken = '{{ csrf_token }}';
 const testId = {{ test.id }};
+const spreadsheetData = {{ grading_spreadsheet_json|safe }};
 
-// Modal state
+// Model answers are embedded in the spreadsheet JSON if available
+
+// ── Toast ──────────────────────────────────────────────
+function showToast(msg, type='success', duration=2500) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icons = { success: '✓', error: '✗', info: 'ℹ', warn: '⚠' };
+  t.innerHTML = `<span style="font-size:16px">${icons[type]||'•'}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => {
+    t.style.animation = 'toastOut .25s ease forwards';
+    setTimeout(() => t.remove(), 260);
+  }, duration);
+}
+
+// ── Progress bar ──────────────────────────────────────
+function updateProgressBar() {
+  const inputs = document.querySelectorAll('.marks-input[data-answer-id]');
+  const total = inputs.length;
+  const graded = document.querySelectorAll('.marks-input.graded').length;
+  const pct = total > 0 ? Math.round(graded / total * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressLabel').textContent = `${graded} / ${total} answers graded`;
+}
+
+// ── Save marks (from table input) ─────────────────────
+let _saveTimers = {};
+
+async function saveMarks(input, silent=false) {
+  const answerId = input.dataset.answerId;
+  if (!answerId || answerId === 'None') return;  // no submission — skip
+
+  const rawVal = input.value;
+  if (rawVal === '' || rawVal === null) return;  // blank — skip
+
+  const marks = parseFloat(rawVal);
+  const maxMarks = parseFloat(input.dataset.maxMarks);
+
+  if (isNaN(marks)) return;
+
+  if (marks < 0) { input.value = 0; return saveMarks(input, silent); }
+  if (marks > maxMarks) {
+    input.value = maxMarks;
+    if (!silent) showToast(`Max marks for this question is ${maxMarks}`, 'warn');
+    return saveMarks(input, silent);
+  }
+
+  input.classList.add('saving');
+  input.classList.remove('graded', 'error-border');
+
+  try {
+    const resp = await fetch(`/teacher/tests/${testId}/save-grade/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+      body: JSON.stringify({ answer_id: answerId, marks: marks })
+    });
+    const data = await resp.json();
+
+    input.classList.remove('saving');
+    if (resp.ok && data.success) {
+      input.classList.add('graded');
+      updateStudentTotal(input);
+      updateProgressBar();
+      // Update in-memory data
+      const sd = spreadsheetData.find(s => s.answers.some(a => a.id == answerId));
+      if (sd) {
+        const ans = sd.answers.find(a => a.id == answerId);
+        if (ans) ans.marks_awarded = marks;
+      }
+    } else {
+      input.classList.add('error-border');
+      if (!silent) showToast('Save failed: ' + (data.error || 'Unknown'), 'error');
+    }
+  } catch (err) {
+    input.classList.remove('saving');
+    input.classList.add('error-border');
+    if (!silent) showToast('Network error — check connection', 'error');
+  }
+}
+
+// Debounced blur save (avoids double-save when onchange already fired)
+let _lastChanged = null;
+function saveMarksOnBlur(input) {
+  if (_lastChanged === input) { _lastChanged = null; return; }
+  saveMarks(input, true);
+}
+document.addEventListener('change', e => {
+  if (e.target.classList.contains('marks-input')) _lastChanged = e.target;
+}, true);
+
+// ── Update total cell ─────────────────────────────────
+function updateStudentTotal(input) {
+  const row = input.closest('tr');
+  const inputs = row.querySelectorAll('.marks-input[data-answer-id]');
+  let total = 0;
+  inputs.forEach(inp => { total += parseFloat(inp.value) || 0; });
+
+  const totalTd = row.querySelector('td.total-col');
+  if (totalTd) {
+    const strong = totalTd.querySelector('.student-total');
+    if (strong) strong.textContent = total.toFixed(1);
+  }
+}
+
+// ── Save from modal ───────────────────────────────────
+function saveMarksFromModal() {
+  const input = document.getElementById('modalMarksInput');
+  const answerId = input.dataset.answerId;
+  if (!answerId) return;
+
+  const marks = parseFloat(input.value);
+  if (isNaN(marks)) return;
+
+  // Sync to table
+  const tableInput = document.querySelector(`input[data-answer-id="${answerId}"]`);
+  if (tableInput) {
+    tableInput.value = marks;
+    saveMarks(tableInput);
+  }
+
+  // Update in-memory
+  if (currentStudentId !== null && currentQuestionIndex !== null) {
+    const sd = spreadsheetData.find(s => s.student.id === currentStudentId);
+    if (sd) sd.answers[currentQuestionIndex].marks_awarded = marks;
+  }
+}
+
+// ── Modal ─────────────────────────────────────────────
 let currentStudentId = null;
 let currentQuestionIndex = null;
-const spreadsheetData = {{ grading_spreadsheet_json|safe }};
 
 function openModal(studentId, questionIndex) {
   currentStudentId = studentId;
@@ -556,329 +510,209 @@ function closeModal() {
 }
 
 function loadModalContent() {
-  const studentData = spreadsheetData.find(s => s.student.id === currentStudentId);
-  if (!studentData) return;
+  const sd = spreadsheetData.find(s => s.student.id === currentStudentId);
+  if (!sd) return;
 
-  const answerData = studentData.answers[currentQuestionIndex];
-  const questionNum = currentQuestionIndex + 1;
+  const ans = sd.answers[currentQuestionIndex];
+  const qNum = currentQuestionIndex + 1;
 
   document.getElementById('modalTitle').textContent =
-    `${studentData.student.full_name} - Question ${questionNum}`;
+    `${sd.student.full_name} — Question ${qNum}`;
 
   document.getElementById('modalAnswer').innerHTML =
-    answerData.answer_text || '<em class="answer-empty">No answer provided</em>';
+    ans.answer_text || '<em style="color:#9ca3af">No answer provided</em>';
 
-  document.getElementById('modalMarksInput').value = answerData.marks_awarded || '';
-  document.getElementById('modalMarksInput').max = answerData.max_marks;
-  document.getElementById('modalMarksInput').dataset.answerId = answerData.id;
-  document.getElementById('modalMaxMarks').textContent = `/ ${answerData.max_marks}`;
+  // Model answer (if available)
+  const modelAns = ans.model_answer || '';
+  const maSection = document.getElementById('modelAnswerSection');
+  if (modelAns) {
+    document.getElementById('modalModelAnswer').textContent = modelAns;
+    maSection.style.display = '';
+  } else {
+    maSection.style.display = 'none';
+  }
 
+  const mi = document.getElementById('modalMarksInput');
+  mi.value = ans.marks_awarded !== null && ans.marks_awarded !== undefined ? ans.marks_awarded : '';
+  mi.max = ans.max_marks;
+  mi.dataset.answerId = ans.id || '';
+
+  document.getElementById('modalMaxMarks').textContent = `/ ${ans.max_marks}`;
   updateModalNavInfo();
 }
 
 function updateModalNavInfo() {
-  const studentData = spreadsheetData.find(s => s.student.id === currentStudentId);
-  const studentIndex = spreadsheetData.findIndex(s => s.student.id === currentStudentId);
-  const totalStudents = spreadsheetData.length;
-  const totalQuestions = studentData.answers.length;
-
+  const si = spreadsheetData.findIndex(s => s.student.id === currentStudentId);
+  const sd = spreadsheetData[si];
   document.getElementById('modalNavInfo').textContent =
-    `Student ${studentIndex + 1}/${totalStudents} • Question ${currentQuestionIndex + 1}/${totalQuestions}`;
+    `Student ${si + 1}/${spreadsheetData.length} · Q${currentQuestionIndex + 1}/${sd.answers.length}`;
 }
 
-// Keyboard navigation
-document.addEventListener('keydown', (e) => {
+function navModal(dStudent, dQuestion) {
+  const si = spreadsheetData.findIndex(s => s.student.id === currentStudentId);
+  const sd = spreadsheetData[si];
+
+  if (dStudent !== 0) {
+    const ni = si + dStudent;
+    if (ni >= 0 && ni < spreadsheetData.length) {
+      currentStudentId = spreadsheetData[ni].student.id;
+      loadModalContent();
+    }
+  } else if (dQuestion !== 0) {
+    const nq = currentQuestionIndex + dQuestion;
+    if (nq >= 0 && nq < sd.answers.length) {
+      currentQuestionIndex = nq;
+      loadModalContent();
+    }
+  }
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
   if (!document.getElementById('answerModal').classList.contains('active')) return;
-
-  if (e.key === 'Escape') {
-    closeModal();
-    return;
-  }
-
+  if (e.key === 'Escape') { closeModal(); return; }
   if (!e.shiftKey) return;
-
   e.preventDefault();
-
-  const studentIndex = spreadsheetData.findIndex(s => s.student.id === currentStudentId);
-  const studentData = spreadsheetData[studentIndex];
-
-  if (e.key === 'ArrowRight') {
-    // Next student, same question
-    if (studentIndex < spreadsheetData.length - 1) {
-      currentStudentId = spreadsheetData[studentIndex + 1].student.id;
-      loadModalContent();
-    }
-  } else if (e.key === 'ArrowLeft') {
-    // Previous student, same question
-    if (studentIndex > 0) {
-      currentStudentId = spreadsheetData[studentIndex - 1].student.id;
-      loadModalContent();
-    }
-  } else if (e.key === 'ArrowDown') {
-    // Same student, next question
-    if (currentQuestionIndex < studentData.answers.length - 1) {
-      currentQuestionIndex++;
-      loadModalContent();
-    }
-  } else if (e.key === 'ArrowUp') {
-    // Same student, previous question
-    if (currentQuestionIndex > 0) {
-      currentQuestionIndex--;
-      loadModalContent();
-    }
-  }
+  if (e.key === 'ArrowRight') navModal(1, 0);
+  else if (e.key === 'ArrowLeft')  navModal(-1, 0);
+  else if (e.key === 'ArrowDown')  navModal(0, 1);
+  else if (e.key === 'ArrowUp')    navModal(0, -1);
 });
 
-// Save marks
-async function saveMarks(input) {
-  const answerId = input.dataset.answerId;
-  const marks = parseFloat(input.value) || 0;
-  const maxMarks = parseFloat(input.dataset.maxMarks);
+document.getElementById('answerModal').addEventListener('click', e => {
+  if (e.target.id === 'answerModal') closeModal();
+});
 
-  if (marks > maxMarks) {
-    alert(`Marks cannot exceed ${maxMarks}`);
-    input.value = maxMarks;
-    return;
-  }
-
-  try {
-    const response = await fetch(`/teacher/tests/${testId}/save-grade/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': csrftoken
-      },
-      body: JSON.stringify({
-        answer_id: answerId,
-        marks: marks
-      })
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.success) {
-      input.classList.add('graded');
-      // Update total
-      updateStudentTotal(input);
-    } else {
-      console.error('Error saving marks:', data.error || 'Unknown error');
-      alert('Error saving marks: ' + (data.error || 'Unknown error'));
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Error saving marks: ' + error.message);
-  }
-}
-
-function saveMarksFromModal() {
-  const input = document.getElementById('modalMarksInput');
-  const answerId = input.dataset.answerId;
-  const marks = parseFloat(input.value) || 0;
-  const maxMarks = parseFloat(input.max);
-
-  if (marks > maxMarks) {
-    alert(`Marks cannot exceed ${maxMarks}`);
-    input.value = maxMarks;
-    return;
-  }
-
-  // Update the spreadsheet data
-  const studentData = spreadsheetData.find(s => s.student.id === currentStudentId);
-  studentData.answers[currentQuestionIndex].marks_awarded = marks;
-
-  // Find and update the corresponding input in the table
-  const tableInput = document.querySelector(`input[data-answer-id="${answerId}"]`);
-  if (tableInput) {
-    tableInput.value = marks;
-    saveMarks(tableInput);
-  }
-}
-
-function updateStudentTotal(input) {
-  const row = input.closest('tr');
-  const inputs = row.querySelectorAll('.marks-input');
-  let total = 0;
-
-  inputs.forEach(inp => {
-    const val = parseFloat(inp.value) || 0;
-    total += val;
-  });
-
-  const totalCell = row.querySelector('td:last-child strong');
-  if (totalCell) {
-    const maxTotal = totalCell.textContent.split('/')[1].trim();
-    totalCell.textContent = `${total.toFixed(1)} / ${maxTotal}`;
-  }
-}
-
-// Auto-zero unattempted questions
+// ── Auto-zero blanks ──────────────────────────────────
 async function autoZeroUnattempted() {
-  if (!confirm('This will assign 0 marks to all unattempted questions. Continue?')) {
-    return;
-  }
-
-  const unattemptedInputs = document.querySelectorAll('.marks-input:not(.graded)');
+  const inputs = document.querySelectorAll('.marks-input[data-answer-id]:not(.graded)');
   let count = 0;
-
-  for (const input of unattemptedInputs) {
-    const answerText = input.closest('.answer-cell').querySelector('.answer-preview').textContent.trim();
-    if (answerText === 'No answer' || answerText === '') {
+  for (const input of inputs) {
+    const preview = input.closest('.answer-cell')?.querySelector('.answer-preview');
+    const isEmpty = !preview || preview.textContent.trim() === 'No answer' || preview.textContent.trim() === '';
+    if (isEmpty && input.value === '') {
       input.value = 0;
-      await saveMarks(input);
+      await saveMarks(input, true);
       count++;
     }
   }
-
-  alert(`Auto-assigned 0 marks to ${count} unattempted question(s)`);
+  if (count > 0) showToast(`Assigned 0 to ${count} blank answer(s)`, 'info');
+  else showToast('No blank answers to zero out', 'info');
 }
 
-function saveDraft() {
-  alert('Draft saved successfully! All changes are automatically saved.');
-}
-
-async function publishResults() {
-  if (!confirm('Publish results to all students? They will be able to view their grades.')) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`/teacher/tests/${testId}/publish-results/`, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': csrftoken
-      }
-    });
-
-    if (response.ok) {
-      alert('Results published successfully!');
-      window.location.reload();
-    } else {
-      alert('Error publishing results');
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Error publishing results');
-  }
-}
-
-// Close modal when clicking outside
-document.getElementById('answerModal').addEventListener('click', (e) => {
-  if (e.target.id === 'answerModal') {
-    closeModal();
-  }
-});
-
-// Checkbox functions
-function toggleSelectAll(checkbox) {
-  const studentCheckboxes = document.querySelectorAll('.student-checkbox');
-  studentCheckboxes.forEach(cb => {
-    cb.checked = checkbox.checked;
+// ── Publish overlay ───────────────────────────────────
+function openPublishOverlay() {
+  // Count fully graded students
+  let ready = 0, pending = 0;
+  spreadsheetData.forEach(sd => {
+    const all = sd.answers.filter(a => a.id !== null);
+    if (all.length > 0 && all.every(a => a.marks_awarded !== null && a.marks_awarded !== undefined)) ready++;
+    else pending++;
   });
+  document.getElementById('publishMsg').innerHTML =
+    `<strong>${ready}</strong> student(s) have fully graded answers and will be able to see results.<br>` +
+    (pending > 0 ? `<span style="color:#d97706">${pending} student(s) still have ungraded answers — they will see results once graded.</span>` : '');
+  document.getElementById('publishOverlay').classList.add('active');
+}
+
+function closePublishOverlay() {
+  document.getElementById('publishOverlay').classList.remove('active');
+}
+
+async function doPublish() {
+  const btn = document.getElementById('publishConfirmBtn');
+  btn.disabled = true; btn.textContent = 'Publishing...';
+  try {
+    const resp = await fetch(`/teacher/tests/${testId}/publish-results/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrftoken }
+    });
+    const data = await resp.json();
+    closePublishOverlay();
+    if (resp.ok && data.success) {
+      showToast(data.message || 'Results published!', 'success', 4000);
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast('Publish failed: ' + (data.error || 'Unknown error'), 'error', 5000);
+    }
+  } catch (err) {
+    closePublishOverlay();
+    showToast('Network error — could not publish', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Publish Now';
+  }
+}
+
+// ── Checkboxes ────────────────────────────────────────
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.student-checkbox').forEach(c => { c.checked = cb.checked; });
   updateSelectedCount();
 }
-
 function updateSelectedCount() {
-  const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
-  const count = selectedCheckboxes.length;
-  document.getElementById('selectedCount').textContent = count;
-
-  // Update select all checkbox state
-  const allCheckboxes = document.querySelectorAll('.student-checkbox');
-  const selectAllCheckbox = document.getElementById('selectAll');
-  selectAllCheckbox.checked = count === allCheckboxes.length && count > 0;
+  const n = document.querySelectorAll('.student-checkbox:checked').length;
+  document.getElementById('selectedCount').textContent = n;
+  const all = document.querySelectorAll('.student-checkbox').length;
+  document.getElementById('selectAll').checked = n === all && n > 0;
 }
 
-// AI Grade Selected Students
+// ── AI Grade ─────────────────────────────────────────
 async function aiGradeSelected() {
-  const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
+  const checked = document.querySelectorAll('.student-checkbox:checked');
+  if (checked.length === 0) { showToast('Select at least one student', 'warn'); return; }
 
-  if (selectedCheckboxes.length === 0) {
-    alert('Please select at least one student to grade with AI');
-    return;
-  }
-
-  if (!confirm(`AI will grade all answers for ${selectedCheckboxes.length} selected student(s) and auto-zero unattempted questions. Continue?`)) {
-    return;
-  }
-
-  const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.studentId));
-  let gradedCount = 0;
-  let errorCount = 0;
-
-  // Show progress
   const btn = document.getElementById('aiGradeBtn');
-  const originalText = btn.innerHTML;
   btn.disabled = true;
+  const orig = btn.innerHTML;
+  const ids = Array.from(checked).map(cb => parseInt(cb.dataset.studentId));
+  let graded = 0, errors = 0;
 
-  for (const studentId of selectedStudentIds) {
-    const studentData = spreadsheetData.find(s => s.student.id === studentId);
-    if (!studentData) continue;
+  for (const sid of ids) {
+    const sd = spreadsheetData.find(s => s.student.id === sid);
+    if (!sd) continue;
+    btn.innerHTML = `🤖 ${sd.student.full_name.split(' ')[0]}...`;
 
-    btn.innerHTML = `🤖 Grading ${studentData.student.full_name}...`;
+    for (const ans of sd.answers) {
+      if (ans.marks_awarded !== null && ans.marks_awarded !== undefined) continue;
+      if (!ans.id) continue;
 
-    for (let i = 0; i < studentData.answers.length; i++) {
-      const answer = studentData.answers[i];
+      const input = document.querySelector(`input[data-answer-id="${ans.id}"]`);
+      if (!input) continue;
 
-      // Skip if already graded
-      if (answer.marks_awarded !== null && answer.marks_awarded !== undefined) {
-        continue;
-      }
-
-      // Check if unattempted
-      if (!answer.answer_text || answer.answer_text.trim() === '') {
-        // Auto-zero unattempted
-        const input = document.querySelector(`input[data-answer-id="${answer.id}"]`);
-        if (input) {
-          input.value = 0;
-          await saveMarks(input);
-          gradedCount++;
-        }
+      if (!ans.answer_text || ans.answer_text.trim() === '') {
+        input.value = 0;
+        await saveMarks(input, true);
+        graded++;
       } else {
-        // AI grade attempted questions
         try {
-          const response = await fetch('/teacher/grading/ai-grade/', {
+          const r = await fetch('/teacher/grading/ai-grade/', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify({
-              answer_id: answer.id
-            })
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+            body: JSON.stringify({ answer_id: ans.id })
           });
-
-          if (response.ok) {
-            const data = await response.json();
-            const input = document.querySelector(`input[data-answer-id="${answer.id}"]`);
-            if (input && data.suggested_marks !== undefined) {
-              input.value = data.suggested_marks;
-              await saveMarks(input);
-              gradedCount++;
+          if (r.ok) {
+            const d = await r.json();
+            if (d.suggested_marks !== undefined) {
+              input.value = d.suggested_marks;
+              await saveMarks(input, true);
+              graded++;
             }
-          } else {
-            errorCount++;
-          }
-        } catch (error) {
-          console.error('AI grading error:', error);
-          errorCount++;
-        }
+          } else { errors++; }
+        } catch { errors++; }
       }
     }
   }
 
-  btn.disabled = false;
-  btn.innerHTML = originalText;
+  btn.disabled = false; btn.innerHTML = orig;
+  if (errors > 0) showToast(`AI graded ${graded}, ${errors} error(s)`, 'warn', 4000);
+  else showToast(`AI graded ${graded} answer(s) — please review`, 'success', 4000);
 
-  if (errorCount > 0) {
-    alert(`AI grading completed!\nGraded: ${gradedCount} answers\nErrors: ${errorCount} answers\n\nPlease review and adjust marks as needed.`);
-  } else {
-    alert(`AI grading completed! Graded ${gradedCount} answers.\n\nPlease review and adjust marks as needed.`);
-  }
-
-  // Uncheck all
+  // Deselect
   document.getElementById('selectAll').checked = false;
   toggleSelectAll(document.getElementById('selectAll'));
 }
+
+// ── Init ─────────────────────────────────────────────
+updateProgressBar();
 </script>
 
 {% endblock %}

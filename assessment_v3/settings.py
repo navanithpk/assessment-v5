@@ -12,7 +12,12 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-import dj_database_url
+
+try:
+    import dj_database_url
+    _HAS_DJ_DATABASE_URL = True
+except ImportError:
+    _HAS_DJ_DATABASE_URL = False
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,19 +29,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-h=9a(!o)u!le4os-2_vz1b)lwc-@idf7vq(%kn4773#u3v(n7*')
 
+# ── LMStudio configuration ────────────────────────────────────────
+# Change these if your LMStudio server moves to a different IP/port.
+LMSTUDIO_URL = 'http://192.168.1.105:1234/v1/chat/completions'
+LMSTUDIO_MODEL = 'openai/gpt-oss-20b'
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    ".ngrok-free.app",   # allows ALL ngrok subdomains
-    ".railway.app",      # Railway domains
+    ".pythonanywhere.com",   # PythonAnywhere
+    ".ngrok-free.app",       # ngrok tunnels
+    ".railway.app",          # Railway
+    ".run.app",              # Google Cloud Run
 ]
 
+# Allow any extra host specified via environment variable (e.g. custom domain)
+if os.environ.get('ALLOWED_HOST'):
+    ALLOWED_HOSTS.append(os.environ['ALLOWED_HOST'])
+
 CSRF_TRUSTED_ORIGINS = [
+    "https://*.pythonanywhere.com",
     "https://*.ngrok-free.app",
     "https://*.railway.app",
+    "https://*.run.app",
 ]
 
 
@@ -89,10 +107,14 @@ WSGI_APPLICATION = 'assessment_v3.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# Use PostgreSQL in production (Railway), SQLite in development
-if os.environ.get('DATABASE_URL'):
+# Use PostgreSQL if DATABASE_URL env var is set, otherwise SQLite
+if os.environ.get('DATABASE_URL') and _HAS_DJ_DATABASE_URL:
     DATABASES = {
-        'default': dj_database_url.parse(os.environ.get('DATABASE_URL'))
+        'default': dj_database_url.parse(
+            os.environ['DATABASE_URL'],
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
 else:
     DATABASES = {
@@ -142,7 +164,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+# Whitenoise: serve compressed, cached static files in production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Media files (user uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
