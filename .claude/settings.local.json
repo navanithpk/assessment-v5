@@ -48,9 +48,7 @@
       "Bash(findstr:*)",
       "Bash(pip show:*)",
       "Bash(dir:*)",
-      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && wc -l {}')",
-      "Bash(del /f /q \"C:\\\\Users\\\\uniqu\\\\Documents\\\\ASSESSMENT-PLATFORM\\\\assessment-v3\\\\question_databases\\\\*.db\")",
-      "Bash(\"/c/Users/uniqu/Documents/ASSESSMENT-PLATFORM/assessment-v3/venv/Scripts/pip.exe\" freeze)"
+      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && wc -l {}')"
     ]
   }
 }
