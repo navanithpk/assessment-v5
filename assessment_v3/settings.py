@@ -44,6 +44,7 @@ ALLOWED_HOSTS = [
     ".railway.app",          # Railway
     ".run.app",              # Google Cloud Run
     "16.171.182.19",         # AWS EC2
+    "lumenapp.redirectme.net",  # AWS EC2 domain
 ]
 
 # Allow any extra host via env var (custom domain, Elastic IP, etc.)
@@ -56,6 +57,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://*.railway.app",
     "https://*.run.app",
     "http://16.171.182.19",
+    "https://lumenapp.redirectme.net",  # AWS EC2 domain
 ]
 
 # If a custom domain is set, trust it for CSRF too
