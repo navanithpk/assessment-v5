@@ -26,7 +26,9 @@ urlpatterns = [
 
     # Dashboards
     path("teacher/", views.teacher_dashboard, name="teacher_dashboard"),
+    path("teacher/academic-overview/", views.academic_overview_dashboard, name="academic_overview_dashboard"),
     path("student/dashboard/", views.student_dashboard, name="student_dashboard"),
+    path("student/change-password/", views.student_change_password, name="student_change_password"),
 
     # User Management (NEW - Simplified)
     path("teacher/users/add/", views.add_user, name="add_user"),
@@ -203,6 +205,8 @@ urlpatterns = [
     # Bulk Import
     path("teacher/users/bulk-import/", bulk_import_views.bulk_import_users, name="bulk_import_users"),
     path("teacher/users/download-template/", bulk_import_views.download_user_template, name="download_user_template"),
+    path("teacher/users/download-student-template/", bulk_import_views.download_student_template, name="download_student_template"),
+    path("teacher/users/download-teacher-template/", bulk_import_views.download_teacher_template, name="download_teacher_template"),
 
     # School Settings
     path("teacher/school-settings/", views.edit_school_settings, name="edit_school_settings"),

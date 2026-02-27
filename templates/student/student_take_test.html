@@ -72,6 +72,101 @@
   flex-shrink: 0;
 }
 
+/* ── Calculator button in header ── */
+.header-calc-btn {
+  background: rgba(255,255,255,.18);
+  border: 1.5px solid rgba(255,255,255,.35);
+  border-radius: 8px;
+  color: white;
+  font-size: 18px;
+  width: 36px; height: 36px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.header-calc-btn:hover  { background: rgba(255,255,255,.28); }
+.header-calc-btn.active { background: rgba(255,255,255,.35); box-shadow: 0 0 0 2px white; }
+
+/* ── Always-visible Submit button in header ── */
+.header-submit-btn {
+  background: #10b981; border: none; border-radius: 8px;
+  color: white; font-size: 12px; font-weight: 700;
+  padding: 7px 13px; cursor: pointer; white-space: nowrap;
+  transition: background .15s;
+}
+.header-submit-btn:hover { background: #059669; }
+
+/* ── Floating calculator panel ── */
+.test-calc-panel {
+  position: fixed; top: 64px; right: 14px;
+  width: 380px; height: 500px;
+  background: white; border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.22);
+  z-index: 600; display: none; flex-direction: column;
+  overflow: hidden; border: 1.5px solid #e5e7eb;
+}
+.test-calc-panel.open { display: flex; }
+.test-calc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb; cursor: move; user-select: none;
+  gap: 10px;
+}
+.calc-tab {
+  font-size: 11px; padding: 4px 10px; border-radius: 6px;
+  border: 1.5px solid #d1d5db; background: white;
+  color: #374151; cursor: pointer; font-weight: 600;
+}
+.calc-tab.on { background: #6366f1; border-color: #6366f1; color: white; }
+
+/* ── Sidebar submit button ── */
+.sidebar-submit-btn {
+  display: block; width: calc(100% - 24px); margin: 10px 12px 0;
+  padding: 11px; background: linear-gradient(135deg,#10b981,#059669);
+  border: none; border-radius: 10px; color: white;
+  font-weight: 700; font-size: 13px; cursor: pointer;
+  transition: opacity .15s;
+}
+.sidebar-submit-btn:hover { opacity: .88; }
+
+/* ── Submit modal ── */
+.submit-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px); z-index: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.submit-modal {
+  background: white; border-radius: 20px; padding: 38px 32px;
+  width: min(430px,90vw); text-align: center;
+  box-shadow: 0 24px 64px rgba(0,0,0,.28);
+  animation: modalPop .22s ease;
+}
+@keyframes modalPop {
+  from { transform: scale(.88); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.submit-modal-icon  { font-size: 52px; margin-bottom: 12px; }
+.submit-modal-title { font-size: 22px; font-weight: 800; color: #111827; margin: 0 0 8px; }
+.submit-modal-msg   { font-size: 14px; color: #6b7280; margin: 0 0 26px; line-height: 1.55; }
+.submit-modal-actions { display: flex; gap: 12px; justify-content: center; }
+.submit-modal-cancel {
+  padding: 12px 24px; border-radius: 10px;
+  border: 2px solid #e5e7eb; background: white;
+  color: #374151; font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.submit-modal-cancel:hover { background: #f9fafb; }
+.submit-modal-confirm {
+  padding: 12px 28px; border-radius: 10px; border: none;
+  background: linear-gradient(135deg,#10b981,#059669);
+  color: white; font-weight: 700; font-size: 14px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16,185,129,.35);
+}
+.submit-modal-confirm:hover    { filter: brightness(1.08); }
+.submit-modal-confirm:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ── Suppress floating calc-fab injected by student_base ── */
+.calc-fab, #calcFab, #calcModal, [id*="calc"][class*="fab"] { display: none !important; }
+
 .save-pill {
   font-size: 11px;
   font-weight: 600;
@@ -777,8 +872,40 @@
         ⏱ <span id="timeRemaining">{{ test.duration_minutes }}:00</span>
       </div>
       {% endif %}
+      <!-- Calculator toggle in header -->
+      <button class="header-calc-btn" id="headerCalcBtn" onclick="toggleTestCalc()" title="Calculator">🧮</button>
+      <!-- Always-visible submit button -->
+      <button class="header-submit-btn" onclick="openSubmitModal()">✅ Submit Test</button>
     </div>
   </header>
+
+  <!-- ── Calculator panel (anchored to header) ──────────── -->
+  <div class="test-calc-panel" id="testCalcPanel">
+    <div class="test-calc-header" id="testCalcDragHandle">
+      <span style="font-size:13px;font-weight:600;color:#374151;">🧮 Calculator</span>
+      <div style="display:flex;gap:4px;">
+        <button class="calc-tab on" id="tcTabD" onclick="switchTestCalc('desmos')" type="button">Desmos</button>
+        <button class="calc-tab"    id="tcTabG" onclick="switchTestCalc('geo')"    type="button">GeoGebra</button>
+      </div>
+      <button onclick="toggleTestCalc()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#6b7280;line-height:1;" type="button">×</button>
+    </div>
+    <div style="flex:1;">
+      <iframe id="testCalcFrame" src="https://www.desmos.com/scientific" style="width:100%;height:100%;border:none;"></iframe>
+    </div>
+  </div>
+
+  <!-- ── Submit confirmation modal ─────────────────────── -->
+  <div class="submit-modal-backdrop" id="submitModalBackdrop" style="display:none;" onclick="closeSubmitModal(event)">
+    <div class="submit-modal" id="submitModal">
+      <div class="submit-modal-icon" id="submitModalIcon">📋</div>
+      <h2 class="submit-modal-title" id="submitModalTitle">Submit Test?</h2>
+      <p class="submit-modal-msg" id="submitModalMsg">Once submitted you cannot make any changes. Make sure you've answered all questions.</p>
+      <div class="submit-modal-actions" id="submitModalActions">
+        <button class="submit-modal-cancel" onclick="closeSubmitModal()">Go Back</button>
+        <button class="submit-modal-confirm" onclick="confirmSubmit()">Submit Now ✓</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── App Body ───────────────────────────────────────── -->
   <div class="app-body">
@@ -797,6 +924,7 @@
         <div class="legend-item"><div class="legend-dot attempted"></div><span>Attempted</span></div>
         <div class="legend-item"><div class="legend-dot flagged"></div><span>Flagged</span></div>
       </div>
+      <button class="sidebar-submit-btn" onclick="openSubmitModal()" type="button">✅ Submit Test</button>
     </nav>
 
     <!-- Main Content -->
@@ -1303,7 +1431,7 @@ function nextPage() {
     renderPage(currentPageIndex);
     scrollQuestionToTop();
   } else {
-    submitTest();
+    openSubmitModal();   // ← opens modal instead of alert+confirm chain
   }
 }
 
@@ -1318,16 +1446,61 @@ function previousPage() {
 }
 
 // =====================================================
-// SUBMIT TEST
+// SUBMIT TEST  –  modal-driven, zero browser popups
 // =====================================================
-async function submitTest() {
-  if (!confirm('Are you sure you want to submit your test? You cannot make changes after submission.')) return;
 
+/* Legacy shim so any old call-sites still work */
+function submitTest() { openSubmitModal(); }
+
+function openSubmitModal() {
   recordPageTime();
   saveCurrentPageAnswers();
 
-  alert('Processing your answers. This may take a moment…');
+  // Count answered vs total
+  const totalQ = testData.pages.reduce((s, p) => s + p.questions.length, 0);
+  const answeredQ = Object.keys(answers).filter(function(k) {
+    const v = answers[k];
+    return v && v.toString().trim() !== '';
+  }).length;
+  const left = totalQ - answeredQ;
 
+  const icon  = document.getElementById('submitModalIcon');
+  const title = document.getElementById('submitModalTitle');
+  const msg   = document.getElementById('submitModalMsg');
+  const acts  = document.getElementById('submitModalActions');
+
+  icon.textContent  = left > 0 ? '⚠️' : '✅';
+  title.textContent = 'Submit Test?';
+  msg.textContent   = left > 0
+    ? left + ' question' + (left !== 1 ? 's' : '') + ' unanswered. Once submitted you cannot make changes.'
+    : 'All questions answered. Once submitted you cannot make changes.';
+  acts.innerHTML =
+    '<button class="submit-modal-cancel" onclick="closeSubmitModal()">Go Back</button>' +
+    '<button class="submit-modal-confirm" onclick="confirmSubmit()">Submit Now ✓</button>';
+  acts.style.display = 'flex';
+
+  document.getElementById('submitModalBackdrop').style.display = 'flex';
+}
+
+function closeSubmitModal(e) {
+  // If triggered by clicking the backdrop, only close if backdrop itself was clicked
+  if (e && e.target !== document.getElementById('submitModalBackdrop')) return;
+  document.getElementById('submitModalBackdrop').style.display = 'none';
+}
+
+async function confirmSubmit() {
+  const icon  = document.getElementById('submitModalIcon');
+  const title = document.getElementById('submitModalTitle');
+  const msg   = document.getElementById('submitModalMsg');
+  const acts  = document.getElementById('submitModalActions');
+
+  // Processing state – lock UI
+  icon.textContent  = '⏳';
+  title.textContent = 'Submitting…';
+  msg.textContent   = 'Processing your answers. Please wait…';
+  acts.style.display = 'none';
+
+  // Handle answer spaces (drawing/canvas questions)
   for (const page of testData.pages) {
     for (const q of page.questions) {
       if (q.hasAnswerSpaces) { await saveRasterizedAnswers(); break; }
@@ -1340,16 +1513,66 @@ async function submitTest() {
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
       body: JSON.stringify({ answers: answers, submitted: true, questionTimers: questionTimers })
     });
+
     if (r.ok) {
-      alert('Test submitted successfully!');
-      window.location.href = '{% url "student_tests_list" %}';
+      icon.textContent  = '🎉';
+      title.textContent = 'Submitted!';
+      msg.textContent   = 'Your answers have been saved. Redirecting to your tests…';
+      setTimeout(function() {
+        window.location.href = '{% url "student_tests_list" %}';
+      }, 1400);
     } else {
-      alert('Error submitting test. Please try again.');
+      _submitError('Server error. Please try again.');
     }
   } catch (e) {
-    console.error('Submit error:', e);
-    alert('Error submitting test. Please try again.');
+    _submitError('Network error. Check your connection and try again.');
   }
+}
+
+function _submitError(text) {
+  document.getElementById('submitModalIcon').textContent  = '❌';
+  document.getElementById('submitModalTitle').textContent = 'Submission Failed';
+  document.getElementById('submitModalMsg').textContent   = text;
+  document.getElementById('submitModalActions').innerHTML =
+    '<button class="submit-modal-cancel" onclick="closeSubmitModal()">Close</button>' +
+    '<button class="submit-modal-confirm" onclick="confirmSubmit()">Retry ↺</button>';
+  document.getElementById('submitModalActions').style.display = 'flex';
+}
+
+/* Called when the countdown reaches zero — no confirm step needed */
+function timeUpSubmit() {
+  recordPageTime();
+  saveCurrentPageAnswers();
+  // Show modal locked in processing state immediately
+  document.getElementById('submitModalBackdrop').style.display = 'flex';
+  document.getElementById('submitModalIcon').textContent  = '⏰';
+  document.getElementById('submitModalTitle').textContent = 'Time\'s Up!';
+  document.getElementById('submitModalMsg').textContent   = 'Submitting your answers automatically…';
+  document.getElementById('submitModalActions').style.display = 'none';
+  // Re-use confirmSubmit which handles fetch + success-redirect + error state
+  confirmSubmit();
+}
+
+// =====================================================
+// CALCULATOR  –  panel anchored below header
+// =====================================================
+var _calcOpen = false;
+var _calcMode = 'desmos';
+
+function toggleTestCalc() {
+  _calcOpen = !_calcOpen;
+  document.getElementById('testCalcPanel').classList.toggle('open', _calcOpen);
+  document.getElementById('headerCalcBtn').classList.toggle('active', _calcOpen);
+}
+
+function switchTestCalc(mode) {
+  if (_calcMode === mode) return;
+  _calcMode = mode;
+  document.getElementById('testCalcFrame').src =
+    mode === 'desmos' ? 'https://www.desmos.com/scientific'
+                      : 'https://www.geogebra.org/calculator';
+  document.getElementById('tcTabD').classList.toggle('on', mode === 'desmos');
+  document.getElementById('tcTabG').classList.toggle('on', mode === 'geo');
 }
 
 // =====================================================
@@ -1401,7 +1624,7 @@ function updateTimer() {
   if (timeLeft <= 300 && timeLeft > 0) document.getElementById('timerDisplay').classList.add('warning');
 
   if (timeLeft > 0) { timeLeft--; setTimeout(updateTimer, 1000); }
-  else { alert('Time is up! Your test will be submitted automatically.'); submitTest(); }
+  else { timeUpSubmit(); }
 }
 
 function startTimer() {

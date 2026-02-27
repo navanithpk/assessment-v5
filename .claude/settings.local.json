@@ -48,7 +48,14 @@
       "Bash(findstr:*)",
       "Bash(pip show:*)",
       "Bash(dir:*)",
-      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && wc -l {}')"
+      "Bash(xargs -I {} bash -c 'echo \"\"=== {} ===\"\" && wc -l {}')",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(Get-Content \"C:\\\\Users\\\\uniqu\\\\Documents\\\\ASSESSMENT-PLATFORM\\\\assessment-v3\\\\core\\\\templates\\\\teacher\\\\create_test.html\")",
+      "Bash(Measure-Object -Line)",
+      "Bash(Select-Object -ExpandProperty Lines)",
+      "Bash(npx kill-port 8000)",
+      "Bash(lsof -ti:8000)",
+      "Bash(xargs kill -9)"
     ]
   }
 }

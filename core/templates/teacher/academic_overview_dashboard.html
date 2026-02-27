@@ -1,0 +1,761 @@
+{% extends "teacher/teacher_base.html" %}
+{% block title %}Academic Overview{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.49.0/dist/apexcharts.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   ACADEMIC OVERVIEW DASHBOARD  –  master styles
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --blue:   #3b82f6;
+  --indigo: #6366f1;
+  --purple: #8b5cf6;
+  --cyan:   #06b6d4;
+  --green:  #10b981;
+  --amber:  #f59e0b;
+  --red:    #ef4444;
+  --slate:  #64748b;
+  --grad1: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  --grad2: linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
+  --grad3: linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);
+  --grad4: linear-gradient(135deg,#43e97b 0%,#38f9d7 100%);
+  --grad5: linear-gradient(135deg,#fa709a 0%,#fee140 100%);
+  --grad6: linear-gradient(135deg,#a18cd1 0%,#fbc2eb 100%);
+  --grad7: linear-gradient(135deg,#fccb90 0%,#d57eeb 100%);
+  --grad8: linear-gradient(135deg,#84fab0 0%,#8fd3f4 100%);
+}
+
+/* ── page shell ── */
+.aod-page { padding: 0; }
+
+/* ── sticky header ── */
+.aod-header {
+  position: sticky; top: 0; z-index: 100;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 14px 24px;
+  display: flex; align-items: center; gap: 16px;
+}
+.aod-header-title {
+  font-size: 20px; font-weight: 700; color: #111827;
+  background: var(--grad1);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.aod-header-school { font-size: 13px; color: #6b7280; font-weight: 500; }
+.aod-header-clock {
+  margin-left: auto; font-size: 12px; color: #9ca3af;
+  font-variant-numeric: tabular-nums; min-width: 140px; text-align: right;
+}
+.aod-refresh-btn {
+  padding: 7px 14px; border-radius: 8px; border: 1px solid #e5e7eb;
+  background: white; cursor: pointer; font-size: 13px; font-weight: 500;
+  color: #374151; display: flex; align-items: center; gap: 6px;
+  transition: all .2s;
+}
+.aod-refresh-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+
+/* ── live badge ── */
+.live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #10b981; display: inline-block;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+}
+
+/* ── body ── */
+.aod-body { padding: 20px 24px; background: #f4f6f8; }
+
+/* ── section header ── */
+.sec-header {
+  display: flex; align-items: center; gap: 10px;
+  margin: 28px 0 14px;
+}
+.sec-header h2 {
+  font-size: 15px; font-weight: 700; color: #1e293b; margin: 0;
+  letter-spacing: -.01em;
+}
+.sec-header hr {
+  flex: 1; border: none; border-top: 1.5px solid #e5e7eb; margin: 0;
+}
+
+/* ══ KPI CARDS ══════════════════════════════════════════ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+@media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
+
+.kpi-card {
+  background: white; border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+  display: flex; align-items: center; gap: 16px;
+  transition: transform .2s, box-shadow .2s;
+  position: relative; overflow: hidden;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,.1);
+}
+.kpi-card::after {
+  content: '';
+  position: absolute; right: -20px; bottom: -20px;
+  width: 80px; height: 80px; border-radius: 50%;
+  opacity: .06;
+}
+.kpi-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; flex-shrink: 0;
+}
+.kpi-text { flex: 1; }
+.kpi-value {
+  font-size: 30px; font-weight: 800; line-height: 1;
+  color: #111827; font-variant-numeric: tabular-nums;
+}
+.kpi-label { font-size: 12px; color: #6b7280; font-weight: 500; margin-top: 3px; }
+.kpi-sub   { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+/* per-card accent colours */
+.kpi-c1 .kpi-icon { background: #dbeafe; }
+.kpi-c1::after    { background: #3b82f6; }
+.kpi-c2 .kpi-icon { background: #d1fae5; }
+.kpi-c2::after    { background: #10b981; }
+.kpi-c3 .kpi-icon { background: #fef3c7; }
+.kpi-c3::after    { background: #f59e0b; }
+.kpi-c4 .kpi-icon { background: #fee2e2; }
+.kpi-c4::after    { background: #ef4444; }
+.kpi-c5 .kpi-icon { background: #ede9fe; }
+.kpi-c5::after    { background: #8b5cf6; }
+.kpi-c6 .kpi-icon { background: #cffafe; }
+.kpi-c6::after    { background: #06b6d4; }
+.kpi-c7 .kpi-icon { background: #fce7f3; }
+.kpi-c7::after    { background: #ec4899; }
+.kpi-c8 .kpi-icon { background: #f0fdf4; }
+.kpi-c8::after    { background: #22c55e; }
+
+/* ══ CHART CARDS ════════════════════════════════════════ */
+.chart-row   { display: grid; gap: 14px; margin-bottom: 0; }
+.row-3       { grid-template-columns: 2fr 1fr 1fr; }
+.row-2       { grid-template-columns: 1fr 1fr; }
+.row-2-65   { grid-template-columns: 6fr 4fr; }
+.row-full    { grid-template-columns: 1fr; }
+
+.chart-card {
+  background: white; border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+}
+.chart-card-title {
+  font-size: 13px; font-weight: 700; color: #1e293b;
+  margin: 0 0 4px; display: flex; align-items: center; gap: 6px;
+}
+.chart-card-sub {
+  font-size: 11px; color: #9ca3af; margin: 0 0 12px;
+}
+.chart-card-title .badge {
+  font-size: 10px; padding: 2px 7px; border-radius: 99px;
+  font-weight: 600; background: #f3f4f6; color: #6b7280;
+  margin-left: auto;
+}
+
+/* ── mini stat strip below charts ── */
+.stat-strip {
+  display: flex; gap: 16px; margin-top: 10px;
+  padding-top: 10px; border-top: 1px solid #f3f4f6;
+}
+.stat-chip {
+  font-size: 11px; color: #6b7280;
+}
+.stat-chip b { color: #1e293b; }
+
+/* ── login frequency bar ── */
+.login-freq-bars { margin-top: 8px; }
+.lf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.lf-label { font-size: 11px; color: #6b7280; width: 90px; flex-shrink: 0; }
+.lf-bar-wrap { flex: 1; height: 10px; background: #f3f4f6; border-radius: 99px; overflow: hidden; }
+.lf-bar { height: 100%; border-radius: 99px; transition: width 1s ease; }
+.lf-count { font-size: 11px; font-weight: 700; color: #374151; width: 28px; text-align: right; }
+
+/* ── responsive ── */
+@media (max-width: 1200px) {
+  .row-3    { grid-template-columns: 1fr 1fr; }
+  .row-2-65 { grid-template-columns: 1fr; }
+}
+@media (max-width: 800px) {
+  .row-3, .row-2, .row-2-65 { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="aod-page">
+
+  <!-- ══ STICKY HEADER ══════════════════════════════════ -->
+  <div class="aod-header">
+    <span class="live-dot"></span>
+    <span class="aod-header-title">📊 Academic Overview</span>
+    {% if school %}
+    <span class="aod-header-school">{{ school.name }}</span>
+    {% endif %}
+    <button class="aod-refresh-btn" onclick="location.reload()">
+      ↻ Refresh
+    </button>
+    <div class="aod-header-clock" id="liveClock"></div>
+  </div>
+
+  <div class="aod-body">
+
+    <!-- ══ KPI ROW ════════════════════════════════════════ -->
+    <div class="sec-header" style="margin-top:0;">
+      <h2>Key Metrics</h2><hr>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-c1">
+        <div class="kpi-icon">👨‍🎓</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ active_students }}</div>
+          <div class="kpi-label">Active Students</div>
+          <div class="kpi-sub">of {{ total_students }} total enrolled</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-c2">
+        <div class="kpi-icon">🟢</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ online_students }}</div>
+          <div class="kpi-label">Online Now</div>
+          <div class="kpi-sub">logged in within 15 min</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-c3">
+        <div class="kpi-icon">✍️</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ writing_now }}</div>
+          <div class="kpi-label">Writing Tests Now</div>
+          <div class="kpi-sub">answer submitted in last 10 min</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-c4">
+        <div class="kpi-icon">💤</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ inactive_students }}</div>
+          <div class="kpi-label">Inactive Students</div>
+          <div class="kpi-sub">account disabled</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-c5">
+        <div class="kpi-icon">📚</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ total_questions }}</div>
+          <div class="kpi-label">Questions in Library</div>
+          <div class="kpi-sub">across all subjects & grades</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-c6">
+        <div class="kpi-icon">📝</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ total_tests }}</div>
+          <div class="kpi-label">Total Tests</div>
+          <div class="kpi-sub">{{ test_live }} live · {{ test_done }} results out</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-c7">
+        <div class="kpi-icon">⏳</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ pending_grading }}</div>
+          <div class="kpi-label">Awaiting Grading</div>
+          <div class="kpi-sub">tests with ungraded answers</div>
+        </div>
+      </div>
+      <div class="kpi-card kpi-c8">
+        <div class="kpi-icon">🏫</div>
+        <div class="kpi-text">
+          <div class="kpi-value">{{ test_draft }}</div>
+          <div class="kpi-label">Draft Tests</div>
+          <div class="kpi-sub">not yet published</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION: PERFORMANCE OVERVIEW ══════════════════ -->
+    <div class="sec-header">
+      <h2>📈 Performance Overview</h2><hr>
+    </div>
+
+    <div class="chart-row row-3">
+      <!-- Subject Performance -->
+      <div class="chart-card">
+        <p class="chart-card-title">Subject Performance <span class="badge">Avg Score %</span></p>
+        <p class="chart-card-sub">Average student score across all graded tests per subject</p>
+        <div id="chartSubjectPerf"></div>
+      </div>
+      <!-- Grade Distribution -->
+      <div class="chart-card">
+        <p class="chart-card-title">Student Distribution <span class="badge">By Grade</span></p>
+        <p class="chart-card-sub">Enrollment count per academic grade</p>
+        <div id="chartGradeDist"></div>
+      </div>
+      <!-- Test Status -->
+      <div class="chart-card">
+        <p class="chart-card-title">Test Pipeline <span class="badge">Status</span></p>
+        <p class="chart-card-sub">Current lifecycle status of all tests</p>
+        <div id="chartTestStatus"></div>
+        <div class="stat-strip">
+          <div class="stat-chip">Draft <b>{{ test_draft }}</b></div>
+          <div class="stat-chip">Live <b>{{ test_live }}</b></div>
+          <div class="stat-chip">Results Out <b>{{ test_done }}</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION: TRENDS ══════════════════════════════════ -->
+    <div class="sec-header">
+      <h2>📉 Performance Trends</h2><hr>
+    </div>
+
+    <div class="chart-row row-full">
+      <div class="chart-card">
+        <p class="chart-card-title">School Performance Trend <span class="badge">Monthly · Last 12 Months</span></p>
+        <p class="chart-card-sub">Overall average score percentage across all tests — drag to zoom, scroll to pan</p>
+        <div id="chartTrend"></div>
+      </div>
+    </div>
+
+    <div class="chart-row row-2" style="margin-top:14px;">
+      <!-- Per-subject trends -->
+      <div class="chart-card">
+        <p class="chart-card-title">Subject Trends <span class="badge">Last 6 Months</span></p>
+        <p class="chart-card-sub">Month-by-month performance per subject — click legend to isolate</p>
+        <div id="chartSubjTrends"></div>
+      </div>
+      <!-- Score Distribution -->
+      <div class="chart-card">
+        <p class="chart-card-title">Score Distribution <span class="badge">All Tests</span></p>
+        <p class="chart-card-sub">How student scores cluster across 10 % bands</p>
+        <div id="chartScoreDist"></div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION: STUDENT ACTIVITY ════════════════════════ -->
+    <div class="sec-header">
+      <h2>🗓️ Student Activity</h2><hr>
+    </div>
+
+    <div class="chart-row row-2-65">
+      <!-- Daily activity -->
+      <div class="chart-card">
+        <p class="chart-card-title">Daily Active Students <span class="badge">Last 30 Days</span></p>
+        <p class="chart-card-sub">Number of unique students who submitted answers each day</p>
+        <div id="chartActivity"></div>
+      </div>
+      <!-- Login frequency tiers -->
+      <div class="chart-card">
+        <p class="chart-card-title">Login Frequency <span class="badge">Recency Tiers</span></p>
+        <p class="chart-card-sub">Student engagement segmented by last-login recency</p>
+        <div id="chartLoginFreq"></div>
+        <div class="login-freq-bars" id="lfBars"></div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION: TEACHER ANALYTICS ════════════════════════ -->
+    <div class="sec-header">
+      <h2>👩‍🏫 Teacher Analytics</h2><hr>
+    </div>
+
+    <div class="chart-row row-2-65">
+      <!-- Teacher grouped bar -->
+      <div class="chart-card">
+        <p class="chart-card-title">Teacher Performance Metrics <span class="badge">Comparative</span></p>
+        <p class="chart-card-sub">Tests created, students taught, and average student score per teacher</p>
+        <div id="chartTeacherMetrics"></div>
+      </div>
+      <!-- Question types -->
+      <div class="chart-card">
+        <p class="chart-card-title">Question Library Breakdown <span class="badge">By Type</span></p>
+        <p class="chart-card-sub">Proportion of each question type in the question bank</p>
+        <div id="chartQTypes"></div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION: STUDENT PERFORMERS ═══════════════════════ -->
+    <div class="sec-header">
+      <h2>🏆 Student Performance</h2><hr>
+    </div>
+
+    <div class="chart-row row-2">
+      <!-- Top performers -->
+      <div class="chart-card">
+        <p class="chart-card-title">Top Performers <span class="badge">Overall Avg %</span></p>
+        <p class="chart-card-sub">Highest average scores across all graded tests</p>
+        <div id="chartTopPerf"></div>
+      </div>
+      <!-- Needs support -->
+      <div class="chart-card">
+        <p class="chart-card-title">Needs Support <span class="badge">At Risk</span></p>
+        <p class="chart-card-sub">Students with the lowest cumulative scores — flag for intervention</p>
+        <div id="chartBotPerf"></div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION: SUBJECT × GRADE HEATMAP ════════════════ -->
+    <div class="sec-header">
+      <h2>🗺️ Subject × Grade Heatmap</h2><hr>
+    </div>
+
+    <div class="chart-row row-full">
+      <div class="chart-card">
+        <p class="chart-card-title">Subject Mastery Heatmap <span class="badge">Grade vs Subject</span></p>
+        <p class="chart-card-sub">Average score % for each subject-grade combination — hover a cell for exact value</p>
+        <div id="chartHeatmap"></div>
+      </div>
+    </div>
+
+    <!-- spacer -->
+    <div style="height:24px;"></div>
+  </div><!-- /.aod-body -->
+</div><!-- /.aod-page -->
+
+<!-- ══ APEXCHARTS INIT ══════════════════════════════════════ -->
+<script>
+/* ─── Raw data from Django ───────────────────────────────── */
+const D = {
+  subjectLabels:    {{ subject_labels|safe }},
+  subjectScores:    {{ subject_scores|safe }},
+  trendLabels:      {{ trend_labels|safe }},
+  trendScores:      {{ trend_scores|safe }},
+  subjTrendMonths:  {{ subj_trend_months|safe }},
+  subjTrendSeries:  {{ subj_trend_series|safe }},
+  gradeLabels:      {{ grade_labels|safe }},
+  gradeCounts:      {{ grade_counts|safe }},
+  qtLabels:         {{ qt_labels|safe }},
+  qtCounts:         {{ qt_counts|safe }},
+  scoreBands:       {{ score_bands|safe }},
+  teacherNames:     {{ teacher_names|safe }},
+  teacherTests:     {{ teacher_tests_ct|safe }},
+  teacherStudents:  {{ teacher_students_ct|safe }},
+  teacherScores:    {{ teacher_avg_scores|safe }},
+  activityLabels:   {{ activity_labels|safe }},
+  activityCounts:   {{ activity_counts|safe }},
+  topNames:         {{ top_names|safe }},
+  topScores:        {{ top_scores|safe }},
+  botNames:         {{ bot_names|safe }},
+  botScores:        {{ bot_scores|safe }},
+  heatmapSeries:    {{ heatmap_series|safe }},
+  loginFreq:        {{ login_freq_data|safe }},  // [7d, 14d, 30d, old, never]
+};
+
+/* ─── Shared palette ─────────────────────────────────────── */
+const PAL = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#6366f1','#14b8a6','#f97316'];
+
+/* ─── Shared chart defaults ──────────────────────────────── */
+const BASE = {
+  chart:   { fontFamily: 'system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', toolbar: { show: false }, animations: { enabled: true, easing: 'easeinout', speed: 700, animateGradually: { enabled: true, delay: 80 } } },
+  tooltip: { theme: 'light', style: { fontSize: '12px' } },
+  grid:    { borderColor: '#f1f5f9', strokeDashArray: 4 },
+  states:  { hover: { filter: { type: 'lighten', value: 0.08 } } },
+};
+
+/* ═══════════════════════════════════════════════════════════
+   1. SUBJECT PERFORMANCE  –  horizontal bar
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartSubjectPerf'), {
+  ...BASE,
+  series: [{ name: 'Avg Score', data: D.subjectScores }],
+  chart: { ...BASE.chart, type: 'bar', height: 260 },
+  plotOptions: { bar: { horizontal: true, borderRadius: 6, barHeight: '60%', distributed: true } },
+  colors: PAL,
+  dataLabels: { enabled: true, formatter: v => v + '%', style: { fontSize: '11px', fontWeight: 600 } },
+  xaxis: { categories: D.subjectLabels, max: 100, labels: { formatter: v => v + '%', style: { fontSize: '11px' } } },
+  yaxis: { labels: { style: { fontSize: '11px', fontWeight: 600 } } },
+  tooltip: { ...BASE.tooltip, y: { formatter: v => v + '%' } },
+  legend: { show: false },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   2. GRADE DISTRIBUTION  –  donut
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartGradeDist'), {
+  ...BASE,
+  series: D.gradeCounts,
+  chart: { ...BASE.chart, type: 'donut', height: 240 },
+  labels: D.gradeLabels,
+  colors: PAL,
+  plotOptions: {
+    pie: { donut: {
+      size: '60%',
+      labels: { show: true, total: { show: true, label: 'Students', fontSize: '12px', fontWeight: 700 } }
+    }}
+  },
+  dataLabels: { enabled: false },
+  legend: { position: 'bottom', fontSize: '11px', markers: { size: 6 } },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   3. TEST STATUS  –  radial bar (3 arcs)
+   ═══════════════════════════════════════════════════════════ */
+(function(){
+  const total = {{ test_draft }} + {{ test_live }} + {{ test_done }} || 1;
+  new ApexCharts(document.getElementById('chartTestStatus'), {
+    ...BASE,
+    series: [
+      Math.round({{ test_draft }} / total * 100),
+      Math.round({{ test_live  }} / total * 100),
+      Math.round({{ test_done  }} / total * 100),
+    ],
+    chart: { ...BASE.chart, type: 'radialBar', height: 200 },
+    plotOptions: {
+      radialBar: {
+        offsetY: 0, startAngle: -135, endAngle: 135,
+        hollow: { size: '30%' },
+        dataLabels: { name: { fontSize: '11px' }, value: { fontSize: '13px', fontWeight: 700 } },
+        track: { background: '#f1f5f9' },
+      }
+    },
+    labels: ['Draft', 'Live', 'Done'],
+    colors: ['#94a3b8', '#3b82f6', '#10b981'],
+  }).render();
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   4. PERFORMANCE TREND  –  smooth area, zoomable
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartTrend'), {
+  ...BASE,
+  series: [{ name: 'Avg Score %', data: D.trendScores }],
+  chart: {
+    ...BASE.chart, type: 'area', height: 260,
+    toolbar: { show: true, tools: { download: false, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true } },
+    zoom: { enabled: true },
+  },
+  stroke: { curve: 'smooth', width: 3 },
+  fill: { type: 'gradient', gradient: { shadeIntensity: 1, type: 'vertical', colorStops: [
+    [{ offset: 0, color: '#6366f1', opacity: 0.45 }, { offset: 100, color: '#6366f1', opacity: 0.02 }]
+  ]}},
+  markers: { size: 5, strokeWidth: 2, strokeColors: '#fff', hover: { size: 7 } },
+  xaxis: { categories: D.trendLabels, tickAmount: 6, labels: { style: { fontSize: '11px' } } },
+  yaxis: { min: 0, max: 100, labels: { formatter: v => v + '%', style: { fontSize: '11px' } } },
+  colors: ['#6366f1'],
+  tooltip: { ...BASE.tooltip, y: { formatter: v => v + '%' } },
+  annotations: {
+    yaxis: [
+      { y: 80, borderColor: '#10b981', borderWidth: 1.5, strokeDashArray: 4, label: { text: 'Good', style: { background: '#d1fae5', color: '#065f46', fontSize: '10px' } } },
+      { y: 50, borderColor: '#f59e0b', borderWidth: 1.5, strokeDashArray: 4, label: { text: 'Pass', style: { background: '#fef3c7', color: '#92400e', fontSize: '10px' } } },
+    ]
+  }
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   5. SUBJECT TRENDS  –  multi-line (per subject)
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartSubjTrends'), {
+  ...BASE,
+  series: D.subjTrendSeries,
+  chart: { ...BASE.chart, type: 'line', height: 260 },
+  stroke: { curve: 'smooth', width: 2.5 },
+  markers: { size: 4, strokeWidth: 2, strokeColors: '#fff', hover: { size: 6 } },
+  xaxis: { categories: D.subjTrendMonths, labels: { style: { fontSize: '10px' } } },
+  yaxis: { min: 0, max: 100, labels: { formatter: v => v + '%', style: { fontSize: '10px' } } },
+  colors: PAL,
+  tooltip: { ...BASE.tooltip, shared: true, intersect: false, y: { formatter: v => v !== null ? v + '%' : 'N/A' } },
+  legend: { position: 'top', fontSize: '11px', markers: { size: 5 } },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   6. SCORE DISTRIBUTION  –  column bar with gradient fills
+   ═══════════════════════════════════════════════════════════ */
+(function(){
+  const bandColors = [
+    '#fca5a5','#fca5a5',     // 0-10, 10-20  — red tones
+    '#fcd34d','#fcd34d',     // 20-30, 30-40 — amber
+    '#6ee7b7','#6ee7b7',     // 40-50, 50-60 — light green
+    '#34d399','#34d399',     // 60-70, 70-80 — green
+    '#3b82f6','#6366f1',     // 80-90, 90-100 — blue/indigo
+  ];
+  new ApexCharts(document.getElementById('chartScoreDist'), {
+    ...BASE,
+    series: [{ name: 'Students', data: D.scoreBands }],
+    chart: { ...BASE.chart, type: 'bar', height: 260 },
+    plotOptions: { bar: { borderRadius: 6, columnWidth: '72%', distributed: true } },
+    colors: bandColors,
+    dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: 700 } },
+    xaxis: { categories: ['0–10%','10–20%','20–30%','30–40%','40–50%','50–60%','60–70%','70–80%','80–90%','90–100%'], labels: { style: { fontSize: '10px' } } },
+    yaxis: { title: { text: 'Students', style: { fontSize: '11px' } }, labels: { style: { fontSize: '10px' } } },
+    legend: { show: false },
+    tooltip: { ...BASE.tooltip, y: { formatter: v => v + ' students' } },
+  }).render();
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   7. DAILY ACTIVITY  –  smooth area
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartActivity'), {
+  ...BASE,
+  series: [{ name: 'Active Students', data: D.activityCounts }],
+  chart: { ...BASE.chart, type: 'area', height: 240 },
+  stroke: { curve: 'smooth', width: 2.5 },
+  fill: { type: 'gradient', gradient: { shadeIntensity: 1, colorStops: [
+    [{ offset: 0, color: '#06b6d4', opacity: 0.45 }, { offset: 100, color: '#06b6d4', opacity: 0.02 }]
+  ]}},
+  markers: { size: 3, strokeWidth: 2, strokeColors: '#fff' },
+  xaxis: { categories: D.activityLabels, tickAmount: 7, labels: { style: { fontSize: '10px' } } },
+  yaxis: { min: 0, labels: { formatter: v => Math.round(v), style: { fontSize: '10px' } } },
+  colors: ['#06b6d4'],
+  dataLabels: { enabled: false },
+  tooltip: { ...BASE.tooltip, y: { formatter: v => v + ' students' } },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   8. LOGIN FREQUENCY  –  donut + bar breakdown
+   ═══════════════════════════════════════════════════════════ */
+(function(){
+  const labels  = ['Last 7 days','7–14 days','14–30 days','> 30 days','Never logged in'];
+  const colors  = ['#10b981','#3b82f6','#f59e0b','#ef4444','#9ca3af'];
+  const total   = D.loginFreq.reduce((a,b)=>a+b,0) || 1;
+
+  new ApexCharts(document.getElementById('chartLoginFreq'), {
+    ...BASE,
+    series: D.loginFreq,
+    chart: { ...BASE.chart, type: 'donut', height: 180 },
+    labels: labels,
+    colors: colors,
+    plotOptions: { pie: { donut: { size: '55%', labels: { show: true, total: { show: true, label: 'Students', fontSize: '11px', fontWeight: 700 } } } } },
+    dataLabels: { enabled: false },
+    legend: { show: false },
+  }).render();
+
+  // custom legend bars
+  const wrap = document.getElementById('lfBars');
+  labels.forEach((lbl, i) => {
+    const pct = Math.round(D.loginFreq[i] / total * 100);
+    wrap.innerHTML += `
+      <div class="lf-row">
+        <div class="lf-label">${lbl}</div>
+        <div class="lf-bar-wrap"><div class="lf-bar" style="width:${pct}%;background:${colors[i]}"></div></div>
+        <div class="lf-count">${D.loginFreq[i]}</div>
+      </div>`;
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   9. TEACHER METRICS  –  mixed (grouped bar)
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartTeacherMetrics'), {
+  ...BASE,
+  series: [
+    { name: 'Tests Created',   data: D.teacherTests,    type: 'column' },
+    { name: 'Students Taught', data: D.teacherStudents, type: 'column' },
+    { name: 'Avg Score %',     data: D.teacherScores,   type: 'line'   },
+  ],
+  chart: { ...BASE.chart, height: 300, type: 'line',
+    toolbar: { show: false } },
+  plotOptions: { bar: { columnWidth: '55%', borderRadius: 5, grouped: true } },
+  stroke: { width: [0, 0, 3], curve: 'smooth' },
+  markers: { size: [0, 0, 5], strokeColors: '#fff', strokeWidth: 2 },
+  fill: { opacity: [0.92, 0.92, 1] },
+  xaxis: { categories: D.teacherNames, labels: { style: { fontSize: '10px' } } },
+  yaxis: [
+    { seriesName: 'Tests Created',   title: { text: 'Count', style: { fontSize: '10px' } }, labels: { style: { fontSize: '10px' } } },
+    { seriesName: 'Students Taught', show: false },
+    { seriesName: 'Avg Score %',     opposite: true, min: 0, max: 100, title: { text: 'Score %', style: { fontSize: '10px' } }, labels: { formatter: v => v + '%', style: { fontSize: '10px' } } },
+  ],
+  colors: ['#3b82f6','#8b5cf6','#10b981'],
+  legend: { position: 'top', fontSize: '11px', markers: { size: 5 } },
+  tooltip: { ...BASE.tooltip, shared: true, intersect: false },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   10. QUESTION TYPES  –  pie
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartQTypes'), {
+  ...BASE,
+  series: D.qtCounts,
+  chart: { ...BASE.chart, type: 'pie', height: 280 },
+  labels: D.qtLabels,
+  colors: ['#6366f1','#f59e0b','#10b981','#ef4444','#06b6d4'],
+  dataLabels: { style: { fontSize: '12px', fontWeight: 700 } },
+  legend: { position: 'bottom', fontSize: '11px', markers: { size: 6 } },
+  tooltip: { ...BASE.tooltip, y: { formatter: v => v + ' questions' } },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   11. TOP PERFORMERS  –  horizontal bar (green gradient)
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartTopPerf'), {
+  ...BASE,
+  series: [{ name: 'Avg Score', data: D.topScores }],
+  chart: { ...BASE.chart, type: 'bar', height: 280 },
+  plotOptions: { bar: { horizontal: true, borderRadius: 6, barHeight: '65%', distributed: true } },
+  colors: D.topScores.map(s => s>=80?'#10b981':s>=60?'#3b82f6':s>=40?'#f59e0b':'#ef4444'),
+  dataLabels: { enabled: true, formatter: v => v + '%', style: { fontSize: '11px', fontWeight: 700 } },
+  xaxis: { categories: D.topNames, max: 100, labels: { formatter: v => v + '%', style: { fontSize: '10px' } } },
+  yaxis: { labels: { style: { fontSize: '11px', fontWeight: 600 }, maxWidth: 160 } },
+  legend: { show: false },
+  tooltip: { ...BASE.tooltip, y: { formatter: v => v + '%' } },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   12. AT-RISK STUDENTS  –  horizontal bar (red gradient)
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartBotPerf'), {
+  ...BASE,
+  series: [{ name: 'Avg Score', data: D.botScores }],
+  chart: { ...BASE.chart, type: 'bar', height: 280 },
+  plotOptions: { bar: { horizontal: true, borderRadius: 6, barHeight: '65%', distributed: true } },
+  colors: D.botScores.map(s => s>=80?'#10b981':s>=60?'#3b82f6':s>=40?'#f59e0b':'#ef4444'),
+  dataLabels: { enabled: true, formatter: v => v + '%', style: { fontSize: '11px', fontWeight: 700 } },
+  xaxis: { categories: D.botNames, max: 100, labels: { formatter: v => v + '%', style: { fontSize: '10px' } } },
+  yaxis: { labels: { style: { fontSize: '11px', fontWeight: 600 }, maxWidth: 160 } },
+  legend: { show: false },
+  tooltip: { ...BASE.tooltip, y: { formatter: v => v + '%' } },
+}).render();
+
+/* ═══════════════════════════════════════════════════════════
+   13. SUBJECT × GRADE HEATMAP
+   ═══════════════════════════════════════════════════════════ */
+new ApexCharts(document.getElementById('chartHeatmap'), {
+  ...BASE,
+  series: D.heatmapSeries,
+  chart: { ...BASE.chart, type: 'heatmap', height: Math.max(200, D.heatmapSeries.length * 46) },
+  dataLabels: {
+    enabled: true,
+    formatter: v => v > 0 ? v + '%' : '–',
+    style: { fontSize: '10px', fontWeight: 700, colors: ['#1e293b'] }
+  },
+  colors: ['#3b82f6'],
+  plotOptions: {
+    heatmap: {
+      shadeIntensity: 0.65, radius: 4, useFillColorAsStroke: false,
+      colorScale: {
+        ranges: [
+          { from: 0,  to: 1,  color: '#f3f4f6', name: 'No data' },
+          { from: 1,  to: 40, color: '#fca5a5', name: 'Weak (<40%)' },
+          { from: 40, to: 60, color: '#fde68a', name: 'Developing' },
+          { from: 60, to: 80, color: '#6ee7b7', name: 'Good' },
+          { from: 80, to: 100,color: '#34d399', name: 'Mastered' },
+        ]
+      }
+    }
+  },
+  legend: { show: true, position: 'bottom', fontSize: '11px' },
+  stroke: { width: 2, colors: ['#f4f6f8'] },
+  tooltip: { ...BASE.tooltip, y: { formatter: v => v > 0 ? v + '%' : 'No data' } },
+}).render();
+
+/* ─── Live clock ─────────────────────────────────────────── */
+(function tick(){
+  const el = document.getElementById('liveClock');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleDateString('en-GB', {weekday:'short',day:'2-digit',month:'short',year:'numeric'})
+    + '  ' + now.toLocaleTimeString('en-GB');
+  setTimeout(tick, 1000);
+})();
+</script>
+{% endblock %}

@@ -6,6 +6,9 @@
 {% endblock %}
 
 {% block content %}
+<!-- Flatpickr: dd/mm/yyyy date display -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>.flatpickr-input.form-control{display:none!important}</style>
 
 <style>
 /* ===================== LAYOUT ===================== */
@@ -140,6 +143,27 @@
   flex-wrap: wrap;
   gap: 12px;
 }
+
+/* ── Custom Question Panel ── */
+.cq-label { display:block; font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; margin-bottom:5px; }
+.cq-select { width:100%; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; font-size:14px; background:white; color:#111827; }
+.cq-select:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+.cq-toolbar { display:flex; gap:4px; background:#f9fafb; border:1px solid #e5e7eb; border-bottom:none; border-radius:8px 8px 0 0; padding:5px 8px; flex-wrap:wrap; }
+.cq-toolbar button { background:white; border:1px solid #e5e7eb; border-radius:5px; padding:3px 8px; font-size:12px; cursor:pointer; color:#374151; line-height:1.4; }
+.cq-toolbar button:hover { background:#ede9fe; border-color:#8b5cf6; }
+.cq-opt-toolbar { border-radius:6px 6px 0 0; }
+.cq-editor { min-height:80px; border:1.5px solid #d1d5db; border-radius:0 8px 8px 8px; padding:10px 12px; font-size:14px; line-height:1.6; color:#111827; background:white; outline:none; }
+.cq-editor:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.12); }
+.cq-editor-sm { min-height:54px; }
+.cq-editor:empty::before { content:attr(data-placeholder); color:#9ca3af; pointer-events:none; }
+.cq-opt-badge { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; flex-shrink:0; }
+.cq-opt-A { background:#dbeafe; color:#1d4ed8; }
+.cq-opt-B { background:#d1fae5; color:#065f46; }
+.cq-opt-C { background:#fef3c7; color:#92400e; }
+.cq-opt-D { background:#ede9fe; color:#5b21b6; }
+.cq-key-btn { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; border-radius:50%; border:2px solid #e5e7eb; font-weight:800; font-size:16px; cursor:pointer; transition:all .15s; color:#6b7280; user-select:none; }
+.cq-key-btn:hover { border-color:#6366f1; color:#6366f1; }
+input[type=radio]:checked + .cq-key-btn { background:#6366f1; border-color:#6366f1; color:white; box-shadow:0 0 0 4px rgba(99,102,241,.2); }
 
 /* ===================== QUESTIONS SECTION ===================== */
 .questions-section {
@@ -591,9 +615,12 @@
         <div class="meta-field">
           <label>Start Date & Time</label>
           <input
-            type="datetime-local"
+            type="text"
+            id="start_time_picker"
             name="start_time"
             value="{{ test.start_time|date:'Y-m-d\TH:i' }}"
+            placeholder="dd/mm/yyyy hh:mm"
+            autocomplete="off"
           >
         </div>
         
@@ -642,6 +669,9 @@
         >
           📚 Add Questions from Library
         </a>
+        <button type="button" class="btn secondary" onclick="toggleCustomQPanel()" id="customQToggleBtn">
+          ✏️ Create Custom Question
+        </button>
       </div>
       
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -651,6 +681,101 @@
         <a href="{% url 'tests_list' %}" class="btn secondary">
           Cancel
         </a>
+      </div>
+    </div>
+
+    <!-- ══ CUSTOM QUESTION PANEL ══════════════════════════════════ -->
+    <div id="customQPanel" style="display:none; margin-bottom:20px;">
+      <div style="background:#fff; border:1.5px solid #e5e7eb; border-radius:14px; padding:24px; box-shadow:0 4px 16px rgba(0,0,0,.06);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;">
+          <h3 style="margin:0; font-size:16px; color:#111827;">✏️ Create Custom Question</h3>
+          <button type="button" onclick="toggleCustomQPanel()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;">×</button>
+        </div>
+
+        <!-- Meta row: Grade / Subject / Topic / Marks -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:12px; margin-bottom:18px;">
+          <div>
+            <label class="cq-label">Grade *</label>
+            <select id="cqGrade" class="cq-select" onchange="cqLoadTopics()">
+              <option value="">— Grade —</option>
+              {% for g in grades %}<option value="{{ g.id }}">{{ g.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="cq-label">Subject *</label>
+            <select id="cqSubject" class="cq-select" onchange="cqLoadTopics()">
+              <option value="">— Subject —</option>
+              {% for s in subjects %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="cq-label">Topic *</label>
+            <select id="cqTopic" class="cq-select">
+              <option value="">— Select grade & subject first —</option>
+            </select>
+          </div>
+          <div>
+            <label class="cq-label">Marks</label>
+            <input type="number" id="cqMarks" value="1" min="1" max="100"
+              style="width:70px; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:8px; font-size:14px;">
+          </div>
+        </div>
+
+        <!-- Question text editor -->
+        <div style="margin-bottom:16px;">
+          <label class="cq-label">Question Text *</label>
+          <div class="cq-toolbar" id="cqQToolbar">
+            <button type="button" onclick="cqFmt('cqQEditor','bold')"        title="Bold"><b>B</b></button>
+            <button type="button" onclick="cqFmt('cqQEditor','italic')"       title="Italic"><i>I</i></button>
+            <button type="button" onclick="cqFmt('cqQEditor','underline')"    title="Underline"><u>U</u></button>
+            <button type="button" onclick="cqFmt('cqQEditor','subscript')"    title="Subscript">X₂</button>
+            <button type="button" onclick="cqFmt('cqQEditor','superscript')"  title="Superscript">X²</button>
+          </div>
+          <div id="cqQEditor" class="cq-editor" contenteditable="true" data-placeholder="Enter the question stem here…"></div>
+        </div>
+
+        <!-- MCQ Options -->
+        <div style="margin-bottom:16px;">
+          <label class="cq-label">Answer Options (MCQ)</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            {% for opt in "ABCD" %}
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <div class="cq-opt-badge cq-opt-{{ opt }}">{{ opt }}</div>
+                <div class="cq-toolbar cq-opt-toolbar" style="margin:0;">
+                  <button type="button" onclick="cqFmt('cqOpt{{ opt }}','bold')"      ><b>B</b></button>
+                  <button type="button" onclick="cqFmt('cqOpt{{ opt }}','italic')"     ><i>I</i></button>
+                  <button type="button" onclick="cqFmt('cqOpt{{ opt }}','subscript')"  >X₂</button>
+                  <button type="button" onclick="cqFmt('cqOpt{{ opt }}','superscript')">X²</button>
+                </div>
+              </div>
+              <div id="cqOpt{{ opt }}" class="cq-editor cq-editor-sm" contenteditable="true" data-placeholder="Option {{ opt }}…"></div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Answer Key -->
+        <div style="margin-bottom:20px;">
+          <label class="cq-label">Correct Answer Key *</label>
+          <div style="display:flex; gap:10px; margin-top:6px;">
+            {% for opt in "ABCD" %}
+            <label class="cq-key-label">
+              <input type="radio" name="cqAnswerKey" value="{{ opt }}" style="display:none;">
+              <span class="cq-key-btn" id="cqKeyBtn{{ opt }}">{{ opt }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button type="button" class="btn success" onclick="submitCustomQuestion()" id="cqSubmitBtn">
+            ➕ Add to Test
+          </button>
+          <button type="button" class="btn secondary" onclick="toggleCustomQPanel()">Cancel</button>
+          <span id="cqStatus" style="font-size:13px; color:#6b7280;"></span>
+        </div>
       </div>
     </div>
 
@@ -1128,6 +1253,198 @@ document.addEventListener('DOMContentLoaded', () => {
     updateHiddenInputs();
   });
 });
+</script>
+
+<!-- ══ CUSTOM QUESTION PANEL — JS ══════════════════════════════ -->
+<script>
+/* Toggle panel */
+function toggleCustomQPanel() {
+  var panel = document.getElementById('customQPanel');
+  var btn   = document.getElementById('customQToggleBtn');
+  var open  = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '✏️ Create Custom Question' : '× Cancel Custom';
+  if (!open) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* execCommand wrapper scoped to a specific editor div */
+function cqFmt(editorId, cmd) {
+  var el = document.getElementById(editorId);
+  if (!el) return;
+  el.focus();
+  document.execCommand(cmd, false, null);
+}
+
+/* Load topics whenever grade or subject changes */
+function cqLoadTopics() {
+  var grade   = document.getElementById('cqGrade').value;
+  var subject = document.getElementById('cqSubject').value;
+  var sel     = document.getElementById('cqTopic');
+  sel.innerHTML = '<option value="">Loading…</option>';
+  if (!grade || !subject) {
+    sel.innerHTML = '<option value="">— Select grade & subject first —</option>';
+    return;
+  }
+  fetch('/ajax/topics/?grade_id=' + grade + '&subject_id=' + subject)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var topics = data.topics || data;
+      sel.innerHTML = '<option value="">— Topic —</option>';
+      topics.forEach(function(t) {
+        sel.innerHTML += '<option value="' + t.id + '">' + t.name + '</option>';
+      });
+    })
+    .catch(function() {
+      sel.innerHTML = '<option value="">— Error loading topics —</option>';
+    });
+}
+
+/* Build & submit the custom question */
+function submitCustomQuestion() {
+  var grade   = document.getElementById('cqGrade').value;
+  var subject = document.getElementById('cqSubject').value;
+  var topic   = document.getElementById('cqTopic').value;
+  var marks   = parseInt(document.getElementById('cqMarks').value) || 1;
+  var qHtml   = document.getElementById('cqQEditor').innerHTML.trim();
+  var optA    = document.getElementById('cqOptA').innerHTML.trim();
+  var optB    = document.getElementById('cqOptB').innerHTML.trim();
+  var optC    = document.getElementById('cqOptC').innerHTML.trim();
+  var optD    = document.getElementById('cqOptD').innerHTML.trim();
+  var keyEl   = document.querySelector('input[name="cqAnswerKey"]:checked');
+  var ansKey  = keyEl ? keyEl.value : '';
+  var status  = document.getElementById('cqStatus');
+
+  /* Validation */
+  if (!grade)   { cqSetStatus('⚠ Please select a grade.',   'red'); return; }
+  if (!subject) { cqSetStatus('⚠ Please select a subject.', 'red'); return; }
+  if (!topic)   { cqSetStatus('⚠ Please select a topic.',   'red'); return; }
+  if (!qHtml || qHtml === '<br>')  { cqSetStatus('⚠ Question text is required.', 'red'); return; }
+  if (!optA || optA === '<br>') { cqSetStatus('⚠ Option A is required.', 'red'); return; }
+  if (!optB || optB === '<br>') { cqSetStatus('⚠ Option B is required.', 'red'); return; }
+  if (!ansKey)  { cqSetStatus('⚠ Please select the correct answer key.', 'red'); return; }
+
+  /* Build question_text: question stem + options as formatted HTML */
+  var questionText =
+    '<div class="cq-question-stem">' + qHtml + '</div>' +
+    '<div class="cq-mcq-options" style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+      '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">' +
+        '<span style="font-weight:800;color:#1d4ed8;min-width:20px;">A.</span><span>' + optA + '</span></div>' +
+      '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">' +
+        '<span style="font-weight:800;color:#065f46;min-width:20px;">B.</span><span>' + optB + '</span></div>' +
+      (optC && optC !== '<br>'
+        ? '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">' +
+            '<span style="font-weight:800;color:#92400e;min-width:20px;">C.</span><span>' + optC + '</span></div>'
+        : '') +
+      (optD && optD !== '<br>'
+        ? '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">' +
+            '<span style="font-weight:800;color:#5b21b6;min-width:20px;">D.</span><span>' + optD + '</span></div>'
+        : '') +
+    '</div>';
+
+  var btn = document.getElementById('cqSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+  cqSetStatus('', '');
+
+  fetch('{% url "inline_add_question" test.id %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': '{{ csrf_token }}'
+    },
+    body: JSON.stringify({
+      question_text: questionText,
+      answer_text:   ansKey,
+      marks:         marks,
+      question_type: 'mcq',
+      grade:   parseInt(grade),
+      subject: parseInt(subject),
+      topic:   parseInt(topic)
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false;
+    btn.textContent = '➕ Add to Test';
+    if (data.status === 'ok') {
+      cqSetStatus('✓ Question added successfully!', 'green');
+      cqResetPanel();
+      /* Inject new question card into the list without page reload */
+      var list = document.getElementById('questionsList');
+      var emptyState = list.querySelector('.empty-state');
+      if (emptyState) emptyState.remove();
+      var card = document.createElement('div');
+      card.className = 'question-card';
+      card.dataset.questionId = data.question_id;
+      card.innerHTML =
+        '<div class="question-header">' +
+          '<span class="question-number">Q' + (list.querySelectorAll('.question-card').length + 1) + '</span>' +
+          '<div class="question-actions">' +
+            '<button type="button" class="icon-btn" onclick="removeQuestion(' + data.order + ')" title="Remove from test">🗑️</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="question-content">' + questionText + '</div>' +
+        '<div class="question-meta">' +
+          '<span class="meta-badge">' + marks + ' mark' + (marks !== 1 ? 's' : '') + '</span>' +
+          '<span class="meta-badge">MCQ</span>' +
+          '<span class="meta-badge answer-key-badge">Key: ' + ansKey + '</span>' +
+        '</div>';
+      list.appendChild(card);
+    } else {
+      cqSetStatus('✗ ' + (data.error || 'Failed to add question.'), 'red');
+    }
+  })
+  .catch(function(e) {
+    btn.disabled = false;
+    btn.textContent = '➕ Add to Test';
+    cqSetStatus('✗ Network error. Please try again.', 'red');
+  });
+}
+
+function cqSetStatus(msg, color) {
+  var s = document.getElementById('cqStatus');
+  s.textContent = msg;
+  s.style.color = color === 'red' ? '#ef4444' : color === 'green' ? '#10b981' : '#6b7280';
+}
+
+function cqResetPanel() {
+  ['cqQEditor','cqOptA','cqOptB','cqOptC','cqOptD'].forEach(function(id) {
+    document.getElementById(id).innerHTML = '';
+  });
+  var checked = document.querySelector('input[name="cqAnswerKey"]:checked');
+  if (checked) checked.checked = false;
+  document.getElementById('cqMarks').value = 1;
+}
+</script>
+
+<!-- Flatpickr init -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+(function () {
+  var input = document.getElementById('start_time_picker');
+  if (!input) return;
+
+  // Copy any existing classes so the alt input looks identical
+  var existingVal = input.value; // e.g. "2025-03-15T09:00"
+
+  flatpickr(input, {
+    enableTime: true,
+    time_24hr: true,
+    dateFormat: 'Y-m-d\\TH:i',   // what gets submitted → Django-parseable
+    altInput: true,
+    altFormat: 'd/m/Y H:i',       // what the teacher sees → dd/mm/yyyy HH:MM
+    allowInput: true,
+    defaultDate: existingVal || null,
+    // Inherit the same CSS class/styling as other meta inputs
+    onReady: function(_, __, fp) {
+      if (fp.altInput) {
+        fp.altInput.style.cssText = input.style.cssText;
+        fp.altInput.className = input.className;
+        fp.altInput.placeholder = 'dd/mm/yyyy hh:mm';
+      }
+    }
+  });
+})();
 </script>
 
 {% endblock %}

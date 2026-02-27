@@ -2,6 +2,7 @@
 Bulk Import Views - For importing users from XLSX / XLS / CSV files
 """
 import re
+import csv
 import datetime
 
 try:
@@ -30,7 +31,6 @@ def _safe_str(val):
     import math
     if isinstance(val, float) and math.isnan(val):
         return ''
-    # pandas / numpy ints come as numpy.int64 etc – convert to native int first
     try:
         val = val.item()   # numpy scalar → python scalar
     except AttributeError:
@@ -72,15 +72,18 @@ def _next_admission_id(school):
     return f"{prefix}{str(max_num + 1).zfill(3)}"
 
 
-def _read_excel(file_obj):
-    """Read an uploaded file (xlsx/xls/csv) into a DataFrame robustly."""
+def _read_file(file_obj):
+    """Read an uploaded file (xlsx/xls/csv) into a DataFrame.
+
+    Always reads the FIRST sheet of Excel files.
+    Columns are normalised: stripped, lowercased, spaces→underscores.
+    """
     name = getattr(file_obj, 'name', '').lower()
     if name.endswith('.csv'):
         df = pd.read_csv(file_obj, dtype=str)
     else:
-        # dtype=str prevents pandas from auto-converting numbers → floats
-        df = pd.read_excel(file_obj, dtype=str)
-    # Normalise column names: strip whitespace, lowercase
+        # sheet_name=0 → always read first sheet (prevents two-sheet confusion)
+        df = pd.read_excel(file_obj, dtype=str, sheet_name=0)
     df.columns = [c.strip().lower().replace(' ', '_') for c in df.columns]
     return df
 
@@ -89,35 +92,57 @@ def _read_excel(file_obj):
 
 @login_required
 def bulk_import_users(request):
-    """Bulk import users from XLSX / XLS / CSV file."""
+    """Bulk import students OR teachers from a CSV / XLSX file.
+
+    Fields are 100% aligned with the individual add_user form:
+      Common   : full_name, email (used as username), password
+      Students : grade (req), division (req), roll_number (opt), admission_id (opt)
+      Teachers : subject (opt)
+    """
     if not _PANDAS_AVAILABLE:
-        messages.error(request, 'Bulk import requires pandas which is not installed on this server. '
-                                 'Ask your administrator to run: pip install pandas openpyxl')
+        messages.error(
+            request,
+            'Bulk import requires pandas. '
+            'Ask your administrator to run: pip install pandas openpyxl'
+        )
         return redirect('teacher_dashboard')
 
-    if request.user.profile.role not in ['teacher', 'school_admin']:
+    profile = request.user.profile
+    if profile.role not in ['teacher', 'school_admin']:
         messages.error(request, "You don't have permission to import users.")
         return redirect('teacher_dashboard')
 
-    school = request.user.profile.school
+    school = profile.school
+    is_school_admin = (
+        profile.role in ['school_admin', 'superuser'] or request.user.is_superuser
+    )
 
     if request.method == 'POST':
+        import_type = request.POST.get('import_type', 'student')  # 'student' | 'teacher'
 
         # ── STEP 1: PREVIEW ────────────────────────────────────────────────
         if 'preview' in request.POST:
+            if import_type == 'teacher' and not is_school_admin:
+                messages.error(request, "Only school administrators can import teacher accounts.")
+                return redirect('bulk_import_users')
+
             excel_file = request.FILES.get('excel_file')
             if not excel_file:
-                messages.error(request, "Please upload an Excel file.")
+                messages.error(request, "Please upload a file.")
                 return redirect('bulk_import_users')
 
             try:
-                df = _read_excel(excel_file)
+                df = _read_file(excel_file)
             except Exception as e:
                 messages.error(request, f"Could not read file: {e}")
                 return redirect('bulk_import_users')
 
-            # Check required columns (case-insensitive, already lowercased)
-            required_cols = ['username', 'email', 'password', 'first_name', 'last_name', 'role']
+            # Required columns — mirrors the individual creation form exactly
+            if import_type == 'student':
+                required_cols = ['full_name', 'email', 'password', 'grade', 'division']
+            else:
+                required_cols = ['full_name', 'email', 'password']
+
             missing = [c for c in required_cols if c not in df.columns]
             if missing:
                 messages.error(
@@ -127,18 +152,21 @@ def bulk_import_users(request):
                 )
                 return redirect('bulk_import_users')
 
-            # Fill NaN → '' and convert to records
             preview_data = df.fillna('').astype(str).to_dict('records')
             request.session['import_data'] = preview_data
+            request.session['import_type'] = import_type
 
             return render(request, 'teacher/bulk_import_preview.html', {
                 'preview_data': preview_data[:50],
                 'total_rows': len(preview_data),
+                'import_type': import_type,
             })
 
         # ── STEP 2: CONFIRM IMPORT ─────────────────────────────────────────
         elif 'confirm_import' in request.POST:
             import_data = request.session.get('import_data', [])
+            import_type = request.session.get('import_type', 'student')
+
             if not import_data:
                 messages.error(request, "No data to import. Please upload the file again.")
                 return redirect('bulk_import_users')
@@ -150,35 +178,43 @@ def bulk_import_users(request):
             with transaction.atomic():
                 for idx, row in enumerate(import_data, start=2):
                     try:
-                        username   = _safe_str(row.get('username', ''))
-                        email      = _safe_str(row.get('email', ''))
-                        password   = _safe_str(row.get('password', ''))
-                        first_name = _safe_str(row.get('first_name', ''))
-                        last_name  = _safe_str(row.get('last_name', ''))
-                        role       = _safe_str(row.get('role', '')).lower()
+                        full_name = _safe_str(row.get('full_name', ''))
+                        email     = _safe_str(row.get('email', '')).lower()
+                        password  = _safe_str(row.get('password', ''))
 
-                        # ── Basic validation ──────────────────────────────
-                        if not all([username, email, password, first_name, last_name, role]):
-                            errors.append(f"Row {idx}: Missing required fields")
-                            error_count += 1
-                            continue
-
-                        if role not in ['student', 'teacher']:
+                        # ── Validate common required fields ───────────────
+                        if not full_name or not email or not password:
                             errors.append(
-                                f"Row {idx}: Invalid role '{role}' — must be 'student' or 'teacher'"
+                                f"Row {idx}: Missing required field(s) — "
+                                f"full_name, email and password are all required"
                             )
                             error_count += 1
                             continue
 
+                        if len(password) < 8:
+                            errors.append(
+                                f"Row {idx}: Password too short (minimum 8 characters)"
+                            )
+                            error_count += 1
+                            continue
+
+                        # Email is used as the username (matches individual form)
+                        username = email
+
                         if User.objects.filter(username=username).exists():
-                            errors.append(f"Row {idx}: Username '{username}' already exists")
+                            errors.append(f"Row {idx}: '{email}' already has an account")
                             error_count += 1
                             continue
 
                         if User.objects.filter(email=email).exists():
-                            errors.append(f"Row {idx}: Email '{email}' already exists")
+                            errors.append(f"Row {idx}: Email '{email}' already in use")
                             error_count += 1
                             continue
+
+                        # Split full_name → first_name / last_name (mirrors add_user)
+                        name_parts = full_name.split()
+                        first_name = name_parts[0] if name_parts else ''
+                        last_name  = ' '.join(name_parts[1:]) if len(name_parts) > 1 else ''
 
                         # ── Create Django User ────────────────────────────
                         user = User.objects.create_user(
@@ -187,44 +223,40 @@ def bulk_import_users(request):
                             password=password,
                             first_name=first_name,
                             last_name=last_name,
-                        )
-                        if role == 'teacher':
-                            user.is_staff = True
-                            user.save()
-
-                        # ── Resolve grade / section (students) ────────────
-                        grade_name  = _safe_str(row.get('grade', ''))   or 'General'
-                        section     = _safe_str(row.get('division', '')) or 'A'
-
-                        # Attempt to extract numeric grade for UserProfile.grade
-                        grade_num = None
-                        try:
-                            grade_num = int(grade_name)
-                        except (ValueError, TypeError):
-                            pass
-
-                        # ── Create UserProfile ────────────────────────────
-                        profile = UserProfile.objects.create(
-                            user=user,
-                            role=role,
-                            school=school,
-                            grade=grade_num,
-                            division=section if role == 'student' else None,
+                            is_staff=(import_type == 'teacher'),
                         )
 
-                        # ── Student-specific record ───────────────────────
-                        if role == 'student':
-                            full_name    = _safe_str(row.get('full_name', ''))   or f"{first_name} {last_name}"
+                        # ── Student path ──────────────────────────────────
+                        if import_type == 'student':
+                            grade_name = _safe_str(row.get('grade', ''))
+                            division   = _safe_str(row.get('division', ''))
+
+                            if not grade_name or not division:
+                                raise ValueError(
+                                    "Grade and Division are required for students"
+                                )
+
+                            grade_num = None
+                            try:
+                                grade_num = int(grade_name)
+                            except (ValueError, TypeError):
+                                pass
+
+                            UserProfile.objects.create(
+                                user=user,
+                                role='student',
+                                school=school,
+                                grade=grade_num,
+                                division=division,
+                            )
+
                             roll_number  = _safe_str(row.get('roll_number', ''))
                             admission_id = _safe_str(row.get('admission_id', ''))
 
                             grade_obj, _ = Grade.objects.get_or_create(name=grade_name)
 
-                            # Auto-assign roll number if blank
                             if not roll_number:
-                                roll_number = _next_roll(school, grade_obj, section)
-
-                            # Auto-assign admission ID if blank
+                                roll_number = _next_roll(school, grade_obj, division)
                             if not admission_id:
                                 admission_id = _next_admission_id(school)
 
@@ -235,16 +267,21 @@ def bulk_import_users(request):
                                 roll_number=roll_number,
                                 admission_id=admission_id,
                                 grade=grade_obj,
-                                section=section,
+                                section=division,
                                 created_by=request.user,
                             )
 
-                        # ── Teacher subject ───────────────────────────────
-                        if role == 'teacher':
+                        # ── Teacher path ──────────────────────────────────
+                        else:
+                            profile_obj = UserProfile.objects.create(
+                                user=user,
+                                role='teacher',
+                                school=school,
+                            )
                             subject = _safe_str(row.get('subject', ''))
                             if subject:
-                                profile.subject = subject
-                                profile.save()
+                                profile_obj.subject = subject
+                                profile_obj.save()
 
                         success_count += 1
 
@@ -252,91 +289,69 @@ def bulk_import_users(request):
                         errors.append(f"Row {idx}: {e}")
                         error_count += 1
 
-            # Clear session
+            # Clear session data
             request.session.pop('import_data', None)
+            request.session.pop('import_type', None)
 
+            role_label = 'student' if import_type == 'student' else 'teacher'
             if success_count:
-                messages.success(request, f"✅ Successfully imported {success_count} user(s).")
+                messages.success(
+                    request,
+                    f"Successfully imported {success_count} {role_label}(s)."
+                )
             if error_count:
-                messages.warning(request, f"⚠️ {error_count} row(s) had errors (shown below).")
+                messages.warning(request, f"{error_count} row(s) had errors (see below).")
                 for err in errors[:10]:
                     messages.error(request, err)
 
             return redirect('manage_users')
 
-    return render(request, 'teacher/bulk_import_users.html')
+    return render(request, 'teacher/bulk_import_users.html', {
+        'is_school_admin': is_school_admin,
+    })
+
+
+# ── Template downloads ────────────────────────────────────────────────────────
+
+@login_required
+def download_student_template(request):
+    """Download CSV template for student bulk import.
+
+    Columns match the individual Add User form (student) exactly:
+      full_name, email, password, grade, division, roll_number, admission_id
+    """
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename=student_import_template.csv'
+
+    writer = csv.writer(response)
+    writer.writerow(['full_name', 'email', 'password', 'grade', 'division', 'roll_number', 'admission_id'])
+    writer.writerow(['Alice Johnson',  'alice.johnson@school.com',  'Pass@1234', 'AS Level', 'A', '', ''])
+    writer.writerow(['Bob Williams',   'bob.williams@school.com',   'Pass@1234', 'AS Level', 'A', '', ''])
+    writer.writerow(['Charlie Brown',  'charlie.brown@school.com',  'Pass@1234', 'A Level',  'B', '3', 'ADM2024003'])
+
+    return response
+
+
+@login_required
+def download_teacher_template(request):
+    """Download CSV template for teacher bulk import.
+
+    Columns match the individual Add User form (teacher) exactly:
+      full_name, email, password, subject
+    """
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename=teacher_import_template.csv'
+
+    writer = csv.writer(response)
+    writer.writerow(['full_name', 'email', 'password', 'subject'])
+    writer.writerow(['John Peterson', 'john.peterson@school.com', 'Teach@123', 'Physics'])
+    writer.writerow(['Mary Chen',     'mary.chen@school.com',     'Teach@123', 'Chemistry'])
+    writer.writerow(['Sarah Davis',   'sarah.davis@school.com',   'Teach@123', ''])
+
+    return response
 
 
 @login_required
 def download_user_template(request):
-    """Generate and download Excel template for bulk user import."""
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment
-
-    wb = Workbook()
-
-    # ── Students sheet ──
-    ws_s = wb.active
-    ws_s.title = "Students"
-
-    student_headers = [
-        'username', 'email', 'password', 'first_name', 'last_name',
-        'role', 'full_name', 'roll_number', 'admission_id', 'grade', 'division'
-    ]
-
-    for col, hdr in enumerate(student_headers, 1):
-        cell = ws_s.cell(row=1, column=col, value=hdr)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        cell.alignment = Alignment(horizontal='center')
-
-    sample_students = [
-        ['alice.johnson', 'alice@school.com', 'Pass@1234', 'Alice', 'Johnson',
-         'student', 'Alice Johnson', '', '', 'AS Level', 'A'],
-        ['bob.williams',  'bob@school.com',   'Pass@1234', 'Bob',   'Williams',
-         'student', 'Bob Williams',  '', '', 'AS Level', 'A'],
-        ['charlie.brown', 'charlie@school.com','Pass@1234', 'Charlie','Brown',
-         'student', 'Charlie Brown', '', '', 'A Level',  'B'],
-    ]
-
-    for r, row in enumerate(sample_students, 2):
-        for c, val in enumerate(row, 1):
-            ws_s.cell(row=r, column=c, value=val)
-
-    # ── Teachers sheet ──
-    ws_t = wb.create_sheet("Teachers")
-
-    teacher_headers = [
-        'username', 'email', 'password', 'first_name', 'last_name', 'role', 'subject'
-    ]
-
-    for col, hdr in enumerate(teacher_headers, 1):
-        cell = ws_t.cell(row=1, column=col, value=hdr)
-        cell.font = Font(bold=True, color="FFFFFF")
-        cell.fill = PatternFill(start_color="70AD47", end_color="70AD47", fill_type="solid")
-        cell.alignment = Alignment(horizontal='center')
-
-    sample_teachers = [
-        ['john.physics', 'john.p@school.com', 'Teach@123', 'John', 'Peterson', 'teacher', 'Physics'],
-        ['mary.chem',    'mary.c@school.com',  'Teach@123', 'Mary', 'Chen',     'teacher', 'Chemistry'],
-    ]
-
-    for r, row in enumerate(sample_teachers, 2):
-        for c, val in enumerate(row, 1):
-            ws_t.cell(row=r, column=c, value=val)
-
-    # Auto-fit columns
-    for ws in [ws_s, ws_t]:
-        for col in ws.columns:
-            max_len = max(
-                (len(str(cell.value)) for cell in col if cell.value is not None),
-                default=10
-            )
-            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 40)
-
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = 'attachment; filename=bulk_user_import_template.xlsx'
-    wb.save(response)
-    return response
+    """Legacy endpoint — redirects to the student template."""
+    return download_student_template(request)
