@@ -49,13 +49,10 @@
   font-weight: 600;
   background: #f3f4f6;
   color: #374151;
-  display: flex;
-  align-items: center;
-  gap: 5px;
 }
 
-.stat-pill.students { background: #eff6ff; color: #1d4ed8; }
-.stat-pill.teachers { background: #f5f3ff; color: #6d28d9; }
+.stat-pill.student { background: #eff6ff; color: #1d4ed8; }
+.stat-pill.teacher { background: #f5f3ff; color: #6d28d9; }
 
 /* Buttons */
 .btn-confirm {
@@ -118,9 +115,6 @@
   border-bottom: 1px solid #fde68a;
   font-size: 12px;
   color: #92400e;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 /* Scrollable table wrapper */
@@ -163,21 +157,7 @@ td {
   white-space: nowrap;
 }
 
-td.email { color: #6b7280; font-size: 12px; }
-
-.role-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: capitalize;
-}
-
-.role-student { background: #eff6ff; color: #1d4ed8; }
-.role-teacher { background: #f5f3ff; color: #6d28d9; }
+td.muted { color: #6b7280; font-size: 12px; }
 
 .auto-tag {
   font-size: 10px;
@@ -190,34 +170,52 @@ td.email { color: #6b7280; font-size: 12px; }
 }
 
 .na { color: #d1d5db; font-style: italic; font-size: 12px; }
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.role-student { background: #eff6ff; color: #1d4ed8; }
+.role-teacher { background: #f5f3ff; color: #6d28d9; }
 </style>
 
-{% with students=preview_data|length %}
 <div class="pv-page">
 
   <!-- Top bar -->
   <div class="pv-bar">
     <div class="pv-bar-left">
       <div class="pv-title">
-        👁 Preview — {{ total_rows }} row{{ total_rows|pluralize }}
+        {% if import_type == 'teacher' %}👨‍🏫{% else %}👨‍🎓{% endif %}
+        Preview — {{ total_rows }} {{ import_type|title }}{{ total_rows|pluralize }}
       </div>
-      <div class="pv-sub">Review data before importing. Missing optional fields will be auto-assigned.</div>
+      <div class="pv-sub">
+        Review before importing.
+        {% if import_type == 'student' %}
+          Missing roll number and admission ID will be auto-assigned.
+        {% endif %}
+      </div>
     </div>
 
     <div class="pv-actions">
-      <!-- Stats -->
       <div class="stat-pills">
-        <div class="stat-pill">📋 {{ total_rows }} total</div>
-        <div class="stat-pill students">👨‍🎓 students shown</div>
+        <div class="stat-pill {{ import_type }}">
+          {% if import_type == 'teacher' %}👨‍🏫{% else %}👨‍🎓{% endif %}
+          {{ total_rows }} {{ import_type }}{{ total_rows|pluralize }}
+        </div>
       </div>
 
-      <!-- Actions -->
       <a href="{% url 'bulk_import_users' %}" class="btn-cancel">← Back</a>
 
       <form method="post" style="margin:0;">
         {% csrf_token %}
+        <input type="hidden" name="import_type" value="{{ import_type }}">
         <button type="submit" name="confirm_import" class="btn-confirm">
-          ✅ Import {{ total_rows }} User{{ total_rows|pluralize }}
+          ✅ Import {{ total_rows }} {{ import_type|title }}{{ total_rows|pluralize }}
         </button>
       </form>
     </div>
@@ -233,45 +231,27 @@ td.email { color: #6b7280; font-size: 12px; }
     {% endif %}
 
     <div class="table-wrap">
+      {% if import_type == 'student' %}
       <table>
         <thead>
           <tr>
             <th>#</th>
-            <th>Username</th>
-            <th>Email</th>
             <th>Full Name</th>
-            <th>Role</th>
+            <th>Email / Username</th>
             <th>Grade</th>
             <th>Division</th>
             <th>Roll No.</th>
             <th>Admission ID</th>
-            <th>Subject</th>
           </tr>
         </thead>
         <tbody>
           {% for row in preview_data %}
           <tr>
             <td style="color:#9ca3af; font-size:12px;">{{ forloop.counter }}</td>
-            <td><strong>{{ row.username }}</strong></td>
-            <td class="email">{{ row.email }}</td>
-            <td>
-              {% if row.full_name %}{{ row.full_name }}
-              {% else %}{{ row.first_name }} {{ row.last_name }}{% endif %}
-            </td>
-            <td>
-              <span class="role-badge role-{{ row.role|lower }}">
-                {% if row.role|lower == 'student' %}👨‍🎓{% else %}👨‍🏫{% endif %}
-                {{ row.role|title }}
-              </span>
-            </td>
-            <td>
-              {% if row.grade %}{{ row.grade }}
-              {% else %}<span class="na">auto</span>{% endif %}
-            </td>
-            <td>
-              {% if row.division %}{{ row.division }}
-              {% else %}<span class="na">auto</span>{% endif %}
-            </td>
+            <td><strong>{{ row.full_name }}</strong></td>
+            <td class="muted">{{ row.email }}</td>
+            <td>{{ row.grade }}</td>
+            <td>{{ row.division }}</td>
             <td>
               {% if row.roll_number %}{{ row.roll_number }}
               {% else %}<span class="na">auto <span class="auto-tag">✦</span></span>{% endif %}
@@ -280,6 +260,27 @@ td.email { color: #6b7280; font-size: 12px; }
               {% if row.admission_id %}{{ row.admission_id }}
               {% else %}<span class="na">auto <span class="auto-tag">✦</span></span>{% endif %}
             </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% else %}{# teacher #}
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Full Name</th>
+            <th>Email / Username</th>
+            <th>Subject</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in preview_data %}
+          <tr>
+            <td style="color:#9ca3af; font-size:12px;">{{ forloop.counter }}</td>
+            <td><strong>{{ row.full_name }}</strong></td>
+            <td class="muted">{{ row.email }}</td>
             <td>
               {% if row.subject %}{{ row.subject }}
               {% else %}<span class="na">—</span>{% endif %}
@@ -288,11 +289,11 @@ td.email { color: #6b7280; font-size: 12px; }
           {% endfor %}
         </tbody>
       </table>
+      {% endif %}
     </div>
 
   </div>
 
 </div>
-{% endwith %}
 
 {% endblock %}
