@@ -61,3 +61,6 @@ desktop.ini
 # ── Deployment config (local overrides) ──────────────────
 *.pem
 *.key
+
+# database from githumb (local github database is not up to date)
+db.sqlite3
