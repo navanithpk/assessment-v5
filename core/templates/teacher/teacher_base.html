@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>{% block title %}Teacher{% endblock %} - Lumen</title>
+{% block extra_head %}{% endblock %}
 
 <style>
 body {
@@ -21,7 +22,7 @@ body {
 .sidebar {
   background: #2f2f2f;
   color: white;
-  padding: 22px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -40,7 +41,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #9ca3af;
-  margin: 16px 0 8px 0;
+  margin: 12px 0 4px 0;
   padding: 0 8px;
 }
 
@@ -48,10 +49,10 @@ body {
   display: block;
   color: #e5e7eb;
   text-decoration: none;
-  margin: 4px 0;
-  padding: 8px 10px;
+  margin: 2px 0;
+  padding: 6px 8px;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
   transition: all 0.2s;
 }
 
@@ -102,7 +103,7 @@ body {
 
 /* ================= MAIN ================= */
 .main {
-  padding: 30px;
+  padding: 20px;
   overflow-y: auto;
 }
 </style>
@@ -114,7 +115,7 @@ body {
 
   <!-- ================= SIDEBAR ================= -->
   <aside class="sidebar">
-    <div style="margin-bottom: 24px;">
+    <div style="margin-bottom: 16px;">
       <a href="{% url 'teacher_dashboard' %}" style="text-decoration: none; font-size: 24px; font-weight: 700; margin-bottom: 4px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: block;">
         ✨ Lumen
       </a>
@@ -146,9 +147,14 @@ body {
 	<!-- Analytics Section -->
 	<div class="section-title">Analytics</div>
 
+	<a href="{% url 'academic_overview_dashboard' %}"
+	   class="{% if '/academic-overview/' in request.path %}active{% endif %}">
+	  📊 Academic Overview
+	</a>
+
 	<a href="{% url 'tests_list' %}"
 	   class="{% if request.resolver_match.url_name == 'tests_list' %}active{% endif %}">
-	  📊 Test Analytics
+	  🔬 Test Analytics
 	</a>
 
 	<a href="{% url 'report_card_dashboard' %}"

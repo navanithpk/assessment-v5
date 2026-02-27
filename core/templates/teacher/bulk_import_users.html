@@ -4,16 +4,16 @@
 
 {% block content %}
 <style>
-/* ── Page shell: fill the main panel without outer scroll ── */
+/* ── Page shell: fill the viewport, no outer scroll ── */
 .bi-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px); /* 30px padding top + bottom from teacher_base */
-  gap: 16px;
+  height: calc(100vh - 60px);
+  gap: 14px;
   overflow: hidden;
 }
 
-/* ── Header row ── */
+/* ── Header ── */
 .bi-header {
   display: flex;
   align-items: center;
@@ -21,42 +21,54 @@
   flex-shrink: 0;
 }
 
-.bi-title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-}
+.bi-title { font-size: 20px; font-weight: 700; color: #111827; }
+.bi-subtitle { font-size: 13px; color: #6b7280; margin-top: 2px; }
 
-.bi-subtitle {
-  font-size: 13px;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
-.btn-template {
+/* ── Tab bar ── */
+.bi-tabs {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 18px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
+  gap: 0;
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 4px;
+  flex-shrink: 0;
+  width: fit-content;
+}
+
+.bi-tab {
+  padding: 8px 22px;
+  border-radius: 7px;
   font-size: 13px;
   font-weight: 600;
-  text-decoration: none;
   cursor: pointer;
-  white-space: nowrap;
-  transition: opacity 0.2s, transform 0.15s;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
-.btn-template:hover { opacity: 0.9; transform: translateY(-1px); }
+.bi-tab.active {
+  background: white;
+  color: #111827;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
 
-/* ── Two-panel body ── */
+.bi-tab.active.tab-student { color: #1d4ed8; }
+.bi-tab.active.tab-teacher { color: #6d28d9; }
+
+.bi-tab.disabled-tab {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Body: two-panel layout ── */
 .bi-body {
   display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 16px;
+  grid-template-columns: 280px 1fr;
+  gap: 14px;
   flex: 1;
   min-height: 0;
 }
@@ -74,20 +86,21 @@
 
 /* ── Left: column reference ── */
 .ref-panel {
-  padding: 20px;
+  padding: 18px;
   overflow-y: auto;
+  flex: 1;
 }
 
 .ref-section-title {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;
   color: #9ca3af;
-  margin: 0 0 8px 0;
+  margin: 0 0 7px 0;
 }
 
-.ref-section-title:not(:first-child) { margin-top: 16px; }
+.ref-section-title:not(:first-child) { margin-top: 14px; }
 
 .col-list {
   list-style: none;
@@ -95,16 +108,16 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .col-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 12.5px;
+  gap: 7px;
+  font-size: 12px;
   color: #374151;
-  padding: 5px 8px;
+  padding: 5px 7px;
   border-radius: 6px;
 }
 
@@ -113,9 +126,9 @@
 
 .col-badge {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
   margin-top: 1px;
 }
@@ -125,55 +138,61 @@
 
 .col-code {
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #4f46e5;
 }
 
-.col-desc {
-  color: #6b7280;
-  font-size: 11.5px;
-}
+.col-desc { color: #6b7280; font-size: 11px; }
 
 .auto-box {
-  margin-top: 16px;
+  margin-top: 14px;
   background: #eff6ff;
   border: 1px solid #dbeafe;
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .auto-box-title {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #1d4ed8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .auto-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  font-size: 11.5px;
   color: #1e40af;
-  padding: 3px 0;
+  padding: 2px 0;
+}
+
+.note-box {
+  margin-top: 14px;
+  background: #fefce8;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  color: #92400e;
+  line-height: 1.5;
 }
 
 /* ── Right: upload panel ── */
 .upload-panel {
-  padding: 28px 32px;
+  padding: 26px 30px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 20px;
+  gap: 18px;
+  flex: 1;
 }
 
 /* Messages */
-.msg-list { display: flex; flex-direction: column; gap: 8px; }
+.msg-list { display: flex; flex-direction: column; gap: 7px; }
 .msg {
-  padding: 10px 14px;
+  padding: 9px 13px;
   border-radius: 8px;
   font-size: 13px;
   display: flex;
@@ -184,46 +203,80 @@
 .msg.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
 .msg.warning { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
 
-/* Step indicator */
+/* Steps */
 .steps {
   display: flex;
   align-items: center;
-  gap: 0;
-  margin-bottom: 4px;
 }
 
 .step {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 12px;
   color: #9ca3af;
 }
 
 .step-num {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #e5e7eb;
   color: #6b7280;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
-.step.active .step-num { background: #667eea; color: white; }
-.step.active { color: #667eea; font-weight: 600; }
+.step.active .step-num { background: #4f46e5; color: white; }
+.step.active { color: #4f46e5; font-weight: 600; }
 
-.step-line { flex: 1; height: 1px; background: #e5e7eb; margin: 0 8px; min-width: 24px; }
+.step-line { flex: 1; height: 1px; background: #e5e7eb; margin: 0 8px; min-width: 20px; }
+
+/* Template download row */
+.template-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.template-row-icon { font-size: 22px; }
+
+.template-row-text { flex: 1; }
+.template-row-text strong { font-size: 13px; color: #1e293b; }
+.template-row-text span { display: block; font-size: 11.5px; color: #64748b; margin-top: 1px; }
+
+.btn-template {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  color: #4f46e5;
+  border: 1.5px solid #c7d2fe;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-template:hover { background: #eef2ff; border-color: #818cf8; }
 
 /* Drop zone */
 .drop-zone {
   border: 2px dashed #d1d5db;
   border-radius: 12px;
-  padding: 32px 24px;
+  padding: 28px 20px;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
@@ -233,7 +286,7 @@
 
 .drop-zone:hover,
 .drop-zone.drag-over {
-  border-color: #667eea;
+  border-color: #4f46e5;
   background: #f5f3ff;
 }
 
@@ -246,26 +299,12 @@
   height: 100%;
 }
 
-.drop-icon {
-  font-size: 36px;
-  line-height: 1;
-  margin-bottom: 10px;
-}
-
-.drop-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 4px;
-}
-
-.drop-hint {
-  font-size: 12px;
-  color: #9ca3af;
-}
+.drop-icon { font-size: 32px; line-height: 1; margin-bottom: 8px; }
+.drop-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 3px; }
+.drop-hint  { font-size: 11.5px; color: #9ca3af; }
 
 .file-chosen {
-  margin-top: 10px;
+  margin-top: 8px;
   font-size: 13px;
   color: #4f46e5;
   font-weight: 500;
@@ -275,12 +314,12 @@
 /* Submit button */
 .btn-preview {
   width: 100%;
-  padding: 13px;
+  padding: 12px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   border-radius: 10px;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.2s, transform 0.15s, box-shadow 0.15s;
@@ -290,20 +329,20 @@
 .btn-preview:hover {
   opacity: 0.93;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+  box-shadow: 0 6px 18px rgba(102,126,234,0.4);
 }
 
 .btn-preview:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
   transform: none;
 }
 
-.format-note {
-  text-align: center;
-  font-size: 12px;
-  color: #9ca3af;
-}
+.format-note { text-align: center; font-size: 12px; color: #9ca3af; }
+
+/* ── Tab pane visibility ── */
+.tab-pane { display: none; }
+.tab-pane.active { display: contents; }
 </style>
 
 <div class="bi-page">
@@ -312,93 +351,108 @@
   <div class="bi-header">
     <div>
       <div class="bi-title">📥 Bulk Import Users</div>
-      <div class="bi-subtitle">Upload an Excel file to add students or teachers in bulk</div>
+      <div class="bi-subtitle">Import students or teachers from a CSV or Excel file</div>
     </div>
-    <a href="{% url 'download_user_template' %}" class="btn-template">
-      ⬇ Download Template
-    </a>
+
+    <!-- Tab switcher -->
+    <div class="bi-tabs">
+      <button class="bi-tab tab-student active" onclick="switchTab('student')" id="tab-student">
+        👨‍🎓 Students
+      </button>
+      <button class="bi-tab tab-teacher {% if not is_school_admin %}disabled-tab{% endif %}"
+              onclick="switchTab('teacher')" id="tab-teacher">
+        👨‍🏫 Teachers
+      </button>
+    </div>
   </div>
 
-  <!-- Body -->
+  <!-- Body: left reference + right upload -->
   <div class="bi-body">
 
-    <!-- Left: Column Reference -->
+    <!-- ── LEFT: Column Reference ── -->
     <div class="bi-card">
       <div class="ref-panel">
 
-        <div class="ref-section-title">Required (all users)</div>
-        <ul class="col-list">
-          <li class="col-item required">
-            <span class="col-badge req">REQ</span>
-            <div><div class="col-code">username</div><div class="col-desc">Unique login name</div></div>
-          </li>
-          <li class="col-item required">
-            <span class="col-badge req">REQ</span>
-            <div><div class="col-code">email</div><div class="col-desc">Valid email address</div></div>
-          </li>
-          <li class="col-item required">
-            <span class="col-badge req">REQ</span>
-            <div><div class="col-code">password</div><div class="col-desc">Initial password</div></div>
-          </li>
-          <li class="col-item required">
-            <span class="col-badge req">REQ</span>
-            <div><div class="col-code">first_name</div><div class="col-desc">First name</div></div>
-          </li>
-          <li class="col-item required">
-            <span class="col-badge req">REQ</span>
-            <div><div class="col-code">last_name</div><div class="col-desc">Last name</div></div>
-          </li>
-          <li class="col-item required">
-            <span class="col-badge req">REQ</span>
-            <div><div class="col-code">role</div><div class="col-desc">"student" or "teacher"</div></div>
-          </li>
-        </ul>
+        <!-- Student reference -->
+        <div class="tab-pane active" id="ref-student">
+          <div class="ref-section-title">Required columns</div>
+          <ul class="col-list">
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">full_name</div><div class="col-desc">Student's full name</div></div>
+            </li>
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">email</div><div class="col-desc">Email — also used as login username</div></div>
+            </li>
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">password</div><div class="col-desc">Initial password (min 8 chars)</div></div>
+            </li>
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">grade</div><div class="col-desc">Grade / class (e.g. "AS Level")</div></div>
+            </li>
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">division</div><div class="col-desc">Section (e.g. "A", "B")</div></div>
+            </li>
+          </ul>
 
-        <div class="ref-section-title">Optional — students</div>
-        <ul class="col-list">
-          <li class="col-item optional">
-            <span class="col-badge opt">OPT</span>
-            <div><div class="col-code">grade</div><div class="col-desc">Grade / class level</div></div>
-          </li>
-          <li class="col-item optional">
-            <span class="col-badge opt">OPT</span>
-            <div><div class="col-code">division</div><div class="col-desc">Section / division</div></div>
-          </li>
-          <li class="col-item optional">
-            <span class="col-badge opt">OPT</span>
-            <div><div class="col-code">roll_number</div><div class="col-desc">Auto-assigned if blank</div></div>
-          </li>
-          <li class="col-item optional">
-            <span class="col-badge opt">OPT</span>
-            <div><div class="col-code">admission_id</div><div class="col-desc">Auto-assigned if blank</div></div>
-          </li>
-          <li class="col-item optional">
-            <span class="col-badge opt">OPT</span>
-            <div><div class="col-code">full_name</div><div class="col-desc">Defaults to first+last</div></div>
-          </li>
-        </ul>
+          <div class="ref-section-title">Optional columns</div>
+          <ul class="col-list">
+            <li class="col-item optional">
+              <span class="col-badge opt">OPT</span>
+              <div><div class="col-code">roll_number</div><div class="col-desc">Auto-assigned if blank</div></div>
+            </li>
+            <li class="col-item optional">
+              <span class="col-badge opt">OPT</span>
+              <div><div class="col-code">admission_id</div><div class="col-desc">Auto-assigned if blank</div></div>
+            </li>
+          </ul>
 
-        <div class="ref-section-title">Optional — teachers</div>
-        <ul class="col-list">
-          <li class="col-item optional">
-            <span class="col-badge opt">OPT</span>
-            <div><div class="col-code">subject</div><div class="col-desc">Subject they teach</div></div>
-          </li>
-        </ul>
+          <div class="auto-box">
+            <div class="auto-box-title">✦ Auto-assigned when blank</div>
+            <div class="auto-item">✓ Roll number (sequential per class)</div>
+            <div class="auto-item">✓ Admission ID (ADM{year}###)</div>
+          </div>
+        </div>
 
-        <div class="auto-box">
-          <div class="auto-box-title">✦ Auto-assigned</div>
-          <div class="auto-item">✓ Roll number (sequential per class)</div>
-          <div class="auto-item">✓ Admission ID (ADM{year}###)</div>
-          <div class="auto-item">✓ Full name (first + last)</div>
-          <div class="auto-item">✓ Grade defaults to "General"</div>
-          <div class="auto-item">✓ Division defaults to "A"</div>
+        <!-- Teacher reference -->
+        <div class="tab-pane" id="ref-teacher">
+          <div class="ref-section-title">Required columns</div>
+          <ul class="col-list">
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">full_name</div><div class="col-desc">Teacher's full name</div></div>
+            </li>
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">email</div><div class="col-desc">Email — also used as login username</div></div>
+            </li>
+            <li class="col-item required">
+              <span class="col-badge req">REQ</span>
+              <div><div class="col-code">password</div><div class="col-desc">Initial password (min 8 chars)</div></div>
+            </li>
+          </ul>
+
+          <div class="ref-section-title">Optional columns</div>
+          <ul class="col-list">
+            <li class="col-item optional">
+              <span class="col-badge opt">OPT</span>
+              <div><div class="col-code">subject</div><div class="col-desc">Subject specialization</div></div>
+            </li>
+          </ul>
+
+          <div class="note-box">
+            ⚠️ Only <strong>School Admins</strong> can import teacher accounts.
+          </div>
         </div>
 
       </div>
     </div>
 
-    <!-- Right: Upload -->
+    <!-- ── RIGHT: Upload Panel ── -->
     <div class="bi-card">
       <div class="upload-panel">
 
@@ -414,7 +468,7 @@
         </div>
         {% endif %}
 
-        <!-- Steps -->
+        <!-- Steps indicator -->
         <div class="steps">
           <div class="step active">
             <div class="step-num">1</div>
@@ -432,18 +486,42 @@
           </div>
         </div>
 
+        <!-- Template download row (changes per tab) -->
+        <div class="template-row" id="templateRow-student">
+          <div class="template-row-icon">📄</div>
+          <div class="template-row-text">
+            <strong>Student Import Template</strong>
+            <span>CSV with required columns pre-filled and sample rows</span>
+          </div>
+          <a href="{% url 'download_student_template' %}" class="btn-template">
+            ⬇ Download CSV
+          </a>
+        </div>
+
+        <div class="template-row" id="templateRow-teacher" style="display:none;">
+          <div class="template-row-icon">📄</div>
+          <div class="template-row-text">
+            <strong>Teacher Import Template</strong>
+            <span>CSV with required columns pre-filled and sample rows</span>
+          </div>
+          <a href="{% url 'download_teacher_template' %}" class="btn-template">
+            ⬇ Download CSV
+          </a>
+        </div>
+
+        <!-- Upload form -->
         <form method="post" enctype="multipart/form-data" id="importForm">
           {% csrf_token %}
+          <input type="hidden" name="import_type" id="importTypeInput" value="student">
 
-          <!-- Drop zone -->
           <div class="drop-zone" id="dropZone">
             <input type="file" name="excel_file" id="excel_file"
                    accept=".xlsx,.xls,.csv" required
                    onchange="fileChosen(this)">
             <div class="drop-icon">📊</div>
-            <div class="drop-title">Drop your Excel file here</div>
-            <div class="drop-hint">or click to browse · .xlsx / .xls / .csv · max 10 MB</div>
-            <div class="file-chosen" id="fileChosen"></div>
+            <div class="drop-title" id="dropTitle">Drop your Student CSV/Excel here</div>
+            <div class="drop-hint">.xlsx / .xls / .csv · max 10 MB</div>
+            <div class="file-chosen" id="fileChosenLabel"></div>
           </div>
 
           <button type="submit" name="preview" class="btn-preview" id="previewBtn" disabled>
@@ -452,7 +530,7 @@
         </form>
 
         <div class="format-note">
-          Tip: download the template above to see the exact column format
+          Download the template above — it shows the exact column names and sample data.
         </div>
 
       </div>
@@ -462,21 +540,53 @@
 </div>
 
 <script>
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('excel_file');
-const previewBtn = document.getElementById('previewBtn');
-const fileChosenEl = document.getElementById('fileChosen');
+const isSchoolAdmin = {{ is_school_admin|yesno:"true,false" }};
+
+function switchTab(role) {
+  if (role === 'teacher' && !isSchoolAdmin) {
+    alert('Only school administrators can import teacher accounts.');
+    return;
+  }
+
+  // Tab buttons
+  document.getElementById('tab-student').classList.toggle('active', role === 'student');
+  document.getElementById('tab-teacher').classList.toggle('active', role === 'teacher');
+
+  // Left reference panels
+  document.getElementById('ref-student').classList.toggle('active', role === 'student');
+  document.getElementById('ref-teacher').classList.toggle('active', role === 'teacher');
+
+  // Template download rows
+  document.getElementById('templateRow-student').style.display = role === 'student' ? '' : 'none';
+  document.getElementById('templateRow-teacher').style.display = role === 'teacher' ? '' : 'none';
+
+  // Hidden import_type field
+  document.getElementById('importTypeInput').value = role;
+
+  // Drop zone label
+  const label = role === 'student' ? 'Drop your Student CSV/Excel here'
+                                    : 'Drop your Teacher CSV/Excel here';
+  document.getElementById('dropTitle').textContent = label;
+
+  // Reset file input
+  document.getElementById('excel_file').value = '';
+  document.getElementById('fileChosenLabel').style.display = 'none';
+  document.getElementById('previewBtn').disabled = true;
+}
 
 function fileChosen(input) {
   if (input.files && input.files[0]) {
-    const name = input.files[0].name;
-    fileChosenEl.textContent = '📎 ' + name;
-    fileChosenEl.style.display = 'block';
-    previewBtn.disabled = false;
+    const el = document.getElementById('fileChosenLabel');
+    el.textContent = '📎 ' + input.files[0].name;
+    el.style.display = 'block';
+    document.getElementById('previewBtn').disabled = false;
   }
 }
 
 // Drag-and-drop
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('excel_file');
+
 dropZone.addEventListener('dragover', e => {
   e.preventDefault();
   dropZone.classList.add('drag-over');
@@ -485,9 +595,8 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-ove
 dropZone.addEventListener('drop', e => {
   e.preventDefault();
   dropZone.classList.remove('drag-over');
-  const dt = e.dataTransfer;
-  if (dt.files.length) {
-    fileInput.files = dt.files;
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
     fileChosen(fileInput);
   }
 });

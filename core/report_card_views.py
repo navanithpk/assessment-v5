@@ -149,7 +149,7 @@ def report_card_dashboard(request):
             'id': t.id,
             'title': t.title,
             'subject': t.subject.name if t.subject else 'General',
-            'date': t.created_at.strftime('%d-%m-%Y'),
+            'date': t.created_at.strftime('%d/%m/%Y'),
         })
 
     context = {
@@ -229,7 +229,7 @@ def report_card_detail(request, student_id):
                 'test': answer.test,
                 'subject': answer.test.subject.name if answer.test.subject else 'General',
                 'title': answer.test.title,
-                'date': answer.test.created_at.strftime('%d-%m-%Y'),
+                'date': answer.test.created_at.strftime('%d/%m/%Y'),
                 'answers': [],
                 'total_marks': 0,
                 'earned_marks': 0,

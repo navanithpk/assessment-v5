@@ -147,6 +147,12 @@
 
         <div class="user-menu">
             <span class="user-name">👨‍🎓 {{ request.user.get_full_name|default:request.user.username }}</span>
+            <a href="{% url 'student_change_password' %}"
+               style="padding: 8px 14px; background: #f3f4f6; color: #374151; border-radius: 8px;
+                      text-decoration: none; font-size: 13px; font-weight: 500; transition: background .2s;"
+               onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">
+                🔐 Password
+            </a>
             <form method="post" action="{% url 'logout' %}" style="display: inline;">
                 {% csrf_token %}
                 <button type="submit" class="logout-btn">Logout</button>

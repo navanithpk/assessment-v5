@@ -2,13 +2,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, update_session_auth_hash
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.template.loader import render_to_string
 from django.db import models
 from django.db.models import Q
+from django.urls import reverse
 import json
 from core.ai.topic_tagger import suggest_topic_for_question
 from core.ai.lo_tagger import suggest_los_for_question
@@ -289,12 +290,12 @@ def root_redirect(request):
 def redirect_after_login(user):
     """Redirect user to appropriate dashboard based on their role"""
     role = get_user_role(user)
-    if role in ['teacher', 'school_admin']:
+    if role in ['teacher', 'school_admin', 'superuser']:
         return redirect("teacher_dashboard")
     elif role == 'student':
         return redirect("student_dashboard")
     else:
-        return redirect("/admin/")
+        return redirect("teacher_dashboard")
 
 
 def custom_login(request):
@@ -328,40 +329,59 @@ def teacher_dashboard(request):
     # Get pending tasks for admin to-do list
     pending_tasks = []
 
-    # Find questions without topics
+    # ── 1. Tests with ungraded student answers (one entry per test) ──
+    grading_qs = Test.objects.filter(
+        student_answers__marks_awarded__isnull=True
+    ).distinct()
+    if not request.user.is_superuser:
+        grading_qs = grading_qs.filter(created_by=request.user)
+    for test in grading_qs[:10]:
+        waiting = Student.objects.filter(
+            answers__test=test,
+            answers__marks_awarded__isnull=True
+        ).distinct().count()
+        pending_tasks.append({
+            'type': 'grade_test',
+            'url': reverse('grade_test_answers', args=[test.id]),
+            'title': f'Grade: {test.title}',
+            'description': f'{waiting} student{"s" if waiting != 1 else ""} awaiting grading',
+            'icon': '✏️',
+        })
+
+    # ── 2. Questions without topics ──
     questions_without_topic = Question.objects.filter(topic__isnull=True)[:10]
     for q in questions_without_topic:
         pending_tasks.append({
             'type': 'tag_topic',
-            'question_id': q.id,
+            'url': reverse('edit_question', args=[q.id]),
             'title': 'Tag topic for question',
             'description': f'Question #{q.id} needs a topic tag',
-            'icon': '🏷️'
+            'icon': '🏷️',
         })
 
-    # Find questions without answer keys (empty answer_text)
+    # ── 3. Questions without answer keys ──
     questions_without_answer = Question.objects.filter(
         Q(answer_text__isnull=True) | Q(answer_text='')
     )[:10]
     for q in questions_without_answer:
         pending_tasks.append({
             'type': 'tag_answer',
-            'question_id': q.id,
+            'url': reverse('edit_question', args=[q.id]),
             'title': 'Tag answer key for question',
             'description': f'Question #{q.id} needs an answer key',
-            'icon': '✅'
+            'icon': '✅',
         })
 
-    # Find questions without learning objectives (ManyToMany field)
-    all_questions = Question.objects.all()[:50]  # Check first 50 questions
+    # ── 4. Questions without learning objectives ──
+    all_questions = Question.objects.all()[:50]
     for q in all_questions:
         if q.learning_objectives.count() == 0:
             pending_tasks.append({
                 'type': 'tag_lo',
-                'question_id': q.id,
+                'url': reverse('edit_question', args=[q.id]),
                 'title': 'Tag learning objective for question',
                 'description': f'Question #{q.id} needs a learning objective',
-                'icon': '🎯'
+                'icon': '🎯',
             })
             if len([t for t in pending_tasks if t['type'] == 'tag_lo']) >= 10:
                 break
@@ -380,6 +400,321 @@ def teacher_dashboard(request):
     }
 
     return render(request, "teacher/teacher_dashboard.html", context)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  ACADEMIC OVERVIEW DASHBOARD
+# ══════════════════════════════════════════════════════════════════
+@login_required
+@staff_member_required
+def academic_overview_dashboard(request):
+    """School-wide academic analytics dashboard with rich interactive charts."""
+    from django.db.models import Sum, Count, FloatField
+    from django.db.models.functions import Cast, TruncMonth, TruncDay
+    from django.utils import timezone
+    from datetime import timedelta
+    import json as _json
+
+    school = get_user_school(request.user)
+    now = timezone.now()
+
+    # ── KPI METRICS ──────────────────────────────────────────────
+    all_students_qs  = Student.objects.filter(school=school)
+    total_students   = all_students_qs.count()
+    active_students  = all_students_qs.filter(user__is_active=True).count()
+    inactive_students = total_students - active_students
+
+    online_students = all_students_qs.filter(
+        user__last_login__gte=now - timedelta(minutes=15)
+    ).count()
+
+    writing_now = StudentAnswer.objects.filter(
+        student__school=school,
+        submitted_at__gte=now - timedelta(minutes=10)
+    ).values('student').distinct().count()
+
+    total_questions = Question.objects.filter(created_by__profile__school=school).count()
+    total_tests     = Test.objects.filter(created_by__profile__school=school).count()
+    pending_grading = Test.objects.filter(
+        created_by__profile__school=school,
+        student_answers__marks_awarded__isnull=True
+    ).distinct().count()
+
+    # ── SUBJECT PERFORMANCE (horizontal bar) ─────────────────────
+    subj_buckets = {}
+    for ans in StudentAnswer.objects.filter(
+        student__school=school,
+        marks_awarded__isnull=False,
+        test__subject__isnull=False,
+    ).select_related('test__subject', 'question'):
+        s = ans.test.subject.name
+        subj_buckets.setdefault(s, [0.0, 0.0])
+        subj_buckets[s][0] += float(ans.marks_awarded)
+        subj_buckets[s][1] += float(ans.question.marks)
+
+    subject_labels, subject_scores = [], []
+    for s, (earned, total) in sorted(subj_buckets.items()):
+        if total > 0:
+            subject_labels.append(s)
+            subject_scores.append(round(earned / total * 100, 1))
+
+    # ── PERFORMANCE TREND (monthly area, last 12 months) ─────────
+    monthly_raw = (
+        StudentAnswer.objects
+        .filter(
+            student__school=school,
+            marks_awarded__isnull=False,
+            submitted_at__gte=now - timedelta(days=365),
+        )
+        .annotate(month=TruncMonth('submitted_at'))
+        .values('month')
+        .annotate(
+            t=Sum(Cast('question__marks', FloatField())),
+            e=Sum(Cast('marks_awarded', FloatField())),
+        )
+        .order_by('month')
+    )
+    trend_labels, trend_scores = [], []
+    for r in monthly_raw:
+        if r['t'] and r['t'] > 0:
+            trend_labels.append(r['month'].strftime('%b %Y'))
+            trend_scores.append(round(r['e'] / r['t'] * 100, 1))
+
+    # ── SUBJECT TREND LINES (per-subject monthly, last 6 months) ──
+    six_months_ago = now - timedelta(days=183)
+    subj_trend_raw = (
+        StudentAnswer.objects
+        .filter(
+            student__school=school,
+            marks_awarded__isnull=False,
+            test__subject__isnull=False,
+            submitted_at__gte=six_months_ago,
+        )
+        .annotate(month=TruncMonth('submitted_at'))
+        .values('month', 'test__subject__name')
+        .annotate(
+            t=Sum(Cast('question__marks', FloatField())),
+            e=Sum(Cast('marks_awarded', FloatField())),
+        )
+        .order_by('month', 'test__subject__name')
+    )
+    # Build per-subject series
+    subj_trend_months = sorted(set(r['month'].strftime('%b %Y') for r in subj_trend_raw))
+    subj_trend_subjects = sorted(set(r['test__subject__name'] for r in subj_trend_raw))
+    subj_trend_series = []
+    for subj in subj_trend_subjects:
+        data = []
+        for m_str in subj_trend_months:
+            match = next(
+                (r for r in subj_trend_raw
+                 if r['test__subject__name'] == subj
+                 and r['month'].strftime('%b %Y') == m_str),
+                None
+            )
+            if match and match['t'] and match['t'] > 0:
+                data.append(round(match['e'] / match['t'] * 100, 1))
+            else:
+                data.append(None)
+        subj_trend_series.append({'name': subj, 'data': data})
+
+    # ── GRADE DISTRIBUTION (donut) ────────────────────────────────
+    gd_raw = (
+        all_students_qs
+        .values('grade__name', 'grade__grade_level')
+        .annotate(count=Count('id'))
+        .order_by('grade__grade_level')
+    )
+    grade_labels = [r['grade__name'] or 'N/A' for r in gd_raw]
+    grade_counts  = [r['count'] for r in gd_raw]
+
+    # ── QUESTION TYPES (pie) ──────────────────────────────────────
+    _qt_map = {'mcq': 'MCQ', 'theory': 'Theory', 'structured': 'Structured', 'practical': 'Practical'}
+    qt_raw = (
+        Question.objects
+        .filter(created_by__profile__school=school)
+        .values('question_type')
+        .annotate(count=Count('id'))
+    )
+    qt_labels = [_qt_map.get(r['question_type'], r['question_type'].title()) for r in qt_raw]
+    qt_counts  = [r['count'] for r in qt_raw]
+
+    # ── TEST STATUS (donut) ───────────────────────────────────────
+    all_tests_qs = Test.objects.filter(created_by__profile__school=school)
+    test_draft   = all_tests_qs.filter(is_published=False).count()
+    test_live    = all_tests_qs.filter(is_published=True, results_published=False).count()
+    test_done    = all_tests_qs.filter(results_published=True).count()
+
+    # ── SCORE DISTRIBUTION (10 bands histogram) ───────────────────
+    score_bands = [0] * 10
+    ts_qs = (
+        StudentAnswer.objects
+        .filter(student__school=school, marks_awarded__isnull=False)
+        .values('student_id', 'test_id')
+        .annotate(
+            t=Sum(Cast('question__marks', FloatField())),
+            e=Sum(Cast('marks_awarded', FloatField())),
+        )
+    )
+    for row in ts_qs:
+        if row['t'] and row['t'] > 0:
+            score_bands[min(int((row['e'] / row['t'] * 100) // 10), 9)] += 1
+
+    # ── TEACHER METRICS (grouped bar) ────────────────────────────
+    teacher_names, teacher_tests_ct, teacher_students_ct, teacher_avg_scores = [], [], [], []
+    for tp in UserProfile.objects.filter(
+        school=school, role__in=['teacher', 'school_admin']
+    ).select_related('user')[:12]:
+        u = tp.user
+        t_tests = Test.objects.filter(created_by=u).count()
+        t_studs = Student.objects.filter(
+            answers__test__created_by=u, school=school
+        ).distinct().count()
+        buckets = {}
+        for row in StudentAnswer.objects.filter(
+            test__created_by=u,
+            student__school=school,
+            marks_awarded__isnull=False,
+        ).values('student_id', 'test_id').annotate(
+            t=Sum(Cast('question__marks', FloatField())),
+            e=Sum(Cast('marks_awarded', FloatField())),
+        ):
+            if row['t'] and row['t'] > 0:
+                buckets[(row['student_id'], row['test_id'])] = row['e'] / row['t'] * 100
+        avg = round(sum(buckets.values()) / len(buckets), 1) if buckets else 0.0
+        teacher_names.append(u.get_full_name() or u.username)
+        teacher_tests_ct.append(t_tests)
+        teacher_students_ct.append(t_studs)
+        teacher_avg_scores.append(avg)
+
+    # ── DAILY ACTIVITY (area line, last 30 days) ──────────────────
+    da_raw = (
+        StudentAnswer.objects
+        .filter(
+            student__school=school,
+            submitted_at__gte=now - timedelta(days=30),
+        )
+        .annotate(day=TruncDay('submitted_at'))
+        .values('day')
+        .annotate(active=Count('student', distinct=True))
+        .order_by('day')
+    )
+    activity_labels = [r['day'].strftime('%d %b') for r in da_raw]
+    activity_counts  = [r['active'] for r in da_raw]
+
+    # ── TOP & BOTTOM PERFORMERS ───────────────────────────────────
+    perf_map = {}
+    for ans in StudentAnswer.objects.filter(
+        student__school=school,
+        marks_awarded__isnull=False,
+    ).select_related('student', 'question'):
+        k = ans.student_id
+        perf_map.setdefault(k, {'name': ans.student.full_name, 'e': 0.0, 't': 0.0})
+        perf_map[k]['e'] += float(ans.marks_awarded)
+        perf_map[k]['t'] += float(ans.question.marks)
+
+    perf_list = [
+        {'name': v['name'], 'score': round(v['e'] / v['t'] * 100, 1)}
+        for v in perf_map.values() if v['t'] > 0
+    ]
+    perf_list.sort(key=lambda x: -x['score'])
+    top_names  = [p['name'] for p in perf_list[:8]]
+    top_scores = [p['score'] for p in perf_list[:8]]
+    bot_names  = [p['name'] for p in reversed(perf_list[-8:])] if len(perf_list) >= 8 else [p['name'] for p in reversed(perf_list)]
+    bot_scores = [p['score'] for p in reversed(perf_list[-8:])] if len(perf_list) >= 8 else [p['score'] for p in reversed(perf_list)]
+
+    # ── SUBJECT × GRADE HEATMAP ───────────────────────────────────
+    sg_raw = list(
+        StudentAnswer.objects
+        .filter(
+            student__school=school,
+            marks_awarded__isnull=False,
+            test__subject__isnull=False,
+        )
+        .values('test__subject__name', 'student__grade__name', 'student__grade__grade_level')
+        .annotate(
+            t=Sum(Cast('question__marks', FloatField())),
+            e=Sum(Cast('marks_awarded', FloatField())),
+        )
+        .order_by('student__grade__grade_level', 'test__subject__name')
+    )
+    hm_grades   = list(dict.fromkeys(r['student__grade__name'] for r in sg_raw))
+    hm_subjects = sorted(set(r['test__subject__name'] for r in sg_raw))
+    heatmap_series = []
+    for subj in hm_subjects:
+        data = []
+        for grade in hm_grades:
+            match = next(
+                (r for r in sg_raw
+                 if r['test__subject__name'] == subj and r['student__grade__name'] == grade),
+                None
+            )
+            y = round(match['e'] / match['t'] * 100, 1) if (match and match['t'] and match['t'] > 0) else 0
+            data.append({'x': grade or 'N/A', 'y': y})
+        heatmap_series.append({'name': subj, 'data': data})
+
+    # ── AVERAGE LOGIN FREQUENCY (radar per grade) ─────────────────
+    # Using last_login within last 7 / 14 / 30 days as tier buckets
+    login_7d  = all_students_qs.filter(user__last_login__gte=now - timedelta(days=7)).count()
+    login_14d = all_students_qs.filter(
+        user__last_login__gte=now - timedelta(days=14),
+        user__last_login__lt=now - timedelta(days=7),
+    ).count()
+    login_30d = all_students_qs.filter(
+        user__last_login__gte=now - timedelta(days=30),
+        user__last_login__lt=now - timedelta(days=14),
+    ).count()
+    login_old = all_students_qs.filter(
+        user__last_login__lt=now - timedelta(days=30)
+    ).count()
+    login_never = all_students_qs.filter(user__last_login__isnull=True).count()
+
+    context = {
+        # KPIs
+        'total_students':   total_students,
+        'active_students':  active_students,
+        'inactive_students': inactive_students,
+        'online_students':  online_students,
+        'writing_now':      writing_now,
+        'total_questions':  total_questions,
+        'total_tests':      total_tests,
+        'pending_grading':  pending_grading,
+        'school':           school,
+        # Test status raw
+        'test_draft': test_draft,
+        'test_live':  test_live,
+        'test_done':  test_done,
+        # Login tiers
+        'login_7d':   login_7d,
+        'login_14d':  login_14d,
+        'login_30d':  login_30d,
+        'login_old':  login_old,
+        'login_never': login_never,
+        # JSON for ApexCharts
+        'subject_labels':       _json.dumps(subject_labels),
+        'subject_scores':       _json.dumps(subject_scores),
+        'trend_labels':         _json.dumps(trend_labels),
+        'trend_scores':         _json.dumps(trend_scores),
+        'subj_trend_months':    _json.dumps(subj_trend_months),
+        'subj_trend_series':    _json.dumps(subj_trend_series),
+        'grade_labels':         _json.dumps(grade_labels),
+        'grade_counts':         _json.dumps(grade_counts),
+        'qt_labels':            _json.dumps(qt_labels),
+        'qt_counts':            _json.dumps(qt_counts),
+        'score_bands':          _json.dumps(score_bands),
+        'teacher_names':        _json.dumps(teacher_names),
+        'teacher_tests_ct':     _json.dumps(teacher_tests_ct),
+        'teacher_students_ct':  _json.dumps(teacher_students_ct),
+        'teacher_avg_scores':   _json.dumps(teacher_avg_scores),
+        'activity_labels':      _json.dumps(activity_labels),
+        'activity_counts':      _json.dumps(activity_counts),
+        'top_names':            _json.dumps(top_names),
+        'top_scores':           _json.dumps(top_scores),
+        'bot_names':            _json.dumps(bot_names),
+        'bot_scores':           _json.dumps(bot_scores),
+        'heatmap_series':       _json.dumps(heatmap_series),
+        'login_freq_data':      _json.dumps([login_7d, login_14d, login_30d, login_old, login_never]),
+    }
+    return render(request, 'teacher/academic_overview_dashboard.html', context)
 
 
 @login_required
@@ -431,6 +766,32 @@ def student_dashboard(request):
     }
 
     return render(request, "student/student_dashboard.html", context)
+
+
+@login_required
+def student_change_password(request):
+    """Allow a student to change their own password."""
+    if request.method == 'POST':
+        current_password  = request.POST.get('current_password', '').strip()
+        new_password      = request.POST.get('new_password', '').strip()
+        confirm_password  = request.POST.get('confirm_password', '').strip()
+
+        if not current_password or not new_password or not confirm_password:
+            messages.error(request, 'All fields are required.')
+        elif not request.user.check_password(current_password):
+            messages.error(request, 'Current password is incorrect.')
+        elif len(new_password) < 8:
+            messages.error(request, 'New password must be at least 8 characters.')
+        elif new_password != confirm_password:
+            messages.error(request, 'New passwords do not match.')
+        else:
+            request.user.set_password(new_password)
+            request.user.save()
+            update_session_auth_hash(request, request.user)  # keep session alive
+            messages.success(request, '✓ Password changed successfully.')
+            return redirect('student_dashboard')
+
+    return render(request, 'student/student_change_password.html')
 
 
 # ===================== USER MANAGEMENT =====================
